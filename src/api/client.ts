@@ -10,6 +10,17 @@ export class ApiError extends Error {
     }
 }
 
+function extractErrorMessage(data: unknown, fallback: string) {
+    const value = data as any;
+
+    return (
+        value?.error?.message ||
+        value?.message ||
+        value?.data?.error?.message ||
+        fallback
+    );
+}
+
 function buildUrl(path: string, params?: Record<string, string | number | undefined>) {
     if (!API_BASE_URL) {
         throw new ApiError('EXPO_PUBLIC_API_BASE_URL fehlt in .env');
@@ -51,9 +62,7 @@ export async function apiGet<T>(
 
     if (!response.ok) {
         throw new ApiError(
-            typeof data === 'object' && data && 'message' in data
-                ? String((data as any).message)
-                : `API-Fehler ${response.status}`,
+            extractErrorMessage(data, `API-Fehler ${response.status}`),
             response.status
         );
     }

@@ -2,40 +2,92 @@ import { apiGet } from './client';
 import type {
     ClubSearchResult,
     HealthResponse,
-    LeagueSearchResult,
     PlayerSearchResult,
 } from '../types/tttracker';
+
+function findFirstArray(value: unknown, depth = 0): unknown[] | null {
+    if (depth > 6) return null;
+    if (Array.isArray(value)) return value;
+    if (!value || typeof value !== 'object') return null;
+
+    const object = value as Record<string, unknown>;
+
+    for (const key of ['items', 'results', 'data', 'players', 'clubs', 'rows', 'teams']) {
+        const nested = findFirstArray(object[key], depth + 1);
+        if (nested) return nested;
+    }
+
+    for (const nestedValue of Object.values(object)) {
+        const nested = findFirstArray(nestedValue, depth + 1);
+        if (nested) return nested;
+    }
+
+    return null;
+}
+
+function normalizeList<T>(response: unknown): T[] {
+    const array = findFirstArray(response);
+    return array ? (array as T[]) : [];
+}
+
+function segment(value: string) {
+    return encodeURIComponent(value);
+}
 
 export const ttApi = {
     health() {
         return apiGet<HealthResponse>('/health');
     },
 
-    searchPlayers(query: string) {
-        return apiGet<PlayerSearchResult[]>('/players/search', { q: query });
+    async searchPlayers(query: string) {
+        const response = await apiGet<unknown>('/api/search/players', {
+            q: query,
+            page: 1,
+            pagesize: 8,
+        });
+
+        return normalizeList<PlayerSearchResult>(response);
     },
 
-    searchClubs(query: string) {
-        return apiGet<ClubSearchResult[]>('/clubs/search', { q: query });
+    async searchClubs(query: string) {
+        const response = await apiGet<unknown>('/api/search/clubs', {
+            q: query,
+            page: 1,
+            pagesize: 8,
+        });
+
+        return normalizeList<ClubSearchResult>(response);
     },
 
-    searchLeagues(query: string) {
-        return apiGet<LeagueSearchResult[]>('/leagues/search', { q: query });
+    getClubTeams(organization: string, clubNumber: string) {
+        return apiGet<unknown>(
+            `/api/clubs/${segment(organization)}/${segment(clubNumber)}/teams`
+        );
     },
 
-    getPlayer(id: string) {
-        return apiGet<Record<string, unknown>>(`/players/${id}`);
+    getLeagueTable(association: string, groupId: string) {
+        return apiGet<unknown>(
+            `/api/leagues/${segment(association)}/${segment(groupId)}/table`
+        );
     },
 
-    getClub(id: string) {
-        return apiGet<Record<string, unknown>>(`/clubs/${id}`);
+    getLeagueSchedule(
+        association: string,
+        season: string,
+        groupId: string,
+        leagueSlug = 'x',
+        filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+    ) {
+        return apiGet<unknown>(
+            `/api/leagues/${segment(association)}/${segment(season)}/${segment(groupId)}/schedule`,
+            {
+                leagueSlug,
+                filter,
+            }
+        );
     },
 
-    getLeague(id: string) {
-        return apiGet<Record<string, unknown>>(`/leagues/${id}`);
-    },
-
-    getMatch(id: string) {
-        return apiGet<Record<string, unknown>>(`/matches/${id}`);
+    getMeetingLive(meetingId: string) {
+        return apiGet<unknown>(`/api/meetings/${segment(meetingId)}/live`);
     },
 };

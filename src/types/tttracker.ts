@@ -6,6 +6,7 @@ export type FavoriteItem = {
     title: string;
     subtitle?: string;
     createdAt: string;
+    params?: Record<string, string>;
 };
 
 export type HealthResponse = {
@@ -15,25 +16,50 @@ export type HealthResponse = {
 };
 
 export type PlayerSearchResult = {
-    id: string;
-    name: string;
+    id?: string;
+    name?: string;
     clubName?: string;
     ttr?: number;
     ageGroup?: string;
+
+    playerId?: string;
+    personId?: string;
+    firstname?: string;
+    lastname?: string;
+    firstName?: string;
+    lastName?: string;
+    club?: string;
+    club_name?: string;
+    organization?: string;
+
+    [key: string]: unknown;
 };
 
 export type ClubSearchResult = {
-    id: string;
-    name: string;
+    id?: string;
+    name?: string;
     city?: string;
     association?: string;
+
+    organization?: string;
+    clubNumber?: string;
+    clubId?: string;
+    number?: string;
+    org?: string;
+
+    [key: string]: unknown;
 };
 
 export type LeagueSearchResult = {
-    id: string;
-    name: string;
+    id?: string;
+    name?: string;
     season?: string;
     region?: string;
+    association?: string;
+    groupId?: string;
+    leagueSlug?: string;
+
+    [key: string]: unknown;
 };
 
-export type SearchCategory = 'players' | 'clubs' | 'leagues';
+export type SearchCategory = 'players' | 'clubs';
