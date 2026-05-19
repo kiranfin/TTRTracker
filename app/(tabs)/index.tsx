@@ -53,21 +53,6 @@ export default function HomeScreen() {
             onPress={() => router.push('/favorites')}
           />
         </View>
-
-        <Card style={[styles.featureCard, { borderColor: colors.primarySoftBorder, backgroundColor: colors.primarySoft }]}> 
-          <View style={styles.featureTitleRow}>
-            <Ionicons name="trending-up" size={20} color={colors.text} />
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Funktionen</Text>
-          </View>
-          <View style={styles.featureList}>
-            {featureRows.map((row) => (
-              <View key={row} style={styles.featureRow}>
-                <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-                <Text style={[styles.featureText, { color: colors.text }]}>{row}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
       </ScrollView>
     </Screen>
   );

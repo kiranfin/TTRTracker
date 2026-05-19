@@ -16,6 +16,21 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import type { ClubTeam, NormalizedClub, NormalizedPlayer, SearchCategory } from '../../src/types/tttracker';
 import { normalizeClub, normalizePlayer, normalizeTeams, ttrTone } from '../../src/utils/normalizers';
 
+function uniqueById<T extends { id: string }>(items: T[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = item.id;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
 export default function SearchScreen() {
   const { colors } = useTheme();
   const [query, setQuery] = useState('');
@@ -101,13 +116,17 @@ export default function SearchScreen() {
         ttApi.searchClubs(text),
       ]);
 
-      const normalizedPlayers = Array.isArray(playerRows)
-          ? playerRows.map((row) => normalizePlayer(row))
-          : [];
+      const normalizedPlayers = uniqueById(
+          Array.isArray(playerRows)
+              ? playerRows.map((row) => normalizePlayer(row))
+              : []
+      );
 
-      const normalizedClubs = Array.isArray(clubRows)
-          ? clubRows.map((row) => normalizeClub(row))
-          : [];
+      const normalizedClubs = uniqueById(
+          Array.isArray(clubRows)
+              ? clubRows.map((row) => normalizeClub(row))
+              : []
+      );
 
       setSubmittedQuery(text);
       setClubs(normalizedClubs);
@@ -237,7 +256,7 @@ export default function SearchScreen() {
 
   const tabOptions = useMemo(() => [
     { value: 'players' as const, label: players.length > 0 ? `Spieler ${players.length}` : 'Spieler', icon: 'person-outline' as const },
-    { value: 'clubs' as const, label: clubs.length > 0 ? `Vereine ${clubs.length}` : 'Vereine', icon: 'business-outline' as const },
+    { value: 'clubs' as const, label: clubs.length > 0 ? `Vereine ${clubs.length}` : 'Vereine', icon: "tennisball-outline" as const },
   ], [clubs.length, players.length]);
 
   const hasSubmitted = submittedQuery.length > 0;
@@ -284,9 +303,9 @@ export default function SearchScreen() {
                 {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title="Bereit zum Suchen" subtitle="Tippe auf Suchen, damit dein Backend angefragt wird." /> : null}
                 {hasSubmitted && players.length === 0 ? <EmptyState icon="person-outline" title="Keine Spieler gefunden" subtitle={`Keine Treffer für „${submittedQuery}“`} /> : null}
 
-                {players.map((player) => (
+                {players.map((player, index) => (
                     <PlayerCard
-                        key={player.id}
+                        key={`player-${player.id}-${player.internalId ?? ''}-${player.personId ?? ''}-${index}`}
                         player={player}
                         favorite={favoriteSet.has(favoriteKey('player', player.id))}
                         onPress={() => setSelectedPlayer(player)}
@@ -302,9 +321,9 @@ export default function SearchScreen() {
                 {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title="Bereit zum Suchen" subtitle="Tippe auf Suchen, damit dein Backend angefragt wird." /> : null}
                 {hasSubmitted && clubs.length === 0 ? <EmptyState icon="business-outline" title="Keine Vereine gefunden" subtitle={`Keine Treffer für „${submittedQuery}“`} /> : null}
 
-                {clubs.map((club) => (
+                {clubs.map((club, index) => (
                     <ClubCard
-                        key={club.id}
+                        key={`club-${club.id}-${club.clubNumber ?? ''}-${index}`}
                         club={club}
                         favorite={favoriteSet.has(favoriteKey('club', club.id))}
                         onPress={() => openClub(club)}

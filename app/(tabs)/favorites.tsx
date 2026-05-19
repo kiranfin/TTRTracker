@@ -119,7 +119,7 @@ export default function FavoritesScreen() {
           ) : null}
 
           {clubs.length > 0 ? (
-              <FavoriteSection title="Vereine" icon="business-outline" count={clubs.length}>
+              <FavoriteSection title="Vereine" icon="tennisball-outline" count={clubs.length}>
                 {clubs.map((item) => (
                     <FavoriteClubCard
                         key={`${item.type}-${item.id}`}
