@@ -3,30 +3,20 @@ import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 
 function RootStack() {
-    const { theme } = useTheme();
+    const { colors, isDark } = useTheme();
 
     return (
         <>
+            <StatusBar
+                style={isDark ? 'light' : 'dark'}
+                backgroundColor={colors.background}
+            />
             <Stack
                 screenOptions={{
-                    headerStyle: {
-                        backgroundColor: theme.colors.background,
-                    },
-                    headerTintColor: theme.colors.text,
-                    headerShadowVisible: false,
-                    contentStyle: {
-                        backgroundColor: theme.colors.background,
-                    },
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
                 }}
-            >
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="player/[id]" options={{ title: 'Spieler' }} />
-                <Stack.Screen name="club/[id]" options={{ title: 'Verein' }} />
-                <Stack.Screen name="league/[id]" options={{ title: 'Liga' }} />
-                <Stack.Screen name="match/[id]" options={{ title: 'Spiel' }} />
-            </Stack>
-
-            <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+            />
         </>
     );
 }
