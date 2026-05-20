@@ -14,7 +14,7 @@ import { SegmentedTabs } from '../../src/components/SegmentedTabs';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '../../src/storage/favorites';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import type { ClubTeam, NormalizedClub, NormalizedPlayer, SearchCategory } from '../../src/types/tttracker';
-import { normalizeClub, normalizePlayer, normalizeTeams, ttrTone } from '../../src/utils/normalizers';
+import { normalizeClub, normalizePlayer, normalizeTeams } from '../../src/utils/normalizers';
 
 function uniqueById<T extends { id: string }>(items: T[]) {
   const seen = new Set<string>();
@@ -42,6 +42,9 @@ export default function SearchScreen() {
   const [selectedPlayer, setSelectedPlayer] = useState<NormalizedPlayer | null>(null);
   const [selectedClub, setSelectedClub] = useState<NormalizedClub | null>(null);
   const [clubTeams, setClubTeams] = useState<ClubTeam[]>([]);
+  const [loadingPlayerTtr, setLoadingPlayerTtr] = useState(false);
+  const [playerTtrError, setPlayerTtrError] = useState<string | null>(null);
+  const [playerTtrByNuid, setPlayerTtrByNuid] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(false);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,28 +77,6 @@ export default function SearchScreen() {
       setPlayers([]);
       setClubs([]);
     }
-  }
-
-  async function enrichPlayersWithTtr(items: NormalizedPlayer[]) {
-    const safeItems = Array.isArray(items) ? items : [];
-
-    const enriched = await Promise.all(
-        safeItems.map(async (player) => {
-          if (!player.internalId) return player;
-
-          try {
-            const response = await ttApi.getPlayerTtr(player.internalId);
-            return {
-              ...player,
-              ttr: response.data.ttr ?? player.ttr,
-            };
-          } catch {
-            return player;
-          }
-        })
-    );
-
-    return enriched;
   }
 
   const runSearch = useCallback(async () => {
@@ -131,9 +112,6 @@ export default function SearchScreen() {
       setSubmittedQuery(text);
       setClubs(normalizedClubs);
       setPlayers(normalizedPlayers);
-
-      const playersWithTtr = await enrichPlayersWithTtr(normalizedPlayers);
-      setPlayers(playersWithTtr);
     } catch (searchError) {
       setSubmittedQuery(text);
       setPlayers([]);
@@ -201,6 +179,55 @@ export default function SearchScreen() {
 
     setFavoriteSet((previous) => new Set(previous).add(key));
   }
+
+    async function openPlayer(player: NormalizedPlayer) {
+        setSelectedPlayer(player);
+        setPlayerTtrError(null);
+
+        if (!player.internalId) {
+            return;
+        }
+
+        const hasCachedTtr = Object.prototype.hasOwnProperty.call(playerTtrByNuid, player.internalId);
+
+        if (hasCachedTtr) {
+            const cachedTtr = playerTtrByNuid[player.internalId];
+
+            setSelectedPlayer({
+                ...player,
+                ttr: cachedTtr ?? player.ttr,
+            });
+
+            return;
+        }
+
+        setLoadingPlayerTtr(true);
+
+        try {
+            const response = await ttApi.getPlayerTtr(player.internalId);
+            const ttr = response.data.ttr ?? null;
+
+            setPlayerTtrByNuid((previous) => ({
+                ...previous,
+                [player.internalId!]: ttr,
+            }));
+
+            setSelectedPlayer((current) => {
+                if (!current || current.internalId !== player.internalId) {
+                    return current;
+                }
+
+                return {
+                    ...current,
+                    ttr: ttr ?? current.ttr,
+                };
+            });
+        } catch {
+            setPlayerTtrError('TTR konnte nicht geladen werden.');
+        } finally {
+            setLoadingPlayerTtr(false);
+        }
+    }
 
   async function openClub(club: NormalizedClub) {
     setSelectedClub(club);
@@ -308,7 +335,7 @@ export default function SearchScreen() {
                         key={`player-${player.id}-${player.internalId ?? ''}-${player.personId ?? ''}-${index}`}
                         player={player}
                         favorite={favoriteSet.has(favoriteKey('player', player.id))}
-                        onPress={() => setSelectedPlayer(player)}
+                        onPress={() => openPlayer(player)}
                         onToggleFavorite={() => togglePlayerFavorite(player)}
                     />
                 ))}
@@ -352,7 +379,22 @@ export default function SearchScreen() {
               <View style={styles.sheetStack}>
                 <DetailRow label="Verein" value={selectedPlayer.clubName} />
                 <DetailRow label="Bundesland" value={selectedPlayer.state ?? 'Nicht verfügbar'} />
-                <DetailRow label="TTR" value={selectedPlayer.ttr ? String(selectedPlayer.ttr) : 'Nicht verfügbar'} />
+                <DetailRow
+                    label="TTR"
+                    value={
+                      loadingPlayerTtr
+                          ? 'Lädt...'
+                          : selectedPlayer.ttr
+                              ? String(selectedPlayer.ttr)
+                              : 'Nicht verfügbar'
+                    }
+                />
+
+                {playerTtrError ? (
+                    <Text style={[styles.sheetMuted, { color: colors.destructive }]}>
+                      {playerTtrError}
+                    </Text>
+                ) : null}
 
                 {selectedPlayer.internalId ? (
                     <Button icon="stats-chart-outline" onPress={() => openPlayerDetails(selectedPlayer)}>
@@ -425,10 +467,11 @@ function PlayerCard({
           <IconButton icon={favorite ? 'star' : 'star-outline'} active={favorite} onPress={onToggleFavorite} />
         </View>
 
-        <View style={styles.badgeRow}>
-          <Badge tone={ttrTone(player.ttr)} icon="trophy-outline">TTR: {player.ttr ?? '-'}</Badge>
-          {player.state ? <Badge tone="outline">{player.state}</Badge> : null}
-        </View>
+        {player.state ? (
+            <View style={styles.badgeRow}>
+              <Badge tone="outline">{player.state}</Badge>
+            </View>
+        ) : null}
       </Card>
   );
 }
