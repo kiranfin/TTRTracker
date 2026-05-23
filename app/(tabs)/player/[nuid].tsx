@@ -381,12 +381,6 @@ function HistoryMatchCard({ match }: { match: NormalizedTtrHistoryMatch }) {
                 </View>
             </View>
 
-            <View style={styles.matchTeamsRow}>
-                <Text style={[styles.matchTeamText, { color: colors.mutedText }]} numberOfLines={2}>
-                    {match.ownTeamName ?? '-'} : {match.otherTeamName ?? '-'}
-                </Text>
-            </View>
-
             {match.setResults.length > 0 ? (
                 <View style={styles.eventBottomRow}>
                     {match.setResults.map((setResult, index) => (

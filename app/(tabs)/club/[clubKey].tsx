@@ -90,47 +90,60 @@ export default function ClubDetailsScreen() {
                 ) : null}
 
                 <View style={styles.stack}>
-                    {teams.map((team) => (
-                        <Card
-                            key={team.id}
-                            pressable={Boolean(team.groupId && team.association)}
-                            style={styles.teamCard}
-                            onPress={() => {
-                                if (!team.groupId || !team.association) return;
+                    {teams.map((team, index) => {
+                        const teamKey = [
+                            team.association,
+                            team.groupId,
+                            team.id,
+                            team.season,
+                            team.leagueSlug,
+                            index,
+                        ]
+                            .filter(Boolean)
+                            .join('-');
 
-                                router.push({
-                                    pathname: '/league/[leagueKey]',
-                                    params: {
-                                        leagueKey: team.groupId,
-                                        association: team.association,
-                                        groupId: team.groupId,
-                                        season: team.season ?? '25/26',
-                                        leagueSlug: team.leagueSlug ?? 'x',
-                                        title: team.leagueName,
-                                    },
-                                });
-                            }}
-                        >
-                            <View style={styles.teamTopRow}>
-                                <View style={[styles.teamIcon, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoftBorder }]}>
-                                    <Ionicons name="people-outline" size={20} color={colors.primary} />
+                        return (
+                            <Card
+                                key={teamKey}
+                                pressable={Boolean(team.groupId && team.association)}
+                                style={styles.teamCard}
+                                onPress={() => {
+                                    if (!team.groupId || !team.association) return;
+
+                                    router.push({
+                                        pathname: '/league/[leagueKey]',
+                                        params: {
+                                            leagueKey: team.groupId,
+                                            association: team.association,
+                                            groupId: team.groupId,
+                                            season: team.season ?? '25/26',
+                                            leagueSlug: team.leagueSlug ?? 'x',
+                                            title: team.leagueName,
+                                        },
+                                    });
+                                }}
+                            >
+                                <View style={styles.teamTopRow}>
+                                    <View style={[styles.teamIcon, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoftBorder }]}>
+                                        <Ionicons name="people-outline" size={20} color={colors.primary} />
+                                    </View>
+
+                                    <View style={styles.teamText}>
+                                        <Text style={[styles.teamName, { color: colors.text }]}>{team.teamName}</Text>
+                                        <Text style={[styles.teamLeague, { color: colors.mutedText }]}>{team.leagueName}</Text>
+                                    </View>
+
+                                    <Ionicons name="chevron-forward" size={18} color={colors.mutedText} />
                                 </View>
 
-                                <View style={styles.teamText}>
-                                    <Text style={[styles.teamName, { color: colors.text }]}>{team.teamName}</Text>
-                                    <Text style={[styles.teamLeague, { color: colors.mutedText }]}>{team.leagueName}</Text>
+                                <View style={styles.badgeRow}>
+                                    {team.tableRank ? <Badge tone="secondary">Platz {team.tableRank}</Badge> : null}
+                                    {team.pointsWon || team.pointsLost ? <Badge tone="outline">{team.pointsWon ?? '0'}:{team.pointsLost ?? '0'} Punkte</Badge> : null}
+                                    {team.season ? <Badge tone="outline">{team.season}</Badge> : null}
                                 </View>
-
-                                <Ionicons name="chevron-forward" size={18} color={colors.mutedText} />
-                            </View>
-
-                            <View style={styles.badgeRow}>
-                                {team.tableRank ? <Badge tone="secondary">Platz {team.tableRank}</Badge> : null}
-                                {team.pointsWon || team.pointsLost ? <Badge tone="outline">{team.pointsWon ?? '0'}:{team.pointsLost ?? '0'} Punkte</Badge> : null}
-                                {team.season ? <Badge tone="outline">{team.season}</Badge> : null}
-                            </View>
-                        </Card>
-                    ))}
+                            </Card>
+                        );
+                    })}
                 </View>
             </ScrollView>
         </Screen>
