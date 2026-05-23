@@ -270,6 +270,8 @@ export default function SearchScreen() {
             <Text style={[styles.subtitle, { color: colors.mutedText }]}>Suche nach Spielern und Vereinen</Text>
           </View>
 
+          <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabOptions} />
+
           <View style={styles.searchBlock}>
             <SearchInput
                 value={query}
@@ -287,8 +289,6 @@ export default function SearchScreen() {
               Suchen
             </Button>
           </View>
-
-          <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabOptions} />
 
           {queryChanged ? (
               <Text style={[styles.hint, { color: colors.mutedText }]}>Tippe auf „Suchen“, um die Ergebnisse zu aktualisieren.</Text>
