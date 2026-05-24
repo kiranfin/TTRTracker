@@ -62,11 +62,19 @@ export const ttApi = {
   },
 
   getPlayerTtr(nuid: string) {
-    return apiGet<PlayerTtrResponse>(`/api/players/${segment(nuid)}/ttr`);
+    return apiGet<PlayerTtrResponse>(
+        `/api/players/${segment(nuid)}/ttr`,
+        undefined,
+        { authenticated: true }
+    );
   },
 
   getPlayerTtrHistory(nuid: string) {
-    return apiGet<PlayerTtrHistoryResponse>(`/api/players/${segment(nuid)}/ttr-history`);
+    return apiGet<PlayerTtrHistoryResponse>(
+        `/api/players/${segment(nuid)}/ttr-history`,
+        undefined,
+        { authenticated: true }
+    );
   },
 
   async getLeaguesByRegion(region: string, season = '25/26') {
