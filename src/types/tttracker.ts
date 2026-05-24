@@ -211,9 +211,35 @@ export type ClubTeam = {
   tableRank?: string;
 };
 
+export type LeagueAssociation = {
+  id: string;
+  association: string;
+  shortName: string;
+  name: string;
+  androPattern?: string | null;
+};
+
 export type LeagueRegion = {
   id: string;
   name: string;
+  association: string;
+  season: string;
+  championshipSlug: string;
+  type?: 'association' | 'region';
+};
+
+export type LeagueClassReference = {
+  id: string;
+  name: string;
+  contest?: string | null;
+  association: string;
+  season: string;
+  championship: string;
+  competitionType?: 'ligen' | 'pokalspiele';
+  leagueId?: string;
+  groupId: string;
+  groupUrlId?: string;
+  leagueSlug?: string;
 };
 
 export type LeagueReference = {

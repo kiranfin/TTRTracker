@@ -48,3 +48,10 @@ export function createMyttGrant(params: {
         { authenticated: true }
     );
 }
+
+export function revokeMyttGrant(grantId: string) {
+    return apiDelete<{ ok: true }>(
+        `/api/me/mytt/grants/${encodeURIComponent(grantId)}`,
+        { authenticated: true }
+    );
+}
