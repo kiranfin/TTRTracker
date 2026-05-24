@@ -10,6 +10,11 @@
 - [Running the App](#running-the-app)
 
 ---
+### ⚠️ Disclaimer ⚠️
+
+This repository was developed quickly and is still a work in progress. It is not finished and may contain errors, bugs, incomplete features, or unstable behavior.
+
+Use it at your own risk. Contributions, feedback, and improvements are welcome.
 
 ## What the App Does
 
