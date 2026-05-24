@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   Pressable,
@@ -10,18 +11,13 @@ import {
 } from 'react-native';
 
 import { getApiBaseUrl } from '../../src/api/client';
-import {
-  createMyttGrant,
-  getMyttStatus,
-  saveMyttCookie,
-} from '../../src/api/mytt';
+import { createMyttGrant, getMyttStatus } from '../../src/api/mytt';
 import { ttApi } from '../../src/api/tttracker';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { Screen } from '../../src/components/Screen';
 import { AccentColor, useTheme } from '../../src/theme/ThemeProvider';
-import { router } from 'expo-router';
 
 const accentColors: { id: AccentColor; name: string; color: string }[] = [
   { id: 'default', name: 'Weiß', color: '#f3f4f6' },
@@ -41,11 +37,12 @@ export default function SettingsScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState<'login' | 'register' | 'logout' | null>(null);
+  const [authLoading, setAuthLoading] = useState<
+      'login' | 'register' | 'logout' | null
+  >(null);
 
-  const [myttCookie, setMyttCookie] = useState('');
   const [myttMessage, setMyttMessage] = useState<string | null>(null);
-  const [myttLoading, setMyttLoading] = useState<'save' | 'status' | null>(null);
+  const [myttLoading, setMyttLoading] = useState<'status' | null>(null);
 
   const [grantUsername, setGrantUsername] = useState('');
   const [grantMessage, setGrantMessage] = useState<string | null>(null);
@@ -71,10 +68,11 @@ export default function SettingsScreen() {
 
     try {
       const loggedInUser = await login({
-        username,
+        username: username.trim(),
         password,
       });
 
+      setPassword('');
       setAuthMessage(`Eingeloggt als ${loggedInUser.username}`);
     } catch (error) {
       setAuthMessage(error instanceof Error ? error.message : 'Login fehlgeschlagen');
@@ -89,10 +87,11 @@ export default function SettingsScreen() {
 
     try {
       const registeredUser = await register({
-        username,
+        username: username.trim(),
         password,
       });
 
+      setPassword('');
       setAuthMessage(`Registriert und eingeloggt als ${registeredUser.username}`);
     } catch (error) {
       setAuthMessage(error instanceof Error ? error.message : 'Registrierung fehlgeschlagen');
@@ -104,6 +103,8 @@ export default function SettingsScreen() {
   async function handleLogout() {
     setAuthLoading('logout');
     setAuthMessage(null);
+    setMyttMessage(null);
+    setGrantMessage(null);
 
     try {
       await logout();
@@ -113,21 +114,6 @@ export default function SettingsScreen() {
       setAuthMessage(error instanceof Error ? error.message : 'Logout fehlgeschlagen');
     } finally {
       setAuthLoading(null);
-    }
-  }
-
-  async function handleSaveMyttCookie() {
-    setMyttLoading('save');
-    setMyttMessage(null);
-
-    try {
-      await saveMyttCookie(myttCookie);
-      setMyttCookie('');
-      setMyttMessage('myTischtennis-Cookie gespeichert');
-    } catch (error) {
-      setMyttMessage(error instanceof Error ? error.message : 'Cookie konnte nicht gespeichert werden');
-    } finally {
-      setMyttLoading(null);
     }
   }
 
@@ -151,7 +137,7 @@ export default function SettingsScreen() {
 
     try {
       await createMyttGrant({
-        granteeUsername: grantUsername,
+        granteeUsername: grantUsername.trim(),
         scopes: ['ttr:read', 'ttr_history:read'],
       });
 
@@ -165,7 +151,6 @@ export default function SettingsScreen() {
   }
 
   const canSubmitAuth = username.trim().length >= 2 && password.length >= 8;
-  const canSaveCookie = myttCookie.trim().length >= 5;
   const canCreateGrant = grantUsername.trim().length >= 2;
 
   return (
@@ -187,7 +172,7 @@ export default function SettingsScreen() {
             <Text style={[styles.backendText, { color: colors.mutedText }]}>
               {isAuthenticated && user
                   ? `Eingeloggt als ${user.username}`
-                  : 'Melde dich an oder erstelle einen neuen App-Account.'}
+                  : 'Melde dich an oder erstelle einen neuen TTTracker-Account.'}
             </Text>
 
             {!isAuthenticated ? (
@@ -195,7 +180,7 @@ export default function SettingsScreen() {
                   <TextInput
                       value={username}
                       onChangeText={setUsername}
-                      placeholder="Benutzername"
+                      placeholder="TTTracker-Benutzername"
                       placeholderTextColor={colors.mutedText}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -211,7 +196,7 @@ export default function SettingsScreen() {
                   <TextInput
                       value={password}
                       onChangeText={setPassword}
-                      placeholder="Passwort"
+                      placeholder="App-Passwort"
                       placeholderTextColor={colors.mutedText}
                       secureTextEntry
                       autoCapitalize="none"
@@ -288,47 +273,24 @@ export default function SettingsScreen() {
                 <Card style={styles.card}>
                   <View style={styles.cardTitleRow}>
                     <Ionicons name="key-outline" size={21} color={colors.text} />
-                    <Text style={[styles.cardTitle, { color: colors.text }]}>myTischtennis verbinden</Text>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>
+                      myTischtennis verbinden
+                    </Text>
                   </View>
-                  <Button
-                      variant="primary"
-                      icon="key-outline"
-                      onPress={() => router.push('/mytt-connect')}
-                  >
-                    myTischtennis verbinden
-                  </Button>
 
                   <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                    Speichere deinen myTischtennis-Cookie für TTR und TTR-Verlauf. Der Cookie wird nur im Backend verschlüsselt gespeichert.
+                    Verbinde deinen myTischtennis-Account, damit TTR und TTR-Verlauf geladen
+                    werden können. Deine Anmeldung erfolgt direkt über myTischtennis.
                   </Text>
-
-                  <TextInput
-                      value={myttCookie}
-                      onChangeText={setMyttCookie}
-                      placeholder="myTischtennis-Cookie einfügen"
-                      placeholderTextColor={colors.mutedText}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      multiline
-                      style={[
-                        styles.input,
-                        styles.cookieInput,
-                        {
-                          color: colors.text,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                  />
 
                   <View style={styles.twoGrid}>
                     <Button
                         variant="primary"
-                        icon="save-outline"
-                        loading={myttLoading === 'save'}
-                        onPress={handleSaveMyttCookie}
+                        icon="open-outline"
+                        onPress={() => router.push('/mytt-connect')}
                         style={styles.halfButton}
                     >
-                      Cookie speichern
+                      Verbinden
                     </Button>
 
                     <Button
@@ -342,12 +304,6 @@ export default function SettingsScreen() {
                     </Button>
                   </View>
 
-                  {!canSaveCookie && myttCookie.length > 0 ? (
-                      <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                        Cookie ist zu kurz.
-                      </Text>
-                  ) : null}
-
                   {myttMessage ? (
                       <Text
                           style={[
@@ -355,8 +311,9 @@ export default function SettingsScreen() {
                             styles.monospaceText,
                             {
                               color:
-                                  myttMessage.includes('gespeichert') ||
-                                  myttMessage.includes('ownSession')
+                                  myttMessage.includes('ownSession') ||
+                                  myttMessage.includes('valid') ||
+                                  myttMessage.includes('true')
                                       ? '#16a34a'
                                       : colors.mutedText,
                             },
@@ -374,7 +331,8 @@ export default function SettingsScreen() {
                   </View>
 
                   <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                    Gib einem anderen App-User Zugriff auf TTR und TTR-Verlauf, ohne deinen Cookie zu teilen.
+                    Gib einem anderen App-User Zugriff auf TTR und TTR-Verlauf, ohne deinen
+                    Cookie zu teilen.
                   </Text>
 
                   <TextInput
@@ -426,10 +384,16 @@ export default function SettingsScreen() {
 
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <Ionicons name={mode === 'dark' ? 'moon' : 'sunny-outline'} size={21} color={colors.text} />
+              <Ionicons
+                  name={mode === 'dark' ? 'moon' : 'sunny-outline'}
+                  size={21}
+                  color={colors.text}
+              />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Erscheinungsbild</Text>
             </View>
+
             <Text style={[styles.label, { color: colors.text }]}>Theme</Text>
+
             <View style={styles.twoGrid}>
               <Button
                   variant={mode === 'light' ? 'primary' : 'outline'}
@@ -439,6 +403,7 @@ export default function SettingsScreen() {
               >
                 Hell
               </Button>
+
               <Button
                   variant={mode === 'dark' ? 'primary' : 'outline'}
                   icon="moon-outline"
@@ -455,6 +420,7 @@ export default function SettingsScreen() {
               <Ionicons name="color-palette-outline" size={21} color={colors.text} />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Akzentfarbe</Text>
             </View>
+
             <View style={styles.twoGrid}>
               {accentColors.map((entry) => (
                   <Pressable
@@ -463,14 +429,32 @@ export default function SettingsScreen() {
                       style={({ pressed }) => [
                         styles.accentButton,
                         {
-                          backgroundColor: accent === entry.id ? colors.primarySoft : 'transparent',
-                          borderColor: accent === entry.id ? colors.primarySoftBorder : colors.border,
+                          backgroundColor:
+                              accent === entry.id ? colors.primarySoft : 'transparent',
+                          borderColor:
+                              accent === entry.id ? colors.primarySoftBorder : colors.border,
                           opacity: pressed ? 0.75 : 1,
                         },
                       ]}
                   >
-                    <View style={[styles.colorDot, { backgroundColor: entry.color, borderColor: colors.border }]} />
-                    <Text style={[styles.accentButtonText, { color: accent === entry.id ? colors.primary : colors.text }]}>
+                    <View
+                        style={[
+                          styles.colorDot,
+                          {
+                            backgroundColor: entry.color,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                    />
+
+                    <Text
+                        style={[
+                          styles.accentButtonText,
+                          {
+                            color: accent === entry.id ? colors.primary : colors.text,
+                          },
+                        ]}
+                    >
                       {entry.name}
                     </Text>
                   </Pressable>
@@ -483,17 +467,22 @@ export default function SettingsScreen() {
               <Ionicons name="server-outline" size={21} color={colors.text} />
               <Text style={[styles.cardTitle, { color: colors.text }]}>Backend</Text>
             </View>
+
             <Text style={[styles.backendText, { color: colors.mutedText }]}>
               {getApiBaseUrl() || 'EXPO_PUBLIC_API_BASE_URL fehlt'}
             </Text>
+
             <Button variant="outline" icon="pulse-outline" loading={checking} onPress={checkHealth}>
               Health prüfen
             </Button>
+
             {health ? (
                 <Text
                     style={[
                       styles.backendText,
-                      { color: health.includes('erreichbar') ? '#16a34a' : colors.destructive },
+                      {
+                        color: health.includes('erreichbar') ? '#16a34a' : colors.destructive,
+                      },
                     ]}
                 >
                   {health}
@@ -502,7 +491,9 @@ export default function SettingsScreen() {
           </Card>
 
           <Card style={styles.versionCard}>
-            <Text style={[styles.versionText, { color: colors.mutedText }]}>Tischtennis Tracker v1.0</Text>
+            <Text style={[styles.versionText, { color: colors.mutedText }]}>
+              Tischtennis Tracker v1.0
+            </Text>
             <Text style={[styles.versionSubtext, { color: colors.mutedText }]}>
               Daten von myTischtennis über dein eigenes Backend
             </Text>
@@ -557,10 +548,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     lineHeight: 20,
-  },
-  cookieInput: {
-    minHeight: 96,
-    textAlignVertical: 'top',
   },
   twoGrid: {
     flexDirection: 'row',
