@@ -2,6 +2,9 @@ import { apiGet } from './client';
 import type {
   ClubSearchResult,
   HealthResponse,
+  LeagueAssociation,
+  LeagueClassReference,
+  LeagueRegion,
   PlayerSearchResult,
   PlayerTtrHistoryResponse,
   PlayerTtrResponse,
@@ -62,11 +65,19 @@ export const ttApi = {
   },
 
   getPlayerTtr(nuid: string) {
-    return apiGet<PlayerTtrResponse>(`/api/players/${segment(nuid)}/ttr`);
+    return apiGet<PlayerTtrResponse>(
+        `/api/players/${segment(nuid)}/ttr`,
+        undefined,
+        { authenticated: true }
+    );
   },
 
   getPlayerTtrHistory(nuid: string) {
-    return apiGet<PlayerTtrHistoryResponse>(`/api/players/${segment(nuid)}/ttr-history`);
+    return apiGet<PlayerTtrHistoryResponse>(
+        `/api/players/${segment(nuid)}/ttr-history`,
+        undefined,
+        { authenticated: true }
+    );
   },
 
   async getLeaguesByRegion(region: string, season = '25/26') {
@@ -110,5 +121,37 @@ export const ttApi = {
 
   getMeetingLive(meetingId: string) {
     return apiGet<unknown>(`/api/meetings/${segment(meetingId)}/live`);
+  },
+
+  async getLeagueAssociations() {
+    const response = await apiGet<unknown>('/api/leagues/associations');
+    return normalizeList<LeagueAssociation>(response);
+  },
+
+  async getLeagueRegions(association: string, season = '25/26') {
+    const response = await apiGet<unknown>(
+        `/api/leagues/${segment(association)}/regions`,
+        { season }
+    );
+
+    return normalizeList<LeagueRegion>(response);
+  },
+
+  async getLeagueClasses(
+      association: string,
+      championship: string,
+      season = '25/26',
+      type: 'ligen' | 'pokalspiele' = 'ligen'
+  ) {
+    const response = await apiGet<unknown>(
+        `/api/leagues/${segment(association)}/classes`,
+        {
+          season,
+          championship,
+          type,
+        }
+    );
+
+    return normalizeList<LeagueClassReference>(response);
   },
 };
