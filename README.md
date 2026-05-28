@@ -1,50 +1,167 @@
-# Welcome to your Expo app 👋
+# 📊 TTR Tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Table of Contents
+- [What the App Does](#what-the-app-does)
+- [Backend Repository](#backend-repository)
+- [Why a Backend Is Required](#why-a-backend-is-required)
+- [Requirements](#requirements)
+- [Environment Variables](#environment-variables)
+- [Local Development Setup](#local-development-setup)
+- [Running the App](#running-the-app)
 
-## Get started
+---
+### ⚠️ Disclaimer ⚠️
 
-1. Install dependencies
+This repository was developed quickly and is still a work in progress. It is not finished and may contain errors, bugs, incomplete features, or unstable behavior.
 
+Use it at your own risk. Contributions, feedback, and improvements are welcome.
+
+## What the App Does
+
+TTR Tracker provides a mobile-friendly interface for accessing table tennis data in Germany, including:
+
+- 🔍 Player search
+- 🏓 Club search
+- 👥 Club teams
+- 📊 League and region browsing
+- 📈 League tables
+- 📅 Match schedules
+- 📋 Match and encounter details
+- ⭐ Favorites for players
+- ⭐ Favorites for clubs
+- ⭐ Favorites for leagues
+
+## Backend Repository
+
+This repository contains the mobile app frontend. The app requires a separate backend service to function correctly. The backend is available here:
+
+[**TTR Tracker Backend**](https://github.com/kiranfin/tt-tracker-backend)
+
+The backend serves as the counterpart to this mobile app, providing the API that the app communicates with.
+
+### Important ⚠️
+
+Before running or building the app, ensure that the backend is configured, deployed, and reachable from your device or build environment.
+
+## Why a Backend Is Required
+
+The app does not communicate directly with myTischtennis from the frontend. Instead, it utilizes a custom backend as a defensive proxy layer. This is crucial because the myTischtennis interface used by the project is unofficial and should not be accessed directly, aggressively, or systematically from the mobile client.
+
+The backend is responsible for:
+
+- Providing stable API endpoints for the mobile app
+- Forwarding selected requests to the underlying data source
+- Adding short-lived caching
+- Applying rate-limit protection
+- Handling errors consistently
+- Keeping authentication/session-related logic outside of the mobile app
+- Avoiding systematic crawling or permanent mirroring of external data
+
+## Requirements
+
+Before running or building the app, install the following:
+
+- Node.js
+- npm
+- An Expo account
+- EAS CLI
+- A running instance of the backend
+
+### Install EAS CLI globally
+
+```bash
+npm install -g eas-cli
+```
+
+### Log in to your Expo account:
+
+```bash
+eas login
+```
+
+### Install the project dependencies:
+
+```bash
+npm install
+```
+
+## Environment Variables
+
+The mobile app needs to know where the backend API is located. This is configured through the following environment variable:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=https://your-backend-domain.com
+```
+
+## Local Development Setup
+
+Create a `.env` file in the root of the project when your backend is running on your computer (example):
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+```
+
+## Running the App
+
+### Running Locally
+
+To start the app locally, use:
+
+```bash
+npx expo start
+```
+
+### EAS Build
+
+The app is built using EAS Build. A typical setup uses at least two build profiles:
+
+- **Preview** for internal testing
+- **Production** for release builds
+
+The preview profile is useful for creating installable builds that can be tested on real devices. The production profile is intended for release builds, such as app store builds or final distribution builds.
+
+#### Setting Environment Variables for EAS Builds
+
+Local `.env` files are useful during development, but cloud builds should use EAS environment variables.
+
+Create the backend URL for the preview environment:
+
+```bash
+eas env:create \
+--name EXPO_PUBLIC_API_BASE_URL \
+--value https://your-backend-domain.com \
+--environment preview \
+--visibility plaintext
+```
+
+Create the backend URL for the production environment:
+
+```bash
+eas env:create \
+  --name EXPO_PUBLIC_API_BASE_URL \
+  --value https://your-backend-domain.com \
+  --environment production \
+  --visibility plaintext
+```
+
+#### Building the App with EAS
+
+1. Install dependencies:
    ```bash
    npm install
    ```
-
-2. Start the app
-
+2. Log in to Expo:
    ```bash
-   npx expo start
+   eas login
+   ```
+3. Build an Android APK:
+
+   **Preview:**
+   ```bash
+   eas build --platform android --profile preview
    ```
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+   **Production:**
+   ```bash
+   eas build --platform android --profile production
+   ```
