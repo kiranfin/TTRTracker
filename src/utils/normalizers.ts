@@ -498,9 +498,9 @@ export function normalizePlayerTtrHistory(response: PlayerTtrHistoryResponse): N
   return {
     nuid: data.nuid,
     available: data.available,
-    ttr: data.ttr ?? undefined,
-    qttr: data.qttr ?? undefined,
-    maxTtr: data.maxTtr ?? undefined,
+    ttr: toOptionalNumber(data.ttr),
+    qttr: toOptionalNumber(data.qttr),
+    maxTtr: toOptionalNumber(data.maxTtr),
     ttrDate: data.ttrDate ?? undefined,
     maxTtrDate: data.maxTtrDate ?? undefined,
     clubName: data.clubName ?? undefined,
@@ -570,4 +570,19 @@ export function matchStatusLabel(status: ScheduleMatchStatus) {
     default:
       return 'Geplant';
   }
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim().replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
 }

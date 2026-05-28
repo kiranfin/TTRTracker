@@ -231,7 +231,6 @@ export default function SearchScreen() {
         nuid: player.internalId,
         title: player.fullName,
         clubName: player.clubName,
-        state: player.state ?? '',
         ttr: player.ttr ? String(player.ttr) : '',
       },
     });
@@ -351,7 +350,6 @@ export default function SearchScreen() {
           {selectedPlayer ? (
               <View style={styles.sheetStack}>
                 <DetailRow label="Verein" value={selectedPlayer.clubName} />
-                <DetailRow label="Bundesland" value={selectedPlayer.state ?? 'Nicht verfügbar'} />
                 <DetailRow label="TTR" value={selectedPlayer.ttr ? String(selectedPlayer.ttr) : 'Nicht verfügbar'} />
 
                 {selectedPlayer.internalId ? (
