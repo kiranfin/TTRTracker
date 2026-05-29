@@ -1,19 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { ttApi } from '../../../src/api/tttracker';
 import { Badge } from '../../../src/components/Badge';
-import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
 import { SegmentedTabs } from '../../../src/components/SegmentedTabs';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import type { ScheduleMatch, TableRow } from '../../../src/types/tttracker';
-import { formatDate, matchStatusLabel, normalizeSchedule, normalizeTable } from '../../../src/utils/normalizers';
+import {
+  formatDate,
+  matchStatusLabel,
+  normalizeSchedule,
+  normalizeTable,
+} from '../../../src/utils/normalizers';
 
 type DetailTab = 'table' | 'matches';
+type SchedulePeriodFilter = 'all' | 'past30' | 'next30';
+type RoundFilter = 'all' | 'first' | 'second';
 
 type TeamScheduleStats = {
   played: number;
@@ -28,6 +42,26 @@ type TeamScheduleStats = {
 
 type RichTableRow = TableRow & Record<string, unknown>;
 
+type LeagueInfo = {
+  title: string;
+  association?: string;
+  groupId?: string;
+  season: string;
+  leagueSlug: string;
+};
+
+const periodOptions: { value: SchedulePeriodFilter; label: string }[] = [
+  { value: 'all', label: 'Alle' },
+  { value: 'past30', label: 'Letzte 30 Tage' },
+  { value: 'next30', label: 'Nächste 30 Tage' },
+];
+
+const roundOptions: { value: RoundFilter; label: string }[] = [
+  { value: 'all', label: 'Alle' },
+  { value: 'first', label: 'Hinrunde' },
+  { value: 'second', label: 'Rückrunde' },
+];
+
 export default function LeagueDetailsScreen() {
   const params = useLocalSearchParams<Record<string, string>>();
   const { colors } = useTheme();
@@ -35,10 +69,12 @@ export default function LeagueDetailsScreen() {
   const [activeTab, setActiveTab] = useState<DetailTab>('table');
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
   const [matches, setMatches] = useState<ScheduleMatch[]>([]);
+  const [periodFilter, setPeriodFilter] = useState<SchedulePeriodFilter>('all');
+  const [roundFilter, setRoundFilter] = useState<RoundFilter>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const league = useMemo(
+  const league = useMemo<LeagueInfo>(
       () => ({
         title: params.title ?? 'Ligadetails',
         association: params.association,
@@ -81,7 +117,11 @@ export default function LeagueDetailsScreen() {
         setTableRows(normalizeTable(tableResponse));
         setMatches(normalizeSchedule(scheduleResponse));
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Ligadaten konnten nicht geladen werden');
+        setError(
+            loadError instanceof Error
+                ? loadError.message
+                : 'Ligadaten konnten nicht geladen werden',
+        );
       } finally {
         setLoading(false);
       }
@@ -90,8 +130,25 @@ export default function LeagueDetailsScreen() {
     loadLeague().catch(() => undefined);
   }, [league.association, league.groupId, league.leagueSlug, league.season]);
 
-  const upcoming = matches.filter((match) => match.status !== 'completed');
-  const completed = matches.filter((match) => match.status === 'completed');
+  const filteredMatches = useMemo(
+      () =>
+          matches.filter(
+              (match) =>
+                  matchesPeriodFilter(match, periodFilter) &&
+                  matchesRoundFilter(match, roundFilter),
+          ),
+      [matches, periodFilter, roundFilter],
+  );
+
+  const upcoming = useMemo(
+      () => filteredMatches.filter((match) => match.status !== 'completed'),
+      [filteredMatches],
+  );
+
+  const completed = useMemo(
+      () => filteredMatches.filter((match) => match.status === 'completed'),
+      [filteredMatches],
+  );
 
   const scheduleStatsByTeam = useMemo(() => buildScheduleStats(matches), [matches]);
 
@@ -99,9 +156,7 @@ export default function LeagueDetailsScreen() {
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
-            <Button variant="ghost" icon="arrow-back" onPress={() => router.back()}>
-              {' '}
-            </Button>
+            <BackButton />
 
             <View style={styles.headerText}>
               <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
@@ -157,15 +212,16 @@ export default function LeagueDetailsScreen() {
                 {tableRows.length === 0 ? (
                     <EmptyState icon="list-outline" title="Keine Tabelle gefunden" />
                 ) : (
-                    <View style={styles.tableList}>
+                    <View style={styles.teamCardList}>
                       {tableRows.map((row, index) => {
                         const scheduleStats = scheduleStatsByTeam.get(normalizeTeamKey(row.teamName));
 
                         return (
-                            <TableTeamCard
+                            <TableTeamRow
                                 key={getTableRowKey(row, index)}
                                 row={row}
                                 index={index}
+                                league={league}
                                 scheduleStats={scheduleStats}
                             />
                         );
@@ -177,8 +233,49 @@ export default function LeagueDetailsScreen() {
 
           {!loading && !error && activeTab === 'matches' ? (
               <View style={styles.stack}>
-                {upcoming.length === 0 && completed.length === 0 ? (
-                    <EmptyState icon="calendar-outline" title="Kein Spielplan gefunden" />
+                <Card style={styles.filterCard}>
+                  <View style={styles.sectionHeaderCompact}>
+                    <Ionicons name="filter-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>Filter</Text>
+                  </View>
+
+                  <View style={styles.filterBlock}>
+                    <Text style={[styles.filterLabel, { color: colors.mutedText }]}>Zeitraum</Text>
+                    <View style={styles.filterChipRow}>
+                      {periodOptions.map((option) => (
+                          <FilterChip
+                              key={option.value}
+                              label={option.label}
+                              active={periodFilter === option.value}
+                              onPress={() => setPeriodFilter(option.value)}
+                          />
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={styles.filterBlock}>
+                    <Text style={[styles.filterLabel, { color: colors.mutedText }]}>
+                      Hin-/Rückrunde
+                    </Text>
+                    <View style={styles.filterChipRow}>
+                      {roundOptions.map((option) => (
+                          <FilterChip
+                              key={option.value}
+                              label={option.label}
+                              active={roundFilter === option.value}
+                              onPress={() => setRoundFilter(option.value)}
+                          />
+                      ))}
+                    </View>
+                  </View>
+
+                  <Text style={[styles.filterHint, { color: colors.mutedText }]}>
+                    {filteredMatches.length} von {matches.length} Spielen sichtbar
+                  </Text>
+                </Card>
+
+                {filteredMatches.length === 0 ? (
+                    <EmptyState icon="calendar-outline" title="Keine Spiele für diesen Filter gefunden" />
                 ) : null}
 
                 {upcoming.length > 0 ? (
@@ -186,7 +283,7 @@ export default function LeagueDetailsScreen() {
                       <View style={styles.sectionHeaderCompact}>
                         <Ionicons name="time-outline" size={18} color={colors.primary} />
                         <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                          Anstehend / offen
+                          Offene Spiele ({upcoming.length})
                         </Text>
                       </View>
 
@@ -207,7 +304,7 @@ export default function LeagueDetailsScreen() {
                       <View style={styles.sectionHeaderCompact}>
                         <Ionicons name="checkmark-circle-outline" size={18} color={colors.primary} />
                         <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                          Ergebnisse
+                          Abgeschlossene Spiele ({completed.length})
                         </Text>
                       </View>
 
@@ -228,67 +325,181 @@ export default function LeagueDetailsScreen() {
   );
 }
 
-function TableTeamCard({
-                         row,
-                         index,
-                         scheduleStats,
-                       }: {
+function BackButton() {
+  const { colors } = useTheme();
+  const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+  return (
+      <Pressable
+          onPress={() => router.back()}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.backButton,
+            noWebOutline,
+            {
+              backgroundColor: pressed ? colors.primarySoft : 'transparent',
+              borderColor: pressed ? colors.primarySoftBorder : colors.border,
+            },
+          ]}
+      >
+        <Ionicons name="arrow-back" size={23} color={colors.text} />
+      </Pressable>
+  );
+}
+
+function TableTeamRow({
+                        row,
+                        index,
+                        league,
+                        scheduleStats,
+                      }: {
   row: TableRow;
   index: number;
+  league: LeagueInfo;
   scheduleStats?: TeamScheduleStats;
 }) {
   const { colors } = useTheme();
   const stats = getTableStats(row, index, scheduleStats);
-  const rankNumber = parseRank(stats.position);
+  const teamId = getTeamRouteId(row, stats.teamName);
+  const accent = getTableCardAccent(index);
 
   return (
-      <View style={[styles.richTableRow, { borderBottomColor: colors.border }]}>
-        <View style={styles.richTableTopRow}>
-          <Badge tone={Number.isFinite(rankNumber) && rankNumber <= 3 ? 'green' : 'secondary'}>
-            {stats.position}
-          </Badge>
+      <Pressable
+          onPress={() =>
+              router.push({
+                pathname: '/team/[teamId]',
+                params: {
+                  teamId,
+                  teamName: stats.teamName,
+                  leagueTitle: league.title,
+                  season: league.season,
+                  association: league.association ?? '',
+                  groupId: league.groupId ?? '',
+                  leagueSlug: league.leagueSlug,
+                },
+              })
+          }
+          style={({ pressed }) => [
+            styles.leagueTeamCard,
+            {
+              backgroundColor: accent.background,
+              borderColor: accent.border,
+            },
+            pressed ? styles.leagueTeamCardPressed : null,
+          ]}
+      >
+        <View style={styles.leagueTeamHeader}>
+          <View
+              style={[
+                styles.leagueRankBadge,
+                {
+                  backgroundColor: accent.rankBackground,
+                  borderColor: accent.rankBorder,
+                },
+              ]}
+          >
+            <Text style={[styles.leagueRankText, { color: accent.rankText }]}>
+              {stats.position}
+            </Text>
+          </View>
 
-          <View style={styles.richTableTeamText}>
-            <Text style={[styles.teamName, { color: colors.text }]} numberOfLines={2}>
+          <View style={styles.leagueTeamTitleBlock}>
+            <Text style={[styles.leagueTeamName, { color: colors.text }]} numberOfLines={2}>
               {stats.teamName}
             </Text>
-
-            {stats.subline ? (
-                <Text style={[styles.teamSubline, { color: colors.mutedText }]} numberOfLines={1}>
-                  {stats.subline}
-                </Text>
-            ) : null}
           </View>
         </View>
 
-        <View style={styles.tableStatsGrid}>
-          <TableStat label="Punkte" value={stats.points} strong />
-          <TableStat label="Spiele" value={stats.games} />
-          <TableStat label="S/U/N" value={stats.record} />
-          <TableStat label="Verh." value={stats.ratio} />
+        <View style={styles.leagueStatGrid}>
+          <TableStatTile
+              label="Punkte"
+              value={formatTablePoints(stats.points)}
+              tone="points"
+              strong
+          />
+
+          <TableStatTile label="Spiele" value={stats.games} tone="games" />
+          <TableStatTile label="S/U/N" value={stats.record} tone="record" />
+          <TableStatTile label="Verh." value={stats.ratio} tone="ratio" />
         </View>
-      </View>
+      </Pressable>
   );
 }
 
-function TableStat({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  const { colors } = useTheme();
+function TableStatTile({
+                         label,
+                         value,
+                         tone,
+                         strong,
+                       }: {
+  label: string;
+  value: string;
+  tone: 'points' | 'games' | 'record' | 'ratio';
+  strong?: boolean;
+}) {
+  const colors = getStatTileColors(tone);
 
   return (
-      <View style={[styles.tableStatBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-        <Text style={[styles.tableStatLabel, { color: colors.mutedText }]}>{label}</Text>
+      <View
+          style={[
+            styles.leagueStatTile,
+            {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+            },
+          ]}
+      >
+        <Text style={[styles.leagueStatLabel, { color: colors.label }]} numberOfLines={1}>
+          {label}
+        </Text>
 
         <Text
             style={[
-              styles.tableStatValue,
-              strong ? styles.tableStatValueStrong : null,
-              { color: colors.text },
+              styles.leagueStatValue,
+              strong ? styles.leagueStatValueStrong : null,
+              { color: colors.value },
             ]}
             numberOfLines={1}
         >
           {value}
         </Text>
       </View>
+  );
+}
+
+function FilterChip({
+                      label,
+                      active,
+                      onPress,
+                    }: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+
+  return (
+      <Pressable
+          onPress={onPress}
+          style={[
+            styles.filterChip,
+            {
+              backgroundColor: active ? colors.primarySoft : colors.card,
+              borderColor: active ? colors.primarySoftBorder : colors.border,
+            },
+          ]}
+      >
+        <Text
+            style={[
+              styles.filterChipText,
+              {
+                color: active ? colors.primary : colors.mutedText,
+              },
+            ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
   );
 }
 
@@ -330,7 +541,15 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
             </Text>
           </View>
 
-          <Badge tone={match.status === 'completed' ? 'green' : match.status === 'free' ? 'secondary' : 'outline'}>
+          <Badge
+              tone={
+                match.status === 'completed'
+                    ? 'green'
+                    : match.status === 'free'
+                        ? 'secondary'
+                        : 'outline'
+              }
+          >
             {matchStatusLabel(match.status)}
           </Badge>
         </View>
@@ -342,9 +561,13 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
 
           {match.status === 'completed' ? (
               <View style={[styles.scoreBox, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.scoreText, { color: colors.text }]}>{match.homeScore ?? '-'}</Text>
+                <Text style={[styles.scoreText, { color: colors.text }]}>
+                  {match.homeScore ?? '-'}
+                </Text>
                 <Text style={[styles.scoreDivider, { color: colors.mutedText }]}>:</Text>
-                <Text style={[styles.scoreText, { color: colors.text }]}>{match.awayScore ?? '-'}</Text>
+                <Text style={[styles.scoreText, { color: colors.text }]}>
+                  {match.awayScore ?? '-'}
+                </Text>
               </View>
           ) : (
               <View style={[styles.vsBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -410,9 +633,6 @@ function getTableStats(row: TableRow, index: number, scheduleStats?: TeamSchedul
       pickString(raw, ['teamName', 'team_name', 'name']) ??
       'Unbekannte Mannschaft';
 
-  const clubId = valueToString(row.clubId) ?? pickString(raw, ['clubId', 'club_id']);
-  const teamId = pickString(raw, ['teamId', 'team_id']);
-
   const officialPoints =
       valueToString(row.points) ??
       joinPair(valueToString(row.pointsWon), valueToString(row.pointsLost)) ??
@@ -466,9 +686,6 @@ function getTableStats(row: TableRow, index: number, scheduleStats?: TeamSchedul
   return {
     position,
     teamName,
-    subline: [clubId ? `Club-ID ${clubId}` : undefined, teamId ? `Team-ID ${teamId}` : undefined]
-        .filter(Boolean)
-        .join(' • '),
     points: officialPoints ?? schedulePoints ?? '-',
     games: games ?? '-',
     record: record ?? '-',
@@ -550,20 +767,192 @@ function getTableRowKey(row: TableRow, index: number) {
       .join('-');
 }
 
+function getTeamRouteId(row: TableRow, teamName: string) {
+  const raw = row as RichTableRow;
+
+  return (
+      valueToString(row.id) ??
+      pickString(raw, ['teamId', 'team_id', 'teamUuid', 'team_uuid', 'id']) ??
+      slugifyTeamName(teamName)
+  );
+}
+
+function slugifyTeamName(teamName: string) {
+  return (
+      normalizeTeamKey(teamName)
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'team'
+  );
+}
+
+function formatTablePoints(value?: string) {
+  if (!value) return '-';
+
+  const normalized = value.trim();
+
+  if (/^\d+\.\d+$/.test(normalized)) {
+    return normalized.replace('.', ':');
+  }
+
+  return normalized;
+}
+
+function getTableCardAccent(index: number) {
+  if (index === 0) {
+    return {
+      background: 'rgba(245, 158, 11, 0.14)',
+      border: 'rgba(245, 158, 11, 0.65)',
+      rankBackground: 'rgba(245, 158, 11, 0.22)',
+      rankBorder: 'rgba(245, 158, 11, 0.8)',
+      rankText: '#FBBF24',
+    };
+  }
+
+  if (index === 1) {
+    return {
+      background: 'rgba(59, 130, 246, 0.12)',
+      border: 'rgba(96, 165, 250, 0.45)',
+      rankBackground: 'rgba(59, 130, 246, 0.22)',
+      rankBorder: 'rgba(96, 165, 250, 0.65)',
+      rankText: '#BFDBFE',
+    };
+  }
+
+  if (index === 2) {
+    return {
+      background: 'rgba(249, 115, 22, 0.13)',
+      border: 'rgba(249, 115, 22, 0.6)',
+      rankBackground: 'rgba(249, 115, 22, 0.22)',
+      rankBorder: 'rgba(249, 115, 22, 0.75)',
+      rankText: '#FDBA74',
+    };
+  }
+
+  return {
+    background: 'rgba(255, 255, 255, 0.035)',
+    border: 'rgba(255, 255, 255, 0.09)',
+    rankBackground: 'rgba(255, 255, 255, 0.06)',
+    rankBorder: 'rgba(255, 255, 255, 0.12)',
+    rankText: '#CBD5E1',
+  };
+}
+
+function getStatTileColors(tone: 'points' | 'games' | 'record' | 'ratio') {
+  switch (tone) {
+    case 'points':
+      return {
+        background: 'rgba(59, 130, 246, 0.16)',
+        border: 'rgba(96, 165, 250, 0.4)',
+        label: '#93C5FD',
+        value: '#FFFFFF',
+      };
+
+    case 'games':
+      return {
+        background: 'rgba(34, 197, 94, 0.14)',
+        border: 'rgba(74, 222, 128, 0.35)',
+        label: '#86EFAC',
+        value: '#FFFFFF',
+      };
+
+    case 'record':
+      return {
+        background: 'rgba(168, 85, 247, 0.16)',
+        border: 'rgba(192, 132, 252, 0.38)',
+        label: '#D8B4FE',
+        value: '#FFFFFF',
+      };
+
+    case 'ratio':
+      return {
+        background: 'rgba(249, 115, 22, 0.14)',
+        border: 'rgba(251, 146, 60, 0.38)',
+        label: '#FDBA74',
+        value: '#FFFFFF',
+      };
+  }
+}
+
+function matchesPeriodFilter(match: ScheduleMatch, filter: SchedulePeriodFilter) {
+  if (filter === 'all') return true;
+
+  const date = parseMatchDate(match.date);
+  if (!date) return false;
+
+  const today = startOfDay(new Date());
+
+  if (filter === 'past30') {
+    return date >= addDays(today, -30) && date <= today;
+  }
+
+  if (filter === 'next30') {
+    return date >= today && date <= addDays(today, 30);
+  }
+
+  return true;
+}
+
+function matchesRoundFilter(match: ScheduleMatch, filter: RoundFilter) {
+  if (filter === 'all') return true;
+
+  const round = inferRoundFilter(match);
+  return round === filter;
+}
+
+function inferRoundFilter(match: ScheduleMatch): Exclude<RoundFilter, 'all'> | undefined {
+  const roundName = String(match.roundName ?? '').toLowerCase();
+
+  if (roundName.includes('rück') || roundName.includes('rueck')) return 'second';
+  if (roundName.includes('hin') || roundName.includes('vor')) return 'first';
+
+  const date = parseMatchDate(match.date);
+  if (!date) return undefined;
+
+  const month = date.getMonth() + 1;
+  return month >= 7 && month <= 12 ? 'first' : 'second';
+}
+
+function parseMatchDate(value?: string) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return undefined;
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    return startOfDay(
+        new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3])),
+    );
+  }
+
+  const germanMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+  if (germanMatch) {
+    const year =
+        germanMatch[3].length === 2 ? 2000 + Number(germanMatch[3]) : Number(germanMatch[3]);
+
+    return startOfDay(new Date(year, Number(germanMatch[2]) - 1, Number(germanMatch[1])));
+  }
+
+  const fallback = new Date(raw);
+  return Number.isNaN(fallback.getTime()) ? undefined : startOfDay(fallback);
+}
+
+function startOfDay(date: Date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 function normalizeTeamKey(teamName?: string) {
-  return (teamName ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ');
+  return (teamName ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function isFreeTeam(teamName?: string) {
   return normalizeTeamKey(teamName).includes('spielfrei');
-}
-
-function parseRank(value?: string) {
-  const match = String(value ?? '').match(/\d+/);
-  return match ? Number(match[0]) : Number.NaN;
 }
 
 function pickString(row: RichTableRow, keys: string[]) {
@@ -598,13 +987,23 @@ function toNumber(value: unknown) {
 const styles = StyleSheet.create({
   content: {
     padding: 16,
+    paddingTop: 20,
     paddingBottom: 112,
     gap: 16,
   },
   headerRow: {
+    minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: {
     flex: 1,
@@ -632,54 +1031,114 @@ const styles = StyleSheet.create({
   },
   tableCard: {
     paddingTop: 16,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
     overflow: 'hidden',
   },
-  tableList: {
-    width: '100%',
+  teamCardList: {
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+    gap: 9,
   },
-  richTableRow: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 10,
+  leagueTeamCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 12,
+    gap: 12,
   },
-  richTableTopRow: {
+  leagueTeamCardPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.992 }],
+  },
+  leagueTeamHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 11,
   },
-  richTableTeamText: {
+  leagueRankBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leagueRankText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '900',
+  },
+  leagueTeamTitleBlock: {
     flex: 1,
+    minWidth: 0,
   },
-  tableStatsGrid: {
+  leagueTeamName: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '900',
+  },
+  leagueStatGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  leagueStatTile: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 52,
+    borderRadius: 15,
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 7,
+    justifyContent: 'center',
+  },
+  leagueStatLabel: {
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  leagueStatValue: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+  },
+  leagueStatValueStrong: {
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '900',
+  },
+  filterCard: {
+    padding: 16,
+    gap: 14,
+  },
+  filterBlock: {
+    gap: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
+  },
+  filterChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  tableStatBox: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    minWidth: 120,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+  filterChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    paddingHorizontal: 8,
   },
-  tableStatLabel: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '800',
-  },
-  tableStatValue: {
-    marginTop: 2,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '800',
-  },
-  tableStatValueStrong: {
-    fontSize: 16,
-    lineHeight: 20,
+  filterChipText: {
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '900',
+  },
+  filterHint: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   sectionCard: {
     padding: 16,
@@ -719,16 +1178,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 23,
     fontWeight: '900',
-  },
-  teamName: {
-    fontSize: 14,
-    lineHeight: 19,
-    fontWeight: '800',
-  },
-  teamSubline: {
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 16,
   },
   matchCard: {
     padding: 14,

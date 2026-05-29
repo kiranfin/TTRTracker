@@ -1250,7 +1250,7 @@ function TtrLineChart({
 const styles = StyleSheet.create({
     content: {
         padding: 16,
-        paddingTop: 0,
+        paddingTop: 20,
         paddingBottom: 112,
         gap: 16,
     },
