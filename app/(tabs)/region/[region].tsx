@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ttApi } from '../../../src/api/tttracker';
 import { Badge } from '../../../src/components/Badge';
 import { Button, IconButton } from '../../../src/components/Button';
@@ -190,13 +190,7 @@ export default function RegionLeaguesScreen() {
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
-            <Button
-                variant="ghost"
-                icon="arrow-back"
-                onPress={selectedRegion ? backToRegions : () => router.push('/leagues')}
-            >
-              {' '}
-            </Button>
+            <BackButton onPress={selectedRegion ? backToRegions : () => router.push('/leagues')} />
 
             <View style={styles.headerText}>
               <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
@@ -370,6 +364,28 @@ export default function RegionLeaguesScreen() {
   );
 }
 
+function BackButton({ onPress }: { onPress: () => void }) {
+  const { colors } = useTheme();
+  const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+  return (
+      <Pressable
+          onPress={onPress}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.backButton,
+            noWebOutline,
+            {
+              backgroundColor: pressed ? colors.primarySoft : 'transparent',
+              borderColor: pressed ? colors.primarySoftBorder : colors.border,
+            },
+          ]}
+      >
+        <Ionicons name="arrow-back" size={23} color={colors.text} />
+      </Pressable>
+  );
+}
+
 function formatSeasonLabel(value?: string) {
   return String(value ?? DEFAULT_SEASON).replace(/--/g, '/');
 }
@@ -384,6 +400,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: {
     flex: 1,

@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ttApi } from '../../../src/api/tttracker';
 import { Badge } from '../../../src/components/Badge';
-import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
@@ -51,7 +50,7 @@ export default function ClubDetailsScreen() {
         <Screen>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.headerRow}>
-                    <Button variant="ghost" icon="arrow-back" onPress={() => router.back()}> </Button>
+                    <BackButton />
 
                     <View style={styles.headerText}>
                         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{title}</Text>
@@ -150,6 +149,28 @@ export default function ClubDetailsScreen() {
     );
 }
 
+function BackButton() {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+    return (
+        <Pressable
+            onPress={() => router.back()}
+            hitSlop={10}
+            style={({ pressed }) => [
+                styles.backButton,
+                noWebOutline,
+                {
+                    backgroundColor: pressed ? colors.primarySoft : 'transparent',
+                    borderColor: pressed ? colors.primarySoftBorder : colors.border,
+                },
+            ]}
+        >
+            <Ionicons name="arrow-back" size={23} color={colors.text} />
+        </Pressable>
+    );
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
     const { colors } = useTheme();
 
@@ -168,9 +189,18 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     headerRow: {
+        minHeight: 42,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
+    },
+    backButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        borderWidth: StyleSheet.hairlineWidth,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     headerText: {
         flex: 1,

@@ -27,7 +27,11 @@ import {
 
 type DetailTab = 'table' | 'matches';
 type SchedulePeriodFilter = 'all' | 'past30' | 'next30';
-type RoundFilter = 'all' | 'first' | 'second';
+type ScheduleRound = 'vr' | 'rr';
+type RoundFilter = 'all' | ScheduleRound;
+type EnrichedScheduleMatch = ScheduleMatch & {
+    scheduleRound: ScheduleRound;
+};
 
 type TeamScheduleStats = {
   played: number;
@@ -57,9 +61,9 @@ const periodOptions: { value: SchedulePeriodFilter; label: string }[] = [
 ];
 
 const roundOptions: { value: RoundFilter; label: string }[] = [
-  { value: 'all', label: 'Alle' },
-  { value: 'first', label: 'Hinrunde' },
-  { value: 'second', label: 'Rückrunde' },
+    { value: 'all', label: 'Alle' },
+    { value: 'vr', label: 'Hinrunde' },
+    { value: 'rr', label: 'Rückrunde' },
 ];
 
 export default function LeagueDetailsScreen() {
@@ -68,7 +72,7 @@ export default function LeagueDetailsScreen() {
 
   const [activeTab, setActiveTab] = useState<DetailTab>('table');
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
-  const [matches, setMatches] = useState<ScheduleMatch[]>([]);
+  const [matches, setMatches] = useState<EnrichedScheduleMatch[]>([]);
   const [periodFilter, setPeriodFilter] = useState<SchedulePeriodFilter>('all');
   const [roundFilter, setRoundFilter] = useState<RoundFilter>('all');
   const [loading, setLoading] = useState(true);
@@ -104,20 +108,13 @@ export default function LeagueDetailsScreen() {
       setError(null);
 
       try {
-          const tableFilter =
-              roundFilter === 'first'
-                  ? 'vr'
-                  : roundFilter === 'second'
-                      ? 'rr'
-                      : 'gesamt';
-
           const [tableResponse, scheduleResponse] = await Promise.all([
               ttApi.getLeagueTable(
                   league.association,
                   league.season,
                   league.groupId,
                   league.leagueSlug,
-                  tableFilter,
+                  'gesamt',
               ),
               ttApi.getLeagueSchedule(
                   league.association,
@@ -127,8 +124,8 @@ export default function LeagueDetailsScreen() {
               ),
           ]);
 
-        setTableRows(normalizeTable(tableResponse));
-        setMatches(normalizeSchedule(scheduleResponse));
+          setTableRows(normalizeTable(tableResponse));
+          setMatches(normalizeSchedule(scheduleResponse).map(enrichScheduleMatch));
       } catch (loadError) {
         setError(
             loadError instanceof Error
@@ -141,7 +138,7 @@ export default function LeagueDetailsScreen() {
     }
 
     loadLeague().catch(() => undefined);
-  }, [league.association, league.groupId, league.leagueSlug, league.season, roundFilter]);
+  }, [league.association, league.groupId, league.leagueSlug, league.season]);
 
   const filteredMatches = useMemo(
       () =>
@@ -607,15 +604,6 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
               </View>
           ) : null}
 
-          {match.venue ? (
-              <View style={styles.metaLine}>
-                <Ionicons name="location-outline" size={13} color={colors.mutedText} />
-                <Text style={[styles.metaText, { color: colors.mutedText }]} numberOfLines={2}>
-                  {match.venue}
-                </Text>
-              </View>
-          ) : null}
-
           {match.confirmed !== undefined ? (
               <View style={styles.metaLine}>
                 <Ionicons
@@ -931,24 +919,48 @@ function matchesPeriodFilter(match: ScheduleMatch, filter: SchedulePeriodFilter)
   return true;
 }
 
-function matchesRoundFilter(match: ScheduleMatch, filter: RoundFilter) {
-  if (filter === 'all') return true;
-
-  const round = inferRoundFilter(match);
-  return round === filter;
+function enrichScheduleMatch(match: ScheduleMatch): EnrichedScheduleMatch {
+    return {
+        ...match,
+        scheduleRound: inferScheduleRound(match),
+    };
 }
 
-function inferRoundFilter(match: ScheduleMatch): Exclude<RoundFilter, 'all'> | undefined {
-  const roundName = String(match.roundName ?? '').toLowerCase();
+function matchesRoundFilter(match: EnrichedScheduleMatch, filter: RoundFilter) {
+    if (filter === 'all') return true;
+    return match.scheduleRound === filter;
+}
 
-  if (roundName.includes('rück') || roundName.includes('rueck')) return 'second';
-  if (roundName.includes('hin') || roundName.includes('vor')) return 'first';
+function inferScheduleRound(match: ScheduleMatch): ScheduleRound {
+    const roundName = String(match.roundName ?? '').toLowerCase();
 
-  const date = parseMatchDate(match.date);
-  if (!date) return undefined;
+    if (
+        roundName.includes('rück') ||
+        roundName.includes('rueck') ||
+        roundName.includes('rr')
+    ) {
+        return 'rr';
+    }
 
-  const month = date.getMonth() + 1;
-  return month >= 7 && month <= 12 ? 'first' : 'second';
+    if (
+        roundName.includes('hin') ||
+        roundName.includes('vor') ||
+        roundName.includes('vr')
+    ) {
+        return 'vr';
+    }
+
+    const date = parseMatchDate(match.date);
+
+    if (date) {
+        const month = date.getMonth() + 1;
+
+        // Typische Saisonlogik: Juli-Dezember = Vorrunde, Januar-Juni = Rückrunde
+        return month >= 7 && month <= 12 ? 'vr' : 'rr';
+    }
+
+    // Fallback, falls gar nichts erkennbar ist
+    return 'vr';
 }
 
 function parseMatchDate(value?: string) {
