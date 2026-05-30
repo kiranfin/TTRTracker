@@ -164,4 +164,63 @@ export const ttApi = {
 
     return normalizeList<LeagueClassReference>(response);
   },
+
+  getTeamPlayers(teamId: string) {
+    return apiGet<unknown>(`/api/teams/${segment(teamId)}/players`);
+  },
+
+  getTeamInfos(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      teamId: string,
+      teamNameSlug = 'x'
+  ) {
+    return apiGet<unknown>(
+        `/api/teams/${segment(association)}/${segment(season)}/${segment(groupId)}/${segment(teamId)}/infos`,
+        {
+          leagueSlug,
+          teamNameSlug,
+        }
+    );
+  },
+
+  getTeamSchedule(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      teamId: string,
+      teamNameSlug = 'x',
+      filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+  ) {
+    return apiGet<unknown>(
+        `/api/teams/${segment(association)}/${segment(season)}/${segment(groupId)}/${segment(teamId)}/schedule`,
+        {
+          leagueSlug,
+          teamNameSlug,
+          filter,
+        }
+    );
+  },
+
+  getTeamBalances(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      teamId: string,
+      teamNameSlug = 'x',
+      filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+  ) {
+    return apiGet<unknown>(
+        `/api/teams/${segment(association)}/${segment(season)}/${segment(groupId)}/${segment(teamId)}/balances`,
+        {
+          leagueSlug,
+          teamNameSlug,
+          filter,
+        }
+    );
+  },
 };
