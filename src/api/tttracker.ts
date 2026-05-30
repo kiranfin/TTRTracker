@@ -97,6 +97,36 @@ export const ttApi = {
     );
   },
 
+  getClubSchedule(
+      organization: string,
+      clubNumber: string,
+      season = '25--26',
+      dateStart?: string,
+      dateEnd?: string,
+      clubSlug = 'x'
+  ) {
+    const query: Record<string, string> = {
+      season,
+    };
+
+    if (dateStart?.trim()) {
+      query.dateStart = dateStart.trim();
+    }
+
+    if (dateEnd?.trim()) {
+      query.dateEnd = dateEnd.trim();
+    }
+
+    if (clubSlug?.trim() && clubSlug.trim() !== 'x') {
+      query.clubSlug = clubSlug.trim();
+    }
+
+    return apiGet<unknown>(
+        `/api/clubs/${segment(organization)}/${segment(clubNumber)}/schedule`,
+        query
+    );
+  },
+
   getLeagueTable(
       association: string,
       season: string,
