@@ -371,7 +371,7 @@ function TableTeamRow({
   const { colors } = useTheme();
   const stats = getTableStats(row, index, scheduleStats);
   const teamId = getTeamRouteId(row, stats.teamName);
-  const accent = getTableCardAccent(row);
+  const accent = getTableCardAccent(row, colors);
 
   return (
       <Pressable
@@ -447,7 +447,8 @@ function TableStatTile({
   tone: 'points' | 'games' | 'record' | 'ratio';
   strong?: boolean;
 }) {
-  const colors = getStatTileColors(tone);
+    const { colors: themeColors } = useTheme();
+    const colors = getStatTileColors(tone, themeColors);
 
   return (
       <View
@@ -832,72 +833,166 @@ function getPromotionState(row: TableRow): PromotionState {
     return 'none';
 }
 
-function getTableCardAccent(row: TableRow) {
+type ThemeColors = ReturnType<typeof useTheme>['colors'];
+
+function getTableCardAccent(row: TableRow, colors: ThemeColors) {
     const promotionState = getPromotionState(row);
+    const dark = isDarkTheme(colors);
 
     if (promotionState === 'promotion') {
-        return {
-            background: 'rgba(34, 197, 94, 0.15)',
-            border: 'rgba(74, 222, 128, 0.55)',
-            rankBackground: 'rgba(34, 197, 94, 0.22)',
-            rankBorder: 'rgba(74, 222, 128, 0.75)',
-            rankText: '#86EFAC',
-        };
+        return dark
+            ? {
+                background: 'rgba(34, 197, 94, 0.15)',
+                border: 'rgba(74, 222, 128, 0.55)',
+                rankBackground: 'rgba(34, 197, 94, 0.22)',
+                rankBorder: 'rgba(74, 222, 128, 0.75)',
+                rankText: '#86EFAC',
+            }
+            : {
+                background: 'rgba(34, 197, 94, 0.11)',
+                border: 'rgba(22, 163, 74, 0.38)',
+                rankBackground: 'rgba(34, 197, 94, 0.16)',
+                rankBorder: 'rgba(22, 163, 74, 0.45)',
+                rankText: '#15803D',
+            };
     }
 
     if (promotionState === 'relegation') {
-        return {
-            background: 'rgba(239, 68, 68, 0.14)',
-            border: 'rgba(248, 113, 113, 0.58)',
-            rankBackground: 'rgba(239, 68, 68, 0.22)',
-            rankBorder: 'rgba(248, 113, 113, 0.78)',
-            rankText: '#FCA5A5',
-        };
+        return dark
+            ? {
+                background: 'rgba(239, 68, 68, 0.14)',
+                border: 'rgba(248, 113, 113, 0.58)',
+                rankBackground: 'rgba(239, 68, 68, 0.22)',
+                rankBorder: 'rgba(248, 113, 113, 0.78)',
+                rankText: '#FCA5A5',
+            }
+            : {
+                background: 'rgba(239, 68, 68, 0.11)',
+                border: 'rgba(220, 38, 38, 0.38)',
+                rankBackground: 'rgba(239, 68, 68, 0.17)',
+                rankBorder: 'rgba(220, 38, 38, 0.45)',
+                rankText: '#DC2626',
+            };
     }
 
-    return {
-        background: 'rgba(255, 255, 255, 0.035)',
-        border: 'rgba(255, 255, 255, 0.09)',
-        rankBackground: 'rgba(255, 255, 255, 0.06)',
-        rankBorder: 'rgba(255, 255, 255, 0.12)',
-        rankText: '#CBD5E1',
-    };
+    return dark
+        ? {
+            background: 'rgba(255, 255, 255, 0.035)',
+            border: 'rgba(255, 255, 255, 0.09)',
+            rankBackground: 'rgba(255, 255, 255, 0.06)',
+            rankBorder: 'rgba(255, 255, 255, 0.12)',
+            rankText: '#CBD5E1',
+        }
+        : {
+            background: colors.card,
+            border: colors.border,
+            rankBackground: colors.muted,
+            rankBorder: colors.border,
+            rankText: colors.mutedText,
+        };
 }
 
-function getStatTileColors(tone: 'points' | 'games' | 'record' | 'ratio') {
-  switch (tone) {
-    case 'points':
-      return {
-        background: 'rgba(59, 130, 246, 0.16)',
-        border: 'rgba(96, 165, 250, 0.4)',
-        label: '#93C5FD',
-        value: '#FFFFFF',
-      };
+function getStatTileColors(
+    tone: 'points' | 'games' | 'record' | 'ratio',
+    themeColors: ThemeColors,
+) {
+    const dark = isDarkTheme(themeColors);
 
-    case 'games':
-      return {
-        background: 'rgba(34, 197, 94, 0.14)',
-        border: 'rgba(74, 222, 128, 0.35)',
-        label: '#86EFAC',
-        value: '#FFFFFF',
-      };
+    switch (tone) {
+        case 'points':
+            return dark
+                ? {
+                    background: 'rgba(59, 130, 246, 0.16)',
+                    border: 'rgba(96, 165, 250, 0.4)',
+                    label: '#93C5FD',
+                    value: '#FFFFFF',
+                }
+                : {
+                    background: 'rgba(59, 130, 246, 0.12)',
+                    border: 'rgba(37, 99, 235, 0.3)',
+                    label: '#2563EB',
+                    value: '#1D4ED8',
+                };
 
-    case 'record':
-      return {
-        background: 'rgba(168, 85, 247, 0.16)',
-        border: 'rgba(192, 132, 252, 0.38)',
-        label: '#D8B4FE',
-        value: '#FFFFFF',
-      };
+        case 'games':
+            return dark
+                ? {
+                    background: 'rgba(34, 197, 94, 0.14)',
+                    border: 'rgba(74, 222, 128, 0.35)',
+                    label: '#86EFAC',
+                    value: '#FFFFFF',
+                }
+                : {
+                    background: 'rgba(34, 197, 94, 0.12)',
+                    border: 'rgba(22, 163, 74, 0.3)',
+                    label: '#16A34A',
+                    value: '#15803D',
+                };
 
-    case 'ratio':
-      return {
-        background: 'rgba(249, 115, 22, 0.14)',
-        border: 'rgba(251, 146, 60, 0.38)',
-        label: '#FDBA74',
-        value: '#FFFFFF',
-      };
-  }
+        case 'record':
+            return dark
+                ? {
+                    background: 'rgba(168, 85, 247, 0.16)',
+                    border: 'rgba(192, 132, 252, 0.38)',
+                    label: '#D8B4FE',
+                    value: '#FFFFFF',
+                }
+                : {
+                    background: 'rgba(168, 85, 247, 0.12)',
+                    border: 'rgba(147, 51, 234, 0.3)',
+                    label: '#9333EA',
+                    value: '#7E22CE',
+                };
+
+        case 'ratio':
+            return dark
+                ? {
+                    background: 'rgba(249, 115, 22, 0.14)',
+                    border: 'rgba(251, 146, 60, 0.38)',
+                    label: '#FDBA74',
+                    value: '#FFFFFF',
+                }
+                : {
+                    background: 'rgba(249, 115, 22, 0.12)',
+                    border: 'rgba(234, 88, 12, 0.3)',
+                    label: '#EA580C',
+                    value: '#C2410C',
+                };
+    }
+}
+
+function isDarkTheme(colors: ThemeColors) {
+    return getRelativeLuminance(colors.background) < 0.45;
+}
+
+function getRelativeLuminance(color: string) {
+    const hex = color.trim();
+
+    if (!hex.startsWith('#')) {
+        return 1;
+    }
+
+    const normalized =
+        hex.length === 4
+            ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+            : hex;
+
+    const red = parseInt(normalized.slice(1, 3), 16);
+    const green = parseInt(normalized.slice(3, 5), 16);
+    const blue = parseInt(normalized.slice(5, 7), 16);
+
+    if ([red, green, blue].some((value) => Number.isNaN(value))) {
+        return 1;
+    }
+
+    const [r, g, b] = [red, green, blue].map((value) => {
+        const channel = value / 255;
+        return channel <= 0.03928
+            ? channel / 12.92
+            : Math.pow((channel + 0.055) / 1.055, 2.4);
+    });
+
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 function matchesPeriodFilter(match: ScheduleMatch, filter: SchedulePeriodFilter) {
