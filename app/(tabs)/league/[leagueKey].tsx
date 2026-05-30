@@ -104,15 +104,28 @@ export default function LeagueDetailsScreen() {
       setError(null);
 
       try {
-        const [tableResponse, scheduleResponse] = await Promise.all([
-          ttApi.getLeagueTable(league.association, league.groupId),
-          ttApi.getLeagueSchedule(
-              league.association,
-              league.season,
-              league.groupId,
-              league.leagueSlug,
-          ),
-        ]);
+          const tableFilter =
+              roundFilter === 'first'
+                  ? 'vr'
+                  : roundFilter === 'second'
+                      ? 'rr'
+                      : 'gesamt';
+
+          const [tableResponse, scheduleResponse] = await Promise.all([
+              ttApi.getLeagueTable(
+                  league.association,
+                  league.season,
+                  league.groupId,
+                  league.leagueSlug,
+                  tableFilter,
+              ),
+              ttApi.getLeagueSchedule(
+                  league.association,
+                  league.season,
+                  league.groupId,
+                  league.leagueSlug,
+              ),
+          ]);
 
         setTableRows(normalizeTable(tableResponse));
         setMatches(normalizeSchedule(scheduleResponse));
@@ -128,7 +141,7 @@ export default function LeagueDetailsScreen() {
     }
 
     loadLeague().catch(() => undefined);
-  }, [league.association, league.groupId, league.leagueSlug, league.season]);
+  }, [league.association, league.groupId, league.leagueSlug, league.season, roundFilter]);
 
   const filteredMatches = useMemo(
       () =>
@@ -361,7 +374,7 @@ function TableTeamRow({
   const { colors } = useTheme();
   const stats = getTableStats(row, index, scheduleStats);
   const teamId = getTeamRouteId(row, stats.teamName);
-  const accent = getTableCardAccent(index);
+  const accent = getTableCardAccent(row);
 
   return (
       <Pressable
@@ -797,44 +810,70 @@ function formatTablePoints(value?: string) {
   return normalized;
 }
 
-function getTableCardAccent(index: number) {
-  if (index === 0) {
-    return {
-      background: 'rgba(245, 158, 11, 0.14)',
-      border: 'rgba(245, 158, 11, 0.65)',
-      rankBackground: 'rgba(245, 158, 11, 0.22)',
-      rankBorder: 'rgba(245, 158, 11, 0.8)',
-      rankText: '#FBBF24',
-    };
-  }
+type PromotionState = 'promotion' | 'relegation' | 'none';
 
-  if (index === 1) {
-    return {
-      background: 'rgba(59, 130, 246, 0.12)',
-      border: 'rgba(96, 165, 250, 0.45)',
-      rankBackground: 'rgba(59, 130, 246, 0.22)',
-      rankBorder: 'rgba(96, 165, 250, 0.65)',
-      rankText: '#BFDBFE',
-    };
-  }
+function getPromotionState(row: TableRow): PromotionState {
+    const raw = row as RichTableRow;
 
-  if (index === 2) {
-    return {
-      background: 'rgba(249, 115, 22, 0.13)',
-      border: 'rgba(249, 115, 22, 0.6)',
-      rankBackground: 'rgba(249, 115, 22, 0.22)',
-      rankBorder: 'rgba(249, 115, 22, 0.75)',
-      rankText: '#FDBA74',
-    };
-  }
+    const value = String(
+        raw.promotionState ??
+        raw.promotion_state ??
+        ''
+    )
+        .trim()
+        .toLowerCase();
 
-  return {
-    background: 'rgba(255, 255, 255, 0.035)',
-    border: 'rgba(255, 255, 255, 0.09)',
-    rankBackground: 'rgba(255, 255, 255, 0.06)',
-    rankBorder: 'rgba(255, 255, 255, 0.12)',
-    rankText: '#CBD5E1',
-  };
+    if (
+        value === 'promotion' ||
+        value === 'rise' ||
+        value === 'up' ||
+        value === 'promoted'
+    ) {
+        return 'promotion';
+    }
+
+    if (
+        value === 'relegation' ||
+        value === 'fall' ||
+        value === 'down' ||
+        value === 'relegated'
+    ) {
+        return 'relegation';
+    }
+
+    return 'none';
+}
+
+function getTableCardAccent(row: TableRow) {
+    const promotionState = getPromotionState(row);
+
+    if (promotionState === 'promotion') {
+        return {
+            background: 'rgba(34, 197, 94, 0.15)',
+            border: 'rgba(74, 222, 128, 0.55)',
+            rankBackground: 'rgba(34, 197, 94, 0.22)',
+            rankBorder: 'rgba(74, 222, 128, 0.75)',
+            rankText: '#86EFAC',
+        };
+    }
+
+    if (promotionState === 'relegation') {
+        return {
+            background: 'rgba(239, 68, 68, 0.14)',
+            border: 'rgba(248, 113, 113, 0.58)',
+            rankBackground: 'rgba(239, 68, 68, 0.22)',
+            rankBorder: 'rgba(248, 113, 113, 0.78)',
+            rankText: '#FCA5A5',
+        };
+    }
+
+    return {
+        background: 'rgba(255, 255, 255, 0.035)',
+        border: 'rgba(255, 255, 255, 0.09)',
+        rankBackground: 'rgba(255, 255, 255, 0.06)',
+        rankBorder: 'rgba(255, 255, 255, 0.12)',
+        rankText: '#CBD5E1',
+    };
 }
 
 function getStatTileColors(tone: 'points' | 'games' | 'record' | 'ratio') {

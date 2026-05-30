@@ -97,9 +97,19 @@ export const ttApi = {
     );
   },
 
-  getLeagueTable(association: string, groupId: string) {
+  getLeagueTable(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+  ) {
     return apiGet<unknown>(
-        `/api/leagues/${segment(association)}/${segment(groupId)}/table`
+        `/api/leagues/${segment(association)}/${segment(season)}/${segment(groupId)}/table`,
+        {
+          leagueSlug,
+          filter,
+        }
     );
   },
 

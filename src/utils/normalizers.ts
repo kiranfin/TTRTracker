@@ -48,7 +48,7 @@ function findFirstArray(value: unknown, depth = 0): unknown[] | null {
 
   const object = value as AnyRecord;
 
-  for (const key of ['results', 'items', 'data', 'players', 'clubs', 'leagues', 'groups', 'rows', 'teams', 'event', 'events']) {
+  for (const key of ['results', 'items', 'data', 'league_table', 'players', 'clubs', 'leagues', 'groups', 'rows', 'teams', 'event', 'events']) {
     const nested = findFirstArray(object[key], depth + 1);
     if (nested) return nested;
   }
@@ -264,24 +264,54 @@ export function normalizeTable(response: unknown): TableRow[] {
   return rowsFromResponse(response).map((item, index) => {
     const row = obj(item);
 
-    const position = firstString(row.table_rank, row.tableRank, row.rank, row.position, index + 1) ?? String(index + 1);
+    const position =
+        firstString(row.table_rank, row.tableRank, row.rank, row.position, index + 1) ??
+        String(index + 1);
+
     const clubId = firstString(row.club_id, row.clubId, row.clubnr, row.clubNumber);
     const pointsWon = firstString(row.points_won, row.pointsWon);
     const pointsLost = firstString(row.points_lost, row.pointsLost);
+
+    const matchesWon = firstString(row.matches_won, row.matchesWon);
+    const matchesLost = firstString(row.matches_lost, row.matchesLost);
+    const matchesRelation = firstString(row.matches_relation, row.matchesRelation);
 
     return {
       id: firstString(row.team_id, row.teamId, row.id, clubId, `${position}-${index}`) ?? `${position}-${index}`,
       position,
       teamName: firstString(row.team_name, row.teamName, row.name, row.club_name) ?? 'Unbekannte Mannschaft',
       clubId,
-      matches: firstString(row.matches, row.played, row.meetings, row.games_played),
-      wins: firstString(row.wins, row.won),
-      draws: firstString(row.draws, row.ties),
-      losses: firstString(row.losses, row.lost),
+
+      matches: firstString(row.meetings_count, row.matches, row.played, row.meetings, row.games_played),
+      wins: firstString(row.meetings_won, row.wins, row.won),
+      draws: firstString(row.meetings_tie, row.draws, row.ties),
+      losses: firstString(row.meetings_lost, row.losses, row.lost),
+
       games: firstString(row.games, row.sets, row.matches_ratio, row.match_ratio),
-      points: firstString(row.points, row.score, row.team_points),
+      points:
+          firstString(row.points, row.score, row.team_points) ??
+          (pointsWon || pointsLost ? `${pointsWon ?? '0'}:${pointsLost ?? '0'}` : undefined),
+
       pointsWon,
       pointsLost,
+
+      matchesWon,
+      matchesLost,
+      matchesRelation,
+      ratio:
+          matchesWon || matchesLost
+              ? `${matchesWon ?? '0'}:${matchesLost ?? '0'}`
+              : matchesRelation,
+
+      tendency: firstString(row.tendency),
+      riseFallState: firstString(row.rise_fall_state, row.riseFallState),
+      promotionState:
+          firstString(row.promotion_state, row.promotionState) === 'promotion'
+              ? 'promotion'
+              : firstString(row.promotion_state, row.promotionState) === 'relegation'
+                  ? 'relegation'
+                  : 'none',
+      isExcluded: typeof row.is_excluded === 'boolean' ? row.is_excluded : undefined,
     };
   });
 }
