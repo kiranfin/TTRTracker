@@ -70,7 +70,6 @@ export default function ClubDetailsScreen() {
                     <InfoRow label="Vereinsnummer" value={clubNumber || 'Nicht verfügbar'} />
                     <InfoRow label="Bundesland" value={params.state || 'Nicht verfügbar'} />
                     <InfoRow label="Verband" value={organization || params.organizationName || 'Nicht verfügbar'} />
-                    <InfoRow label="External-ID" value={params.externalId || 'Nicht verfügbar'} />
                 </Card>
 
                 <View style={styles.sectionHeader}>
