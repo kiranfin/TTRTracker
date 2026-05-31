@@ -26,8 +26,12 @@ type ClubPlayer = {
     teamName?: string;
     leagueName?: string;
     clubName?: string;
-    ttr?: string;
+    association?: string;
+    country?: string;
     rank?: string;
+    globalRank?: string;
+    nationalRank?: string;
+    matchCount?: string;
 };
 
 type ClubScheduleMatch = ScheduleMatch & {
@@ -44,7 +48,12 @@ type ScheduleDateGroup = {
 type RichObject = Record<string, unknown>;
 
 type ClubApiWithOptionalEndpoints = typeof ttApi & {
-    getClubPlayers?: (organization: string, clubNumber: string) => Promise<unknown>;
+    getClubPlayers?: (
+        organization: string,
+        clubNumber: string,
+        clubName?: string,
+        androClubNr?: string,
+    ) => Promise<unknown>;
     getClubSchedule?: (
         organization: string,
         clubNumber: string,
@@ -125,6 +134,7 @@ export default function ClubDetailsScreen() {
     const title = params.title ?? 'Verein';
     const organization = params.organization;
     const clubNumber = params.clubNumber;
+    const clubNameForPlayers = emptyToUndefined(params.clubName) ?? emptyToUndefined(params.title);
 
     const scheduleSeason = useMemo(
         () => getInitialSeason(params.season ?? teams[0]?.season),
@@ -168,7 +178,12 @@ export default function ClubDetailsScreen() {
                 const clubApi = ttApi as ClubApiWithOptionalEndpoints;
 
                 try {
-                    const playersResult = await loadClubPlayers(clubApi, organization, clubNumber);
+                    const playersResult = await loadClubPlayers(
+                        clubApi,
+                        organization,
+                        clubNumber,
+                        clubNameForPlayers,
+                    );
                     setPlayers(playersResult);
                 } catch (playersLoadError) {
                     setPlayers([]);
@@ -187,7 +202,7 @@ export default function ClubDetailsScreen() {
         }
 
         load().catch(() => undefined);
-    }, [organization, clubNumber]);
+    }, [organization, clubNumber, clubNameForPlayers]);
 
     useEffect(() => {
         async function loadScheduleForFilter() {
@@ -317,7 +332,7 @@ export default function ClubDetailsScreen() {
                             <View>
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Spieler</Text>
                                 <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                    Alle gefundenen Spieler dieses Vereins
+                                    andro-Rangliste dieses Vereins
                                 </Text>
                             </View>
 
@@ -332,7 +347,7 @@ export default function ClubDetailsScreen() {
                             <EmptyState
                                 icon="person-outline"
                                 title="Keine Spieler gefunden"
-                                subtitle="Falls dein Backend noch keinen Vereins-Spieler-Endpunkt hat, bleibt dieser Tab leer."
+                                subtitle="Für diesen Verein wurden über die andro-Rangliste keine Spieler gefunden."
                             />
                         ) : null}
 
@@ -636,6 +651,11 @@ function PlayerCard({ player }: { player: ClubPlayer }) {
     const { colors } = useTheme();
     const canOpen = Boolean(player.nuid);
 
+    const metaText =
+        [player.teamName, player.leagueName, player.clubName, player.association]
+            .filter(Boolean)
+            .join(' • ') || 'Spieler';
+
     return (
         <Card
             pressable={canOpen}
@@ -672,7 +692,7 @@ function PlayerCard({ player }: { player: ClubPlayer }) {
                     </Text>
 
                     <Text style={[styles.playerMeta, { color: colors.mutedText }]} numberOfLines={2}>
-                        {[player.teamName, player.leagueName].filter(Boolean).join(' • ') || 'Spieler'}
+                        {metaText}
                     </Text>
                 </View>
 
@@ -680,9 +700,9 @@ function PlayerCard({ player }: { player: ClubPlayer }) {
             </View>
 
             <View style={styles.badgeRow}>
-                {player.ttr ? <Badge tone="secondary">TTR {player.ttr}</Badge> : null}
                 {player.rank ? <Badge tone="outline">Rang {player.rank}</Badge> : null}
                 {player.nuid ? <Badge tone="outline">{player.nuid}</Badge> : null}
+                {player.matchCount ? <Badge tone="outline">{player.matchCount} Spiele</Badge> : null}
             </View>
         </Card>
     );
@@ -789,12 +809,18 @@ async function loadClubPlayers(
     clubApi: ClubApiWithOptionalEndpoints,
     organization: string,
     clubNumber: string,
+    clubName?: string,
 ) {
     if (!clubApi.getClubPlayers) {
-        return [];
+        throw new Error('Der Vereins-Spieler-Endpunkt ist in ttApi.getClubPlayers noch nicht eingebunden.');
     }
 
-    const response = await clubApi.getClubPlayers(organization, clubNumber);
+    const response = await clubApi.getClubPlayers(
+        organization,
+        clubNumber,
+        emptyToUndefined(clubName),
+    );
+
     return normalizeClubPlayers(response);
 }
 
@@ -1150,7 +1176,7 @@ function extractTimeFromDateValue(value?: string) {
 }
 
 function normalizeClubPlayers(response: unknown) {
-    const array = findFirstArray(response);
+    const array = findClubPlayersArray(response);
 
     return array
         .map(normalizeClubPlayer)
@@ -1158,39 +1184,108 @@ function normalizeClubPlayers(response: unknown) {
         .sort(comparePlayers);
 }
 
+function findClubPlayersArray(value: unknown): unknown[] {
+    if (Array.isArray(value)) {
+        return value;
+    }
+
+    if (!value || typeof value !== 'object') {
+        return [];
+    }
+
+    const object = value as RichObject;
+    const outerData = object.data;
+
+    if (Array.isArray(outerData)) {
+        return outerData;
+    }
+
+    if (outerData && typeof outerData === 'object') {
+        const outerDataObject = outerData as RichObject;
+
+        if (Array.isArray(outerDataObject.data)) {
+            return outerDataObject.data;
+        }
+
+        if (Array.isArray(outerDataObject.players)) {
+            return outerDataObject.players;
+        }
+
+        if (Array.isArray(outerDataObject.results)) {
+            return outerDataObject.results;
+        }
+    }
+
+    if (Array.isArray(object.players)) {
+        return object.players;
+    }
+
+    if (Array.isArray(object.results)) {
+        return object.results;
+    }
+
+    return findFirstArray(value);
+}
+
 function normalizeClubPlayer(value: unknown, index: number): ClubPlayer | null {
     if (!value || typeof value !== 'object') return null;
 
     const raw = value as RichObject;
 
-    const firstName = pickString(raw, ['firstName', 'first_name', 'firstname', 'givenName']);
-    const lastName = pickString(raw, ['lastName', 'last_name', 'lastname', 'familyName']);
+    const firstName = pickString(raw, ['firstname', 'first_name', 'firstName', 'givenName']);
+    const lastName = pickString(raw, ['lastname', 'last_name', 'lastName', 'familyName']);
+
+    const generatedName = [firstName, lastName].filter(Boolean).join(' ').trim();
 
     const name =
         pickString(raw, [
+            'full_name',
+            'fullName',
+            'fullname',
             'name',
             'playerName',
             'player_name',
             'personName',
             'person_name',
-            'fullName',
-            'fullname',
             'displayName',
         ]) ??
-        [lastName, firstName].filter(Boolean).join(', ') ??
-        `Spieler ${index + 1}`;
+        (generatedName ||
+        `Spieler ${index + 1}`);
 
     if (!name.trim()) return null;
 
+    const nuid = pickString(raw, [
+        'nuid',
+        'nuId',
+        'nu_id',
+        'person_id',
+        'personId',
+        'internal_id',
+        'internalId',
+    ]);
+
     return {
-        id: pickString(raw, ['id', 'playerId', 'player_id', 'personId', 'person_id']),
-        nuid: pickString(raw, ['nuid', 'nuId', 'nu_id', 'personId', 'person_id']),
+        id:
+            pickString(raw, [
+                'id',
+                'ranking_id',
+                'rankingId',
+                'playerId',
+                'player_id',
+                'person_id',
+                'personId',
+            ]) ?? nuid,
+        nuid,
         name,
         teamName: pickString(raw, ['teamName', 'team_name', 'team']),
         leagueName: pickString(raw, ['leagueName', 'league_name', 'league']),
-        clubName: pickString(raw, ['clubName', 'club_name', 'club']),
-        ttr: pickString(raw, ['ttr', 'qttr', 'qTTR', 'rating']),
-        rank: pickString(raw, ['rank', 'position', 'teamRank', 'team_rank']),
+        clubName: pickString(raw, ['club_name', 'clubName', 'club']),
+        association: pickString(raw, ['association', 'fedNickname', 'organization', 'organization_short']),
+        country: pickString(raw, ['country']),
+        rank: pickString(raw, ['club_rank', 'clubRank', 'rank', 'position', 'teamRank', 'team_rank']),
+        globalRank: pickString(raw, ['global_rank', 'globalRank']),
+        nationalRank: pickString(raw, ['national_rank', 'nationalRank', 'germanRank']),
+        matchCount: pickString(raw, ['match_count', 'matchCount', 'few_games', 'fewGames']),
     };
 }
 
@@ -1429,7 +1524,7 @@ function getTeamKey(team: ClubTeam, index: number) {
 }
 
 function getPlayerKey(player: ClubPlayer, index: number) {
-    return [player.nuid, player.id, player.name, player.teamName, index].filter(Boolean).join('-');
+    return [player.nuid, player.id, player.rank, player.name, player.teamName, index].filter(Boolean).join('-');
 }
 
 function findFirstArray(value: unknown, depth = 0): unknown[] {

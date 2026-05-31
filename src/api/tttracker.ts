@@ -97,6 +97,28 @@ export const ttApi = {
     );
   },
 
+  getClubPlayers(
+      organization: string,
+      clubNumber: string,
+      clubName?: string,
+      androClubNr?: string
+  ) {
+    const query: Record<string, string> = {};
+
+    if (clubName?.trim()) {
+      query.clubName = clubName.trim();
+    }
+
+    if (androClubNr?.trim()) {
+      query.androClubNr = androClubNr.trim();
+    }
+
+    return apiGet<unknown>(
+        `/api/clubs/${segment(organization)}/${segment(clubNumber)}/players`,
+        Object.keys(query).length > 0 ? query : undefined
+    );
+  },
+
   getClubSchedule(
       organization: string,
       clubNumber: string,
