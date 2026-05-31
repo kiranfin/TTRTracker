@@ -22,6 +22,8 @@ type ClubTab = 'teams' | 'players' | 'schedule';
 type ClubPlayer = {
     id?: string;
     nuid?: string;
+    ttr?: string;
+    qttr?: string;
     name: string;
     teamName?: string;
     leagueName?: string;
@@ -29,6 +31,7 @@ type ClubPlayer = {
     association?: string;
     country?: string;
     rank?: string;
+    lastYearNoGame?: string;
     globalRank?: string;
     nationalRank?: string;
     matchCount?: string;
@@ -353,7 +356,7 @@ export default function ClubDetailsScreen() {
 
                         <View style={styles.stack}>
                             {players.map((player, index) => (
-                                <PlayerCard key={getPlayerKey(player, index)} player={player} />
+                                <PlayerCard key={getPlayerKey(player, index)} player={player} index={index} />
                             ))}
                         </View>
                     </View>
@@ -647,9 +650,12 @@ function TeamCard({ team }: { team: ClubTeam }) {
     );
 }
 
-function PlayerCard({ player }: { player: ClubPlayer }) {
+function PlayerCard({ player, index }: { player: ClubPlayer; index: number }) {
     const { colors } = useTheme();
     const canOpen = Boolean(player.nuid);
+    const rankLabel = player.rank ?? String(index + 1);
+    const noGameLastYear = hasLastYearNoGame(player.lastYearNoGame);
+    const accent = getPlayerCardAccent(colors, noGameLastYear);
 
     const metaText =
         [player.teamName, player.leagueName, player.clubName, player.association]
@@ -657,9 +663,8 @@ function PlayerCard({ player }: { player: ClubPlayer }) {
             .join(' • ') || 'Spieler';
 
     return (
-        <Card
-            pressable={canOpen}
-            style={styles.playerCard}
+        <Pressable
+            disabled={!canOpen}
             onPress={
                 canOpen
                     ? () =>
@@ -672,18 +677,31 @@ function PlayerCard({ player }: { player: ClubPlayer }) {
                         })
                     : undefined
             }
+            style={({ pressed }) => [
+                styles.playerCard,
+                {
+                    backgroundColor: accent.background,
+                    borderColor: accent.border,
+                },
+                pressed && canOpen ? styles.playerCardPressed : null,
+            ]}
         >
             <View style={styles.playerTopRow}>
                 <View
                     style={[
-                        styles.playerIcon,
+                        styles.playerRankBadge,
                         {
-                            backgroundColor: colors.primarySoft,
-                            borderColor: colors.primarySoftBorder,
+                            backgroundColor: accent.rankBackground,
+                            borderColor: accent.rankBorder,
                         },
                     ]}
                 >
-                    <Ionicons name="person-outline" size={19} color={colors.primary} />
+                    <Text
+                        style={[styles.playerRankText, { color: accent.rankText }]}
+                        numberOfLines={1}
+                    >
+                        {rankLabel}
+                    </Text>
                 </View>
 
                 <View style={styles.playerText}>
@@ -700,11 +718,11 @@ function PlayerCard({ player }: { player: ClubPlayer }) {
             </View>
 
             <View style={styles.badgeRow}>
-                {player.rank ? <Badge tone="outline">Rang {player.rank}</Badge> : null}
-                {player.nuid ? <Badge tone="outline">{player.nuid}</Badge> : null}
+                {player.ttr ? <Badge tone="outline">TTR {player.ttr}</Badge> : null}
+                {player.qttr ? <Badge tone="outline">QTTR {player.qttr}</Badge> : null}
                 {player.matchCount ? <Badge tone="outline">{player.matchCount} Spiele</Badge> : null}
             </View>
-        </Card>
+        </Pressable>
     );
 }
 
@@ -1277,16 +1295,100 @@ function normalizeClubPlayer(value: unknown, index: number): ClubPlayer | null {
             ]) ?? nuid,
         nuid,
         name,
+        ttr: pickString(raw, ['ttr']),
+        qttr: pickString(raw, ['qttr']),
         teamName: pickString(raw, ['teamName', 'team_name', 'team']),
         leagueName: pickString(raw, ['leagueName', 'league_name', 'league']),
         clubName: pickString(raw, ['club_name', 'clubName', 'club']),
         association: pickString(raw, ['association', 'fedNickname', 'organization', 'organization_short']),
         country: pickString(raw, ['country']),
         rank: pickString(raw, ['club_rank', 'clubRank', 'rank', 'position', 'teamRank', 'team_rank']),
+        lastYearNoGame: pickString(raw, ['last_year_no_games']),
         globalRank: pickString(raw, ['global_rank', 'globalRank']),
         nationalRank: pickString(raw, ['national_rank', 'nationalRank', 'germanRank']),
         matchCount: pickString(raw, ['match_count', 'matchCount', 'few_games', 'fewGames']),
     };
+}
+
+type ThemeColors = ReturnType<typeof useTheme>['colors'];
+
+function hasLastYearNoGame(value?: string) {
+    const normalized = String(value ?? '').trim().toLowerCase();
+
+    return normalized.length > 0 && normalized !== 'no';
+}
+
+function getPlayerCardAccent(colors: ThemeColors, noGameLastYear: boolean) {
+    const dark = isDarkTheme(colors);
+
+    if (noGameLastYear) {
+        return dark
+            ? {
+                background: 'rgba(239, 68, 68, 0.14)',
+                border: 'rgba(248, 113, 113, 0.58)',
+                rankBackground: 'rgba(239, 68, 68, 0.22)',
+                rankBorder: 'rgba(248, 113, 113, 0.78)',
+                rankText: '#FCA5A5',
+            }
+            : {
+                background: 'rgba(239, 68, 68, 0.11)',
+                border: 'rgba(220, 38, 38, 0.38)',
+                rankBackground: 'rgba(239, 68, 68, 0.17)',
+                rankBorder: 'rgba(220, 38, 38, 0.45)',
+                rankText: '#DC2626',
+            };
+    }
+
+    return dark
+        ? {
+            background: 'rgba(255, 255, 255, 0.035)',
+            border: 'rgba(255, 255, 255, 0.09)',
+            rankBackground: 'rgba(255, 255, 255, 0.06)',
+            rankBorder: 'rgba(255, 255, 255, 0.12)',
+            rankText: '#CBD5E1',
+        }
+        : {
+            background: colors.card,
+            border: colors.border,
+            rankBackground: colors.muted,
+            rankBorder: colors.border,
+            rankText: colors.mutedText,
+        };
+}
+
+function isDarkTheme(colors: ThemeColors) {
+    return getRelativeLuminance(colors.background) < 0.45;
+}
+
+function getRelativeLuminance(color: string) {
+    const hex = color.trim();
+
+    if (!hex.startsWith('#')) {
+        return 1;
+    }
+
+    const normalized =
+        hex.length === 4
+            ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+            : hex;
+
+    const red = parseInt(normalized.slice(1, 3), 16);
+    const green = parseInt(normalized.slice(3, 5), 16);
+    const blue = parseInt(normalized.slice(5, 7), 16);
+
+    if ([red, green, blue].some((value) => Number.isNaN(value))) {
+        return 1;
+    }
+
+    const [r, g, b] = [red, green, blue].map((value) => {
+        const channel = value / 255;
+
+        return channel <= 0.03928
+            ? channel / 12.92
+            : Math.pow((channel + 0.055) / 1.055, 2.4);
+    });
+
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 function filterMatchesByDate(matches: ClubScheduleMatch[], dateStart?: string, dateEnd?: string) {
@@ -1832,21 +1934,32 @@ const styles = StyleSheet.create({
         lineHeight: 18,
     },
     playerCard: {
+        borderWidth: 1,
+        borderRadius: 24,
         padding: 14,
         gap: 12,
+    },
+    playerCardPressed: {
+        opacity: 0.78,
+        transform: [{ scale: 0.992 }],
     },
     playerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    playerIcon: {
-        width: 42,
-        height: 42,
-        borderRadius: 15,
+    playerRankBadge: {
+        width: 38,
+        height: 38,
+        borderRadius: 999,
         borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    playerRankText: {
+        fontSize: 14,
+        lineHeight: 18,
+        fontWeight: '900',
     },
     playerText: {
         flex: 1,
