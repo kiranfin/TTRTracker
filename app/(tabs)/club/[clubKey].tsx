@@ -16,6 +16,11 @@ import {
     normalizeSchedule,
     normalizeTeams,
 } from '../../../src/utils/normalizers';
+import {
+    getMeClub,
+    setMeClub,
+} from '../../../src/storage/meClub';
+import type { MeClub } from '../../../src/storage/meClub';
 
 type ClubTab = 'teams' | 'players' | 'schedule';
 
@@ -134,10 +139,19 @@ export default function ClubDetailsScreen() {
     const [appliedDateStart, setAppliedDateStart] = useState(initialDateRange.dateStart);
     const [appliedDateEnd, setAppliedDateEnd] = useState(initialDateRange.dateEnd);
 
+    const [savedMeClub, setSavedMeClub] = useState<MeClub | null>(null);
+    const [meClubLoading, setMeClubLoading] = useState(false);
+    const [meClubMessage, setMeClubMessage] = useState<string | null>(null);
+
     const title = params.title ?? 'Verein';
     const organization = params.organization;
     const clubNumber = params.clubNumber;
     const clubNameForPlayers = emptyToUndefined(params.clubName) ?? emptyToUndefined(params.title);
+
+    const isMyClub =
+        Boolean(organization && clubNumber && savedMeClub) &&
+        savedMeClub?.organization === organization &&
+        savedMeClub?.clubNumber === clubNumber;
 
     const scheduleSeason = useMemo(
         () => getInitialSeason(params.season ?? teams[0]?.season),
@@ -244,6 +258,66 @@ export default function ClubDetailsScreen() {
         loadScheduleForFilter().catch(() => undefined);
     }, [organization, clubNumber, teams, teamsLoaded, error, scheduleSeason, appliedDateStart, appliedDateEnd]);
 
+    useEffect(() => {
+        let active = true;
+
+        async function loadSavedMeClub() {
+            try {
+                const stored = await getMeClub();
+
+                if (!active) return;
+
+                setSavedMeClub(stored);
+            } catch {
+                if (!active) return;
+
+                setSavedMeClub(null);
+            }
+        }
+
+        loadSavedMeClub().catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [organization, clubNumber]);
+
+    async function handleMarkAsMyClub() {
+        if (!organization || !clubNumber) {
+            setMeClubMessage('Für diesen Verein fehlen Verband oder Vereinsnummer.');
+            return;
+        }
+
+        if (isMyClub) {
+            setMeClubMessage('Dieser Verein ist bereits als „Mein Verein“ gespeichert.');
+            return;
+        }
+
+        setMeClubLoading(true);
+        setMeClubMessage(null);
+
+        try {
+            const saved = await setMeClub({
+                organization,
+                clubNumber,
+                title,
+                clubName: clubNameForPlayers ?? title,
+                state: params.state,
+                season: scheduleSeason,
+                clubSlug: params.clubSlug ?? 'x',
+            });
+
+            setSavedMeClub(saved);
+            setMeClubMessage(`${saved.title ?? saved.clubName ?? 'Verein'} ist jetzt als „Mein Verein“ gespeichert.`);
+        } catch (error) {
+            setMeClubMessage(
+                error instanceof Error ? error.message : 'Verein konnte nicht gespeichert werden',
+            );
+        } finally {
+            setMeClubLoading(false);
+        }
+    }
+
     const scheduleGroups = useMemo(
         () => groupScheduleByDate(scheduleMatches),
         [scheduleMatches],
@@ -283,7 +357,29 @@ export default function ClubDetailsScreen() {
                             {[params.state, organization].filter(Boolean).join(' • ') || 'Verein'}
                         </Text>
                     </View>
+
+                    <MarkAsMyClubButton
+                        active={isMyClub}
+                        loading={meClubLoading}
+                        onPress={handleMarkAsMyClub}
+                    />
                 </View>
+
+                {meClubMessage ? (
+                    <Text
+                        style={[
+                            styles.meClubMessage,
+                            {
+                                color:
+                                    meClubMessage.includes('gespeichert') || meClubMessage.includes('bereits')
+                                        ? '#16a34a'
+                                        : colors.destructive,
+                            },
+                        ]}
+                    >
+                        {meClubMessage}
+                    </Text>
+                ) : null}
 
                 <Card style={styles.infoCard}>
                     <InfoRow label="Vereinsnummer" value={clubNumber || 'Nicht verfügbar'} />
@@ -570,6 +666,50 @@ function BackButton() {
             ]}
         >
             <Ionicons name="arrow-back" size={23} color={colors.text} />
+        </Pressable>
+    );
+}
+
+function MarkAsMyClubButton({
+                                active,
+                                loading,
+                                onPress,
+                            }: {
+    active: boolean;
+    loading: boolean;
+    onPress: () => void;
+}) {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={loading}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={active ? 'Als mein Verein gespeichert' : 'Als mein Verein markieren'}
+            style={({ pressed }) => [
+                styles.markAsClubButton,
+                noWebOutline,
+                {
+                    backgroundColor:
+                        active || pressed ? colors.primarySoft : 'transparent',
+                    borderColor:
+                        active || pressed ? colors.primarySoftBorder : colors.border,
+                    opacity: loading ? 0.65 : 1,
+                },
+            ]}
+        >
+            {loading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+                <Ionicons
+                    name={active ? 'home' : 'home-outline'}
+                    size={21}
+                    color={active ? colors.primary : colors.text}
+                />
+            )}
         </Pressable>
     );
 }
@@ -2077,5 +2217,19 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         fontSize: 13,
         lineHeight: 18,
+    },
+    markAsClubButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        borderWidth: StyleSheet.hairlineWidth,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    meClubMessage: {
+        marginTop: -8,
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '700',
     },
 });

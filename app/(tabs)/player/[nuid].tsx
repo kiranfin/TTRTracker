@@ -25,6 +25,11 @@ import type {
     NormalizedTtrHistoryMatch,
 } from '../../../src/types/tttracker';
 import {
+    getMePlayerNuid,
+    normalizeMePlayerNuid,
+    setMePlayerNuid as saveMePlayerNuid,
+} from '../../../src/storage/mePlayer';
+import {
     formatDate,
     normalizePlayerTtrHistory,
 } from '../../../src/utils/normalizers';
@@ -300,7 +305,15 @@ export default function PlayerDetailsScreen() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [storedMePlayerNuid, setStoredMePlayerNuid] = useState<string | null>(null);
+    const [mePlayerLoading, setMePlayerLoading] = useState(false);
+    const [mePlayerMessage, setMePlayerMessage] = useState<string | null>(null);
+
     const nuid = params.nuid;
+    const normalizedCurrentNuid = normalizeMePlayerNuid(nuid);
+    const isMeProfile =
+        normalizedCurrentNuid.length > 0 &&
+        normalizeMePlayerNuid(storedMePlayerNuid) === normalizedCurrentNuid;
     const title = params.title ?? 'Spieler';
 
     useEffect(() => {
@@ -338,7 +351,56 @@ export default function PlayerDetailsScreen() {
         setExpandedEventId(null);
     }, [selectedLeague, historySearchQuery]);
 
+    useEffect(() => {
+        let active = true;
+
+        async function loadMePlayer() {
+            try {
+                const stored = await getMePlayerNuid();
+
+                if (!active) return;
+
+                setStoredMePlayerNuid(stored);
+            } catch {
+                if (!active) return;
+
+                setStoredMePlayerNuid(null);
+            }
+        }
+
+        loadMePlayer().catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [nuid]);
+
     const displayName = history?.personName ?? title;
+
+    async function handleMarkAsMe() {
+        if (!nuid) return;
+
+        if (isMeProfile) {
+            setMePlayerMessage('Dieses Profil ist bereits als „Ich“ gespeichert.');
+            return;
+        }
+
+        setMePlayerLoading(true);
+        setMePlayerMessage(null);
+
+        try {
+            const saved = await saveMePlayerNuid(normalizedCurrentNuid);
+            setStoredMePlayerNuid(saved);
+            setMePlayerMessage(`${displayName} ist jetzt als „Ich“ gespeichert.`);
+        } catch (error) {
+            setMePlayerMessage(
+                error instanceof Error ? error.message : 'Profil konnte nicht gespeichert werden',
+            );
+        } finally {
+            setMePlayerLoading(false);
+        }
+    }
+
     const clubName = history?.clubName ?? params.clubName;
 
     const currentTtr =
@@ -530,7 +592,29 @@ export default function PlayerDetailsScreen() {
                             {clubName ?? 'Verein unbekannt'}
                         </Text>
                     </View>
+
+                    <MarkAsMeButton
+                        active={isMeProfile}
+                        loading={mePlayerLoading}
+                        onPress={handleMarkAsMe}
+                    />
                 </View>
+
+                {mePlayerMessage ? (
+                    <Text
+                        style={[
+                            styles.mePlayerMessage,
+                            {
+                                color:
+                                    mePlayerMessage.includes('gespeichert') || mePlayerMessage.includes('bereits')
+                                        ? '#16a34a'
+                                        : colors.destructive,
+                            },
+                        ]}
+                    >
+                        {mePlayerMessage}
+                    </Text>
+                ) : null}
 
                 {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
@@ -837,6 +921,50 @@ function BackButton() {
             ]}
         >
             <Ionicons name="arrow-back" size={23} color={colors.text} />
+        </Pressable>
+    );
+}
+
+function MarkAsMeButton({
+                            active,
+                            loading,
+                            onPress,
+                        }: {
+    active: boolean;
+    loading: boolean;
+    onPress: () => void;
+}) {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={loading}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={active ? 'Als eigenes Profil gespeichert' : 'Als eigenes Profil markieren'}
+            style={({ pressed }) => [
+                styles.markAsMeButton,
+                noWebOutline,
+                {
+                    backgroundColor:
+                        active || pressed ? colors.primarySoft : 'transparent',
+                    borderColor:
+                        active || pressed ? colors.primarySoftBorder : colors.border,
+                    opacity: loading ? 0.65 : 1,
+                },
+            ]}
+        >
+            {loading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+                <Ionicons
+                    name={active ? 'person-circle' : 'person-add-outline'}
+                    size={22}
+                    color={active ? colors.primary : colors.text}
+                />
+            )}
         </Pressable>
     );
 }
@@ -1679,5 +1807,19 @@ const styles = StyleSheet.create({
         fontSize: 17,
         lineHeight: 22,
         fontWeight: '900',
+    },
+    markAsMeButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        borderWidth: StyleSheet.hairlineWidth,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    mePlayerMessage: {
+        marginTop: -6,
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '700',
     },
 });

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -17,6 +17,17 @@ import {
   getMyttStatus,
   revokeMyttGrant,
 } from '../../src/api/mytt';
+import {
+  clearMePlayerNuid,
+  getMePlayerNuid,
+  setMePlayerNuid,
+} from '../../src/storage/mePlayer';
+import {
+  clearMeClub,
+  getMeClub,
+  setMeClub as saveMeClub,
+} from '../../src/storage/meClub';
+import type { MeClub } from '../../src/storage/meClub';
 import { ttApi } from '../../src/api/tttracker';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { Button } from '../../src/components/Button';
@@ -137,6 +148,30 @@ function normalizeGrants(response: unknown): MyttGrant[] {
   return [];
 }
 
+function formatClubId(club?: MeClub | null) {
+  if (!club?.organization || !club.clubNumber) return '';
+  return `${club.organization}:${club.clubNumber}`;
+}
+
+function getClubDisplayName(club?: MeClub | null) {
+  return club?.title ?? club?.clubName ?? '';
+}
+
+function parseClubIdInput(value: string) {
+  const raw = value.trim();
+
+  const match = raw.match(/^([A-Za-zÄÖÜäöü]{2,10})\s*[:/_\-\s]\s*(\d{4,})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    organization: match[1].toUpperCase(),
+    clubNumber: match[2],
+  };
+}
+
 export default function SettingsScreen() {
   const { colors, mode, accent, setMode, setAccent } = useTheme();
   const { user, isAuthenticated, login, register, logout } = useAuth();
@@ -160,6 +195,52 @@ export default function SettingsScreen() {
   const [grantMessage, setGrantMessage] = useState<string | null>(null);
   const [grantLoading, setGrantLoading] = useState<'load' | 'create' | null>(null);
   const [deletingGrantId, setDeletingGrantId] = useState<string | null>(null);
+
+  const [meNuidInput, setMeNuidInput] = useState('');
+  const [savedMeNuid, setSavedMeNuid] = useState<string | null>(null);
+  const [meNuidMessage, setMeNuidMessage] = useState<string | null>(null);
+  const [meNuidLoading, setMeNuidLoading] = useState<'save' | 'clear' | null>(null);
+
+  const [clubIdInput, setClubIdInput] = useState('');
+  const [clubNameInput, setClubNameInput] = useState('');
+  const [savedMeClub, setSavedMeClub] = useState<MeClub | null>(null);
+  const [meClubMessage, setMeClubMessage] = useState<string | null>(null);
+  const [meClubLoading, setMeClubLoading] = useState<'save' | 'clear' | null>(null);
+
+  useFocusEffect(
+      useCallback(() => {
+        let active = true;
+
+        async function loadLocalProfileSettings() {
+          try {
+            const [storedNuid, storedClub] = await Promise.all([
+              getMePlayerNuid(),
+              getMeClub(),
+            ]);
+
+            if (!active) return;
+
+            setSavedMeNuid(storedNuid);
+            setMeNuidInput(storedNuid ?? '');
+
+            setSavedMeClub(storedClub);
+            setClubIdInput(formatClubId(storedClub));
+            setClubNameInput(getClubDisplayName(storedClub));
+          } catch {
+            if (!active) return;
+
+            setSavedMeNuid(null);
+            setSavedMeClub(null);
+          }
+        }
+
+        loadLocalProfileSettings().catch(() => undefined);
+
+        return () => {
+          active = false;
+        };
+      }, []),
+  );
 
   async function checkHealth() {
     setChecking(true);
@@ -296,6 +377,115 @@ export default function SettingsScreen() {
     } finally {
       setDeletingGrantId(null);
     }
+  }
+
+  async function handleSaveMeNuid() {
+    setMeNuidLoading('save');
+    setMeNuidMessage(null);
+
+    try {
+      const saved = await setMePlayerNuid(meNuidInput);
+      setSavedMeNuid(saved);
+      setMeNuidInput(saved);
+      setMeNuidMessage('Dein Profil wurde lokal gespeichert.');
+    } catch (error) {
+      setMeNuidMessage(error instanceof Error ? error.message : 'NUID konnte nicht gespeichert werden');
+    } finally {
+      setMeNuidLoading(null);
+    }
+  }
+
+  async function handleClearMeNuid() {
+    setMeNuidLoading('clear');
+    setMeNuidMessage(null);
+
+    try {
+      await clearMePlayerNuid();
+      setSavedMeNuid(null);
+      setMeNuidInput('');
+      setMeNuidMessage('Dein lokales Profil wurde entfernt.');
+    } catch (error) {
+      setMeNuidMessage(error instanceof Error ? error.message : 'NUID konnte nicht entfernt werden');
+    } finally {
+      setMeNuidLoading(null);
+    }
+  }
+
+  async function handleSaveMeClub() {
+    setMeClubLoading('save');
+    setMeClubMessage(null);
+
+    try {
+      const parsed = parseClubIdInput(clubIdInput);
+
+      if (!parsed) {
+        throw new Error('Bitte nutze das Format Verband:Vereinsnummer, z. B. TTBW:2055064.');
+      }
+
+      const displayName = clubNameInput.trim();
+
+      const saved = await saveMeClub({
+        organization: parsed.organization,
+        clubNumber: parsed.clubNumber,
+        title: displayName || undefined,
+        clubName: displayName || undefined,
+      });
+
+      setSavedMeClub(saved);
+      setClubIdInput(formatClubId(saved));
+      setClubNameInput(getClubDisplayName(saved));
+      setMeClubMessage('Dein Verein wurde lokal gespeichert.');
+    } catch (error) {
+      setMeClubMessage(error instanceof Error ? error.message : 'Verein konnte nicht gespeichert werden');
+    } finally {
+      setMeClubLoading(null);
+    }
+  }
+
+  async function handleClearMeClub() {
+    setMeClubLoading('clear');
+    setMeClubMessage(null);
+
+    try {
+      await clearMeClub();
+      setSavedMeClub(null);
+      setClubIdInput('');
+      setClubNameInput('');
+      setMeClubMessage('Dein lokaler Verein wurde entfernt.');
+    } catch (error) {
+      setMeClubMessage(error instanceof Error ? error.message : 'Verein konnte nicht entfernt werden');
+    } finally {
+      setMeClubLoading(null);
+    }
+  }
+
+  function openSavedMeClub() {
+    if (!savedMeClub) return;
+
+    router.push({
+      pathname: '/(tabs)/club/[clubKey]',
+      params: {
+        clubKey: `${savedMeClub.organization}-${savedMeClub.clubNumber}`,
+        organization: savedMeClub.organization,
+        clubNumber: savedMeClub.clubNumber,
+        title: savedMeClub.title ?? savedMeClub.clubName ?? 'Mein Verein',
+        clubName: savedMeClub.clubName ?? savedMeClub.title ?? '',
+        state: savedMeClub.state ?? '',
+        season: savedMeClub.season ?? '',
+      },
+    });
+  }
+
+  function openSavedMeProfile() {
+    if (!savedMeNuid) return;
+
+    router.push({
+      pathname: '/(tabs)/player/[nuid]',
+      params: {
+        nuid: savedMeNuid,
+        title: 'Ich',
+      },
+    });
   }
 
   const canSubmitAuth = username.trim().length >= 2 && password.length >= 8;
@@ -494,6 +684,211 @@ export default function SettingsScreen() {
                   {authMessage}
                 </Text>
             ) : null}
+          </Card>
+
+          <Card style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Ionicons name="id-card-outline" size={21} color={colors.text} />
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Meine Daten</Text>
+            </View>
+
+            <Text style={[styles.backendText, { color: colors.mutedText }]}>
+              Speichere lokal dein Spielerprofil und deinen Verein für die Startseite.
+            </Text>
+
+            <View style={styles.profileSection}>
+              <View style={styles.profileSectionHeader}>
+                <View style={[styles.profileSectionIcon, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons name="person-outline" size={17} color={colors.primary} />
+                </View>
+
+                <View style={styles.profileSectionTitleBlock}>
+                  <Text style={[styles.profileSectionTitle, { color: colors.text }]}>Spieler</Text>
+                  <Text style={[styles.profileSectionSubtitle, { color: colors.mutedText }]}>
+                    NUID für TTR und Verlauf
+                  </Text>
+                </View>
+              </View>
+
+              <TextInput
+                  value={meNuidInput}
+                  onChangeText={setMeNuidInput}
+                  placeholder="Meine NUID"
+                  placeholderTextColor={colors.mutedText}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={[
+                    styles.input,
+                    {
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+              />
+
+              <View style={styles.twoGrid}>
+                <Button
+                    variant="primary"
+                    icon="save-outline"
+                    loading={meNuidLoading === 'save'}
+                    onPress={handleSaveMeNuid}
+                    style={styles.halfButton}
+                >
+                  Speichern
+                </Button>
+
+                <Button
+                    variant="outline"
+                    icon="trash-outline"
+                    loading={meNuidLoading === 'clear'}
+                    onPress={handleClearMeNuid}
+                    style={styles.halfButton}
+                >
+                  Entfernen
+                </Button>
+              </View>
+
+              {savedMeNuid ? (
+                  <View style={[styles.savedBox, { borderColor: colors.border }]}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#16a34a" />
+
+                    <View style={styles.savedBoxText}>
+                      <Text style={[styles.savedBoxTitle, { color: colors.text }]}>
+                        Spieler gespeichert
+                      </Text>
+                      <Text style={[styles.savedBoxMeta, { color: colors.mutedText }]} numberOfLines={1}>
+                        {savedMeNuid}
+                      </Text>
+                    </View>
+
+                    <Pressable onPress={openSavedMeProfile} hitSlop={8}>
+                      <Ionicons name="open-outline" size={19} color={colors.text} />
+                    </Pressable>
+                  </View>
+              ) : null}
+
+              {meNuidMessage ? (
+                  <Text
+                      style={[
+                        styles.backendText,
+                        {
+                          color:
+                              meNuidMessage.includes('gespeichert') || meNuidMessage.includes('entfernt')
+                                  ? '#16a34a'
+                                  : colors.destructive,
+                        },
+                      ]}
+                  >
+                    {meNuidMessage}
+                  </Text>
+              ) : null}
+            </View>
+
+            <View style={[styles.profileDivider, { backgroundColor: colors.border }]} />
+
+            <View style={styles.profileSection}>
+              <View style={styles.profileSectionHeader}>
+                <View style={[styles.profileSectionIcon, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons name="home-outline" size={17} color={colors.primary} />
+                </View>
+
+                <View style={styles.profileSectionTitleBlock}>
+                  <Text style={[styles.profileSectionTitle, { color: colors.text }]}>Verein</Text>
+                  <Text style={[styles.profileSectionSubtitle, { color: colors.mutedText }]}>
+                    Vereins-ID für letzte Begegnungen
+                  </Text>
+                </View>
+              </View>
+
+              <TextInput
+                  value={clubIdInput}
+                  onChangeText={setClubIdInput}
+                  placeholder="Vereins-ID, z. B. TTBW:2055064"
+                  placeholderTextColor={colors.mutedText}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  style={[
+                    styles.input,
+                    {
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+              />
+
+              <TextInput
+                  value={clubNameInput}
+                  onChangeText={setClubNameInput}
+                  placeholder="Vereinsname optional"
+                  placeholderTextColor={colors.mutedText}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  style={[
+                    styles.compactInput,
+                    {
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+              />
+
+              <View style={styles.twoGrid}>
+                <Button
+                    variant="primary"
+                    icon="save-outline"
+                    loading={meClubLoading === 'save'}
+                    onPress={handleSaveMeClub}
+                    style={styles.halfButton}
+                >
+                  Speichern
+                </Button>
+
+                <Button
+                    variant="outline"
+                    icon="trash-outline"
+                    loading={meClubLoading === 'clear'}
+                    onPress={handleClearMeClub}
+                    style={styles.halfButton}
+                >
+                  Entfernen
+                </Button>
+              </View>
+
+              {savedMeClub ? (
+                  <View style={[styles.savedBox, { borderColor: colors.border }]}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#16a34a" />
+
+                    <View style={styles.savedBoxText}>
+                      <Text style={[styles.savedBoxTitle, { color: colors.text }]}>
+                        Verein gespeichert
+                      </Text>
+                      <Text style={[styles.savedBoxMeta, { color: colors.mutedText }]} numberOfLines={1}>
+                        {getClubDisplayName(savedMeClub) || 'Mein Verein'} · {formatClubId(savedMeClub)}
+                      </Text>
+                    </View>
+
+                    <Pressable onPress={openSavedMeClub} hitSlop={8}>
+                      <Ionicons name="open-outline" size={19} color={colors.text} />
+                    </Pressable>
+                  </View>
+              ) : null}
+
+              {meClubMessage ? (
+                  <Text
+                      style={[
+                        styles.backendText,
+                        {
+                          color:
+                              meClubMessage.includes('gespeichert') || meClubMessage.includes('entfernt')
+                                  ? '#16a34a'
+                                  : colors.destructive,
+                        },
+                      ]}
+                  >
+                    {meClubMessage}
+                  </Text>
+              ) : null}
+            </View>
           </Card>
 
           {isAuthenticated ? (
@@ -887,5 +1282,71 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
+  },
+  profileSection: {
+    gap: 10,
+  },
+  profileSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  profileSectionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileSectionTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  profileSectionTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '900',
+  },
+  profileSectionSubtitle: {
+    marginTop: 1,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  profileDivider: {
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.9,
+  },
+  compactInput: {
+    minHeight: 42,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  savedBox: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  savedBoxText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  savedBoxTitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '900',
+  },
+  savedBoxMeta: {
+    marginTop: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
   },
 });
