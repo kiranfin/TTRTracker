@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   title: {
-    fontSize: 25,
+    fontSize: 24,
     lineHeight: 32,
     fontWeight: '900',
   },

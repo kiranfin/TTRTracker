@@ -17,10 +17,16 @@ import {
     normalizeTeams,
 } from '../../../src/utils/normalizers';
 import {
+    clearMeClub,
     getMeClub,
     setMeClub,
 } from '../../../src/storage/meClub';
 import type { MeClub } from '../../../src/storage/meClub';
+import {
+    addFavorite,
+    isFavorite,
+    removeFavorite,
+} from '../../../src/storage/favorites';
 
 type ClubTab = 'teams' | 'players' | 'schedule';
 
@@ -117,6 +123,8 @@ const MEETING_DATE_KEYS = [
     'startTime',
 ];
 
+const CLUB_FAVORITE_TYPE = 'club' as Parameters<typeof isFavorite>[0];
+
 export default function ClubDetailsScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
     const { colors } = useTheme();
@@ -141,12 +149,24 @@ export default function ClubDetailsScreen() {
 
     const [savedMeClub, setSavedMeClub] = useState<MeClub | null>(null);
     const [meClubLoading, setMeClubLoading] = useState(false);
-    const [meClubMessage, setMeClubMessage] = useState<string | null>(null);
 
-    const title = params.title ?? 'Verein';
-    const organization = params.organization;
-    const clubNumber = params.clubNumber;
+    const [favoriteClubLoading, setFavoriteClubLoading] = useState(false);
+    const [isFavoriteClub, setIsFavoriteClub] = useState(false);
+
+    const parsedClubKey = useMemo(
+        () => parseClubKey(params.clubKey),
+        [params.clubKey],
+    );
+
+    const title = emptyToUndefined(params.title) ?? emptyToUndefined(params.clubName) ?? 'Verein';
+    const organization = emptyToUndefined(params.organization) ?? parsedClubKey.organization;
+    const clubNumber = emptyToUndefined(params.clubNumber) ?? parsedClubKey.clubNumber;
     const clubNameForPlayers = emptyToUndefined(params.clubName) ?? emptyToUndefined(params.title);
+    const clubFavoriteIds = useMemo(
+        () => getClubFavoriteIds(organization, clubNumber, params.clubKey),
+        [organization, clubNumber, params.clubKey],
+    );
+    const clubFavoriteId = clubFavoriteIds[0] ?? '';
 
     const isMyClub =
         Boolean(organization && clubNumber && savedMeClub) &&
@@ -282,21 +302,49 @@ export default function ClubDetailsScreen() {
         };
     }, [organization, clubNumber]);
 
-    async function handleMarkAsMyClub() {
-        if (!organization || !clubNumber) {
-            setMeClubMessage('Für diesen Verein fehlen Verband oder Vereinsnummer.');
-            return;
+    useEffect(() => {
+        let active = true;
+
+        async function loadFavoriteClubState() {
+            if (!clubFavoriteId) {
+                setIsFavoriteClub(false);
+                return;
+            }
+
+            try {
+                const favoriteChecks = await Promise.all(
+                    clubFavoriteIds.map((candidateId) => isFavorite(CLUB_FAVORITE_TYPE, candidateId)),
+                );
+
+                if (!active) return;
+
+                setIsFavoriteClub(favoriteChecks.some(Boolean));
+            } catch {
+                if (!active) return;
+
+                setIsFavoriteClub(false);
+            }
         }
 
-        if (isMyClub) {
-            setMeClubMessage('Dieser Verein ist bereits als „Mein Verein“ gespeichert.');
-            return;
-        }
+        loadFavoriteClubState().catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [clubFavoriteId, clubFavoriteIds]);
+
+    async function handleMarkAsMyClub() {
+        if (!organization || !clubNumber) return;
 
         setMeClubLoading(true);
-        setMeClubMessage(null);
 
         try {
+            if (isMyClub) {
+                await clearMeClub();
+                setSavedMeClub(null);
+                return;
+            }
+
             const saved = await setMeClub({
                 organization,
                 clubNumber,
@@ -308,15 +356,63 @@ export default function ClubDetailsScreen() {
             });
 
             setSavedMeClub(saved);
-            setMeClubMessage(`${saved.title ?? saved.clubName ?? 'Verein'} ist jetzt als „Mein Verein“ gespeichert.`);
-        } catch (error) {
-            setMeClubMessage(
-                error instanceof Error ? error.message : 'Verein konnte nicht gespeichert werden',
-            );
+        } catch {
+            // Keine sichtbare Statusmeldung: Button bleibt einfach im bisherigen Zustand.
         } finally {
             setMeClubLoading(false);
         }
     }
+
+    async function handleToggleFavoriteClub() {
+        if (!clubFavoriteId || !organization || !clubNumber) return;
+
+        setFavoriteClubLoading(true);
+
+        try {
+            if (isFavoriteClub) {
+                await Promise.all(
+                    clubFavoriteIds.map((candidateId) => removeFavorite(CLUB_FAVORITE_TYPE, candidateId)),
+                );
+                setIsFavoriteClub(false);
+                return;
+            }
+
+            const subtitle = [params.state, organization].filter(Boolean).join(' • ') || 'Verein';
+
+            await addFavorite({
+                type: CLUB_FAVORITE_TYPE,
+                id: clubFavoriteId,
+                title,
+                name: title,
+                label: title,
+                subtitle,
+                description: subtitle,
+                organization,
+                clubNumber,
+                clubName: clubNameForPlayers ?? title,
+                state: params.state,
+                season: scheduleSeason,
+                clubSlug: params.clubSlug ?? 'x',
+                meta: clubNumber ? `Vereinsnr. ${clubNumber}` : undefined,
+                params: {
+                    organization,
+                    organizationName: params.organizationName ?? '',
+                    clubNumber,
+                    clubName: clubNameForPlayers ?? title,
+                    state: params.state ?? '',
+                    season: scheduleSeason,
+                    clubSlug: params.clubSlug ?? 'x',
+                },
+            } as Parameters<typeof addFavorite>[0]);
+
+            setIsFavoriteClub(true);
+        } catch {
+            // Keine sichtbare Statusmeldung: Button bleibt einfach im bisherigen Zustand.
+        } finally {
+            setFavoriteClubLoading(false);
+        }
+    }
+
 
     const scheduleGroups = useMemo(
         () => groupScheduleByDate(scheduleMatches),
@@ -348,38 +444,30 @@ export default function ClubDetailsScreen() {
                 <View style={styles.headerRow}>
                     <BackButton />
 
-                    <View style={styles.headerText}>
-                        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-                            {title}
-                        </Text>
+                    <View style={styles.headerActions}>
+                        <MarkAsMyClubButton
+                            active={isMyClub}
+                            loading={meClubLoading}
+                            onPress={handleMarkAsMyClub}
+                        />
 
-                        <Text style={[styles.subtitle, { color: colors.mutedText }]} numberOfLines={1}>
-                            {[params.state, organization].filter(Boolean).join(' • ') || 'Verein'}
-                        </Text>
+                        <FavoriteClubButton
+                            active={isFavoriteClub}
+                            loading={favoriteClubLoading}
+                            onPress={handleToggleFavoriteClub}
+                        />
                     </View>
-
-                    <MarkAsMyClubButton
-                        active={isMyClub}
-                        loading={meClubLoading}
-                        onPress={handleMarkAsMyClub}
-                    />
                 </View>
 
-                {meClubMessage ? (
-                    <Text
-                        style={[
-                            styles.meClubMessage,
-                            {
-                                color:
-                                    meClubMessage.includes('gespeichert') || meClubMessage.includes('bereits')
-                                        ? '#16a34a'
-                                        : colors.destructive,
-                            },
-                        ]}
-                    >
-                        {meClubMessage}
+                <View style={styles.profileTitleBlock}>
+                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+                        {title}
                     </Text>
-                ) : null}
+
+                    <Text style={[styles.subtitle, { color: colors.mutedText }]} numberOfLines={1}>
+                        {[params.state, organization].filter(Boolean).join(' • ') || 'Verein'}
+                    </Text>
+                </View>
 
                 <Card style={styles.infoCard}>
                     <InfoRow label="Vereinsnummer" value={clubNumber || 'Nicht verfügbar'} />
@@ -688,9 +776,9 @@ function MarkAsMyClubButton({
             disabled={loading}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={active ? 'Als mein Verein gespeichert' : 'Als mein Verein markieren'}
+            accessibilityLabel={active ? 'Als mein Verein entfernen' : 'Als mein Verein markieren'}
             style={({ pressed }) => [
-                styles.markAsClubButton,
+                styles.headerActionButton,
                 noWebOutline,
                 {
                     backgroundColor:
@@ -707,6 +795,48 @@ function MarkAsMyClubButton({
                 <Ionicons
                     name={active ? 'home' : 'home-outline'}
                     size={21}
+                    color={active ? colors.primary : colors.text}
+                />
+            )}
+        </Pressable>
+    );
+}
+
+function FavoriteClubButton({
+                                active,
+                                loading,
+                                onPress,
+                            }: {
+    active: boolean;
+    loading: boolean;
+    onPress: () => void;
+}) {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={loading}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={active ? 'Verein aus Favoriten entfernen' : 'Verein zu Favoriten hinzufügen'}
+            style={({ pressed }) => [
+                styles.headerActionButton,
+                noWebOutline,
+                {
+                    backgroundColor: active || pressed ? colors.primarySoft : 'transparent',
+                    borderColor: active || pressed ? colors.primarySoftBorder : colors.border,
+                    opacity: loading ? 0.65 : 1,
+                },
+            ]}
+        >
+            {loading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+                <Ionicons
+                    name={active ? 'star' : 'star-outline'}
+                    size={22}
                     color={active ? colors.primary : colors.text}
                 />
             )}
@@ -1408,7 +1538,7 @@ function normalizeClubPlayer(value: unknown, index: number): ClubPlayer | null {
             'displayName',
         ]) ??
         (generatedName ||
-        `Spieler ${index + 1}`);
+            `Spieler ${index + 1}`);
 
     if (!name.trim()) return null;
 
@@ -1648,6 +1778,40 @@ function parseDateInput(value?: string) {
     return date;
 }
 
+function getClubFavoriteIds(organization?: string, clubNumber?: string, routeClubKey?: string) {
+    const ids = new Set<string>();
+    const canonicalId = getClubFavoriteId(organization, clubNumber);
+    const routeId = emptyToUndefined(routeClubKey);
+
+    if (canonicalId) ids.add(canonicalId);
+    if (clubNumber) ids.add(clubNumber);
+    if (routeId && routeId.includes(':')) ids.add(routeId);
+
+    return [...ids];
+}
+
+function getClubFavoriteId(organization?: string, clubNumber?: string) {
+    if (!organization || !clubNumber) return '';
+    return [organization, clubNumber].filter(Boolean).join(':').trim();
+}
+
+function parseClubKey(value?: string) {
+    const raw = emptyToUndefined(value);
+    if (!raw) return {} as { organization?: string; clubNumber?: string };
+
+    const parts = raw.split(':');
+    if (parts.length >= 2) {
+        return {
+            organization: emptyToUndefined(parts[0]),
+            clubNumber: emptyToUndefined(parts[1]),
+        };
+    }
+
+    return {
+        clubNumber: raw,
+    };
+}
+
 function emptyToUndefined(value?: string) {
     const raw = String(value ?? '').trim();
     return raw.length > 0 ? raw : undefined;
@@ -1882,6 +2046,7 @@ function getTimeValue(value?: string) {
 const styles = StyleSheet.create({
     content: {
         padding: 16,
+        paddingTop: 20,
         paddingBottom: 112,
         gap: 16,
     },
@@ -1889,6 +2054,7 @@ const styles = StyleSheet.create({
         minHeight: 42,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         gap: 10,
     },
     backButton: {
@@ -1898,6 +2064,15 @@ const styles = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    profileTitleBlock: {
+        marginTop: -6,
+        gap: 2,
     },
     headerText: {
         flex: 1,
@@ -2218,18 +2393,12 @@ const styles = StyleSheet.create({
         fontSize: 13,
         lineHeight: 18,
     },
-    markAsClubButton: {
+    headerActionButton: {
         width: 38,
         height: 38,
         borderRadius: 19,
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    meClubMessage: {
-        marginTop: -8,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
     },
 });

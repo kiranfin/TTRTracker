@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -26,15 +26,22 @@ import type {
 } from '../../../src/types/tttracker';
 import {
     getMePlayerNuid,
+    clearMePlayerNuid,
     normalizeMePlayerNuid,
     setMePlayerNuid as saveMePlayerNuid,
 } from '../../../src/storage/mePlayer';
+import {
+    addFavorite,
+    isFavorite,
+    removeFavorite,
+} from '../../../src/storage/favorites';
 import {
     formatDate,
     normalizePlayerTtrHistory,
 } from '../../../src/utils/normalizers';
 
 const PAGE_SIZE = 10;
+const PLAYER_FAVORITE_TYPE = 'player' as Parameters<typeof isFavorite>[0];
 
 type ChartRangeId = '6m' | '12m' | '24m' | 'all';
 
@@ -307,7 +314,9 @@ export default function PlayerDetailsScreen() {
 
     const [storedMePlayerNuid, setStoredMePlayerNuid] = useState<string | null>(null);
     const [mePlayerLoading, setMePlayerLoading] = useState(false);
-    const [mePlayerMessage, setMePlayerMessage] = useState<string | null>(null);
+
+    const [favoritePlayerLoading, setFavoritePlayerLoading] = useState(false);
+    const [isFavoritePlayer, setIsFavoritePlayer] = useState(false);
 
     const nuid = params.nuid;
     const normalizedCurrentNuid = normalizeMePlayerNuid(nuid);
@@ -375,27 +384,53 @@ export default function PlayerDetailsScreen() {
         };
     }, [nuid]);
 
+    useEffect(() => {
+        let active = true;
+
+        async function loadFavoriteState() {
+            if (!normalizedCurrentNuid) {
+                setIsFavoritePlayer(false);
+                return;
+            }
+
+            try {
+                const favorite = await isFavorite(PLAYER_FAVORITE_TYPE, normalizedCurrentNuid);
+
+                if (!active) return;
+
+                setIsFavoritePlayer(favorite);
+            } catch {
+                if (!active) return;
+
+                setIsFavoritePlayer(false);
+            }
+        }
+
+        loadFavoriteState().catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [normalizedCurrentNuid]);
+
     const displayName = history?.personName ?? title;
 
     async function handleMarkAsMe() {
         if (!nuid) return;
 
-        if (isMeProfile) {
-            setMePlayerMessage('Dieses Profil ist bereits als „Ich“ gespeichert.');
-            return;
-        }
-
         setMePlayerLoading(true);
-        setMePlayerMessage(null);
 
         try {
+            if (isMeProfile) {
+                await clearMePlayerNuid();
+                setStoredMePlayerNuid(null);
+                return;
+            }
+
             const saved = await saveMePlayerNuid(normalizedCurrentNuid);
             setStoredMePlayerNuid(saved);
-            setMePlayerMessage(`${displayName} ist jetzt als „Ich“ gespeichert.`);
-        } catch (error) {
-            setMePlayerMessage(
-                error instanceof Error ? error.message : 'Profil konnte nicht gespeichert werden',
-            );
+        } catch {
+            // Keine sichtbare Statusmeldung: Button bleibt einfach im bisherigen Zustand.
         } finally {
             setMePlayerLoading(false);
         }
@@ -415,6 +450,45 @@ export default function PlayerDetailsScreen() {
     const maxTtr =
         parseOptionalNumber(history?.maxTtr) ??
         parseOptionalNumber(apiHistoryData?.maxTtr);
+
+    async function handleToggleFavoritePlayer() {
+        if (!normalizedCurrentNuid) return;
+
+        setFavoritePlayerLoading(true);
+
+        try {
+            if (isFavoritePlayer) {
+                await removeFavorite(PLAYER_FAVORITE_TYPE, normalizedCurrentNuid);
+                setIsFavoritePlayer(false);
+                return;
+            }
+
+            await addFavorite({
+                type: PLAYER_FAVORITE_TYPE,
+                id: normalizedCurrentNuid,
+                title: displayName,
+                name: displayName,
+                label: displayName,
+                subtitle: clubName ?? 'Verein unbekannt',
+                description: clubName,
+                clubName,
+                nuid: normalizedCurrentNuid,
+                ttr: currentTtr,
+                qttr: qTtr,
+                meta: currentTtr !== undefined ? `TTR ${currentTtr}` : undefined,
+            } as Parameters<typeof addFavorite>[0]);
+
+            setIsFavoritePlayer(true);
+        } catch {
+            // Keine sichtbare Statusmeldung: Button bleibt einfach im bisherigen Zustand.
+        } finally {
+            setFavoritePlayerLoading(false);
+        }
+    }
+
+    function handleOpenHeadToHead() {
+        // Kommt später: Navigation zur Head-to-Head-Vergleichsseite.
+    }
 
     const allEventsNewestFirst = useMemo(() => {
         return [...(history?.events ?? [])].reverse();
@@ -584,37 +658,31 @@ export default function PlayerDetailsScreen() {
                 <View style={styles.headerRow}>
                     <BackButton />
 
-                    <View style={styles.headerText}>
-                        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-                            {displayName}
-                        </Text>
-                        <Text style={[styles.subtitle, { color: colors.mutedText }]} numberOfLines={1}>
-                            {clubName ?? 'Verein unbekannt'}
-                        </Text>
-                    </View>
+                    <View style={styles.headerActions}>
+                        <MarkAsMeButton
+                            active={isMeProfile}
+                            loading={mePlayerLoading}
+                            onPress={handleMarkAsMe}
+                        />
 
-                    <MarkAsMeButton
-                        active={isMeProfile}
-                        loading={mePlayerLoading}
-                        onPress={handleMarkAsMe}
-                    />
+                        <FavoritePlayerButton
+                            active={isFavoritePlayer}
+                            loading={favoritePlayerLoading}
+                            onPress={handleToggleFavoritePlayer}
+                        />
+
+                        <HeadToHeadButton onPress={handleOpenHeadToHead} />
+                    </View>
                 </View>
 
-                {mePlayerMessage ? (
-                    <Text
-                        style={[
-                            styles.mePlayerMessage,
-                            {
-                                color:
-                                    mePlayerMessage.includes('gespeichert') || mePlayerMessage.includes('bereits')
-                                        ? '#16a34a'
-                                        : colors.destructive,
-                            },
-                        ]}
-                    >
-                        {mePlayerMessage}
+                <View style={styles.profileTitleBlock}>
+                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+                        {displayName}
                     </Text>
-                ) : null}
+                    <Text style={[styles.subtitle, { color: colors.mutedText }]} numberOfLines={1}>
+                        {clubName ?? 'Verein unbekannt'}
+                    </Text>
+                </View>
 
                 {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
@@ -943,9 +1011,9 @@ function MarkAsMeButton({
             disabled={loading}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={active ? 'Als eigenes Profil gespeichert' : 'Als eigenes Profil markieren'}
+            accessibilityLabel={active ? 'Als eigenes Profil entfernen' : 'Als eigenes Profil markieren'}
             style={({ pressed }) => [
-                styles.markAsMeButton,
+                styles.headerActionButton,
                 noWebOutline,
                 {
                     backgroundColor:
@@ -965,6 +1033,72 @@ function MarkAsMeButton({
                     color={active ? colors.primary : colors.text}
                 />
             )}
+        </Pressable>
+    );
+}
+
+function FavoritePlayerButton({
+                                  active,
+                                  loading,
+                                  onPress,
+                              }: {
+    active: boolean;
+    loading: boolean;
+    onPress: () => void;
+}) {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={loading}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={active ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
+            style={({ pressed }) => [
+                styles.headerActionButton,
+                noWebOutline,
+                {
+                    backgroundColor: active || pressed ? colors.primarySoft : 'transparent',
+                    borderColor: active || pressed ? colors.primarySoftBorder : colors.border,
+                    opacity: loading ? 0.65 : 1,
+                },
+            ]}
+        >
+            {loading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+                <Ionicons
+                    name={active ? 'star' : 'star-outline'}
+                    size={22}
+                    color={active ? colors.primary : colors.text}
+                />
+            )}
+        </Pressable>
+    );
+}
+
+function HeadToHeadButton({ onPress }: { onPress: () => void }) {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+    return (
+        <Pressable
+            onPress={onPress}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Head-to-Head Vergleich öffnen"
+            style={({ pressed }) => [
+                styles.headerActionButton,
+                noWebOutline,
+                {
+                    backgroundColor: pressed ? colors.primarySoft : 'transparent',
+                    borderColor: pressed ? colors.primarySoftBorder : colors.border,
+                },
+            ]}
+        >
+            <MaterialIcons name="compare-arrows" size={23} color={colors.text} />
         </Pressable>
     );
 }
@@ -1386,6 +1520,7 @@ const styles = StyleSheet.create({
         minHeight: 42,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         gap: 10,
     },
     backButton: {
@@ -1395,6 +1530,15 @@ const styles = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    profileTitleBlock: {
+        marginTop: -6,
+        gap: 2,
     },
     headerText: {
         flex: 1,
@@ -1808,18 +1952,12 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         fontWeight: '900',
     },
-    markAsMeButton: {
+    headerActionButton: {
         width: 38,
         height: 38,
         borderRadius: 19,
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    mePlayerMessage: {
-        marginTop: -6,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
     },
 });
