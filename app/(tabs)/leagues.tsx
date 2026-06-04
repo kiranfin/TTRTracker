@@ -52,17 +52,11 @@ export default function LeaguesScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
             <View style={styles.titleBlock}>
-              <Text style={[styles.title, { color: colors.text }]}>Wähle einen Verband aus</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Verbände</Text>
               <Text style={[styles.subtitle, { color: colors.mutedText }]}>
                 Danach werden Kreise, Bezirke und Spielklassen über dein Backend geladen.
               </Text>
             </View>
-
-            <IconButton
-                icon="refresh-outline"
-                onPress={loadAssociations}
-                accessibilityLabel="Verbände neu laden"
-            />
           </View>
 
           {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
@@ -141,7 +135,7 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     flex: 1,
-    gap: 6,
+    gap: 4,
   },
   kicker: {
     alignSelf: 'flex-start',
@@ -154,7 +148,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 25,
-    lineHeight: 35,
+    lineHeight: 32,
     fontWeight: '900',
   },
   subtitle: {
