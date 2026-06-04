@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ttApi } from '../../../src/api/tttracker';
 import { Badge } from '../../../src/components/Badge';
 import { Card } from '../../../src/components/Card';
@@ -465,15 +465,9 @@ export default function ClubDetailsScreen() {
                     </Text>
 
                     <Text style={[styles.subtitle, { color: colors.mutedText }]} numberOfLines={1}>
-                        {[params.state, organization].filter(Boolean).join(' • ') || 'Verein'}
+                        {[params.state, organization, "ID " + clubNumber].filter(Boolean).join(' • ') || 'Verein'}
                     </Text>
                 </View>
-
-                <Card style={styles.infoCard}>
-                    <InfoRow label="Vereinsnummer" value={clubNumber || 'Nicht verfügbar'} />
-                    <InfoRow label="Bundesland" value={params.state || 'Nicht verfügbar'} />
-                    <InfoRow label="Verband" value={organization || params.organizationName || 'Nicht verfügbar'} />
-                </Card>
 
                 <SegmentedTabs
                     value={activeTab}
@@ -645,6 +639,8 @@ function ScheduleFilterCard({
     onReset: () => void;
 }) {
     const { colors } = useTheme();
+    const [openPicker, setOpenPicker] = useState<'start' | 'end' | null>(null);
+
     const startInvalid = !isValidDateInput(dateStart);
     const endInvalid = !isValidDateInput(dateEnd);
     const canApply = !loading && !startInvalid && !endInvalid;
@@ -657,49 +653,25 @@ function ScheduleFilterCard({
                     <Text style={[styles.filterSubtitle, { color: colors.mutedText }]}>Saison {season}</Text>
                 </View>
 
-                <Badge tone="outline">YYYY-MM-DD</Badge>
+                <Badge tone="outline">Kalender</Badge>
             </View>
 
             <View style={styles.filterRow}>
-                <View style={styles.dateInputBlock}>
-                    <Text style={[styles.inputLabel, { color: colors.mutedText }]}>Start</Text>
-                    <TextInput
-                        value={dateStart}
-                        onChangeText={onChangeDateStart}
-                        placeholder="2026-01-01"
-                        placeholderTextColor={colors.mutedText}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        style={[
-                            styles.dateInput,
-                            {
-                                color: colors.text,
-                                backgroundColor: colors.card,
-                                borderColor: startInvalid ? colors.destructive : colors.border,
-                            },
-                        ]}
-                    />
-                </View>
+                <DateFilterButton
+                    label="Start"
+                    value={dateStart}
+                    invalid={startInvalid}
+                    disabled={loading}
+                    onPress={() => setOpenPicker('start')}
+                />
 
-                <View style={styles.dateInputBlock}>
-                    <Text style={[styles.inputLabel, { color: colors.mutedText }]}>Ende</Text>
-                    <TextInput
-                        value={dateEnd}
-                        onChangeText={onChangeDateEnd}
-                        placeholder="2026-06-30"
-                        placeholderTextColor={colors.mutedText}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        style={[
-                            styles.dateInput,
-                            {
-                                color: colors.text,
-                                backgroundColor: colors.card,
-                                borderColor: endInvalid ? colors.destructive : colors.border,
-                            },
-                        ]}
-                    />
-                </View>
+                <DateFilterButton
+                    label="Ende"
+                    value={dateEnd}
+                    invalid={endInvalid}
+                    disabled={loading}
+                    onPress={() => setOpenPicker('end')}
+                />
             </View>
 
             <View style={styles.filterButtonRow}>
@@ -732,7 +704,285 @@ function ScheduleFilterCard({
                     <Text style={styles.applyButtonText}>Anwenden</Text>
                 </Pressable>
             </View>
+
+            <CalendarPickerModal
+                visible={openPicker === 'start'}
+                title="Startdatum auswählen"
+                value={dateStart}
+                onSelect={onChangeDateStart}
+                onClose={() => setOpenPicker(null)}
+            />
+
+            <CalendarPickerModal
+                visible={openPicker === 'end'}
+                title="Enddatum auswählen"
+                value={dateEnd}
+                onSelect={onChangeDateEnd}
+                onClose={() => setOpenPicker(null)}
+            />
         </Card>
+    );
+}
+
+function DateFilterButton({
+                              label,
+                              value,
+                              invalid,
+                              disabled,
+                              onPress,
+                          }: {
+    label: string;
+    value: string;
+    invalid: boolean;
+    disabled: boolean;
+    onPress: () => void;
+}) {
+    const { colors } = useTheme();
+
+    return (
+        <View style={styles.dateInputBlock}>
+            <Text style={[styles.inputLabel, { color: colors.mutedText }]}>{label}</Text>
+
+            <Pressable
+                onPress={onPress}
+                disabled={disabled}
+                style={({ pressed }) => [
+                    styles.dateButton,
+                    {
+                        backgroundColor: colors.card,
+                        borderColor: invalid ? colors.destructive : pressed ? colors.primarySoftBorder : colors.border,
+                        opacity: disabled ? 0.6 : 1,
+                    },
+                ]}
+            >
+                <Text
+                    style={[
+                        styles.dateButtonText,
+                        { color: value ? colors.text : colors.mutedText },
+                    ]}
+                    numberOfLines={1}
+                >
+                    {value || 'Datum wählen'}
+                </Text>
+
+                <Ionicons name="calendar-outline" size={17} color={colors.mutedText} />
+            </Pressable>
+        </View>
+    );
+}
+
+function CalendarPickerModal({
+                                 visible,
+                                 title,
+                                 value,
+                                 onSelect,
+                                 onClose,
+                             }: {
+    visible: boolean;
+    title: string;
+    value: string;
+    onSelect: (value: string) => void;
+    onClose: () => void;
+}) {
+    const { colors } = useTheme();
+    const [visibleMonth, setVisibleMonth] = useState(() => parseDateInput(value) ?? new Date());
+
+    useEffect(() => {
+        if (!visible) return;
+
+        setVisibleMonth(parseDateInput(value) ?? new Date());
+    }, [visible, value]);
+
+    const calendarDays = useMemo(
+        () => buildCalendarMonthDays(visibleMonth),
+        [visibleMonth],
+    );
+
+    const selectedKey = parseDateInput(value) ? formatDateInput(parseDateInput(value)!) : '';
+    const todayKey = formatDateInput(new Date());
+
+    const monthLabel = visibleMonth.toLocaleDateString('de-DE', {
+        month: 'long',
+        year: 'numeric',
+    });
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <Pressable
+                style={styles.calendarOverlay}
+                onPress={onClose}
+            >
+                <Pressable
+                    style={[
+                        styles.calendarSheet,
+                        {
+                            backgroundColor: colors.background,
+                            borderColor: colors.border,
+                        },
+                    ]}
+                    onPress={() => undefined}
+                >
+                    <View style={styles.calendarTopRow}>
+                        <View>
+                            <Text style={[styles.calendarTitle, { color: colors.text }]}>
+                                {title}
+                            </Text>
+                            <Text style={[styles.calendarSubtitle, { color: colors.mutedText }]}>
+                                {monthLabel}
+                            </Text>
+                        </View>
+
+                        <Pressable
+                            onPress={onClose}
+                            hitSlop={10}
+                            style={[
+                                styles.calendarCloseButton,
+                                {
+                                    backgroundColor: colors.card,
+                                    borderColor: colors.border,
+                                },
+                            ]}
+                        >
+                            <Ionicons name="close" size={18} color={colors.text} />
+                        </Pressable>
+                    </View>
+
+                    <View style={styles.calendarMonthRow}>
+                        <Pressable
+                            onPress={() => setVisibleMonth((current) => addMonths(current, -1))}
+                            style={[
+                                styles.calendarNavButton,
+                                {
+                                    backgroundColor: colors.card,
+                                    borderColor: colors.border,
+                                },
+                            ]}
+                        >
+                            <Ionicons name="chevron-back" size={18} color={colors.text} />
+                        </Pressable>
+
+                        <Text style={[styles.calendarMonthText, { color: colors.text }]}>
+                            {monthLabel}
+                        </Text>
+
+                        <Pressable
+                            onPress={() => setVisibleMonth((current) => addMonths(current, 1))}
+                            style={[
+                                styles.calendarNavButton,
+                                {
+                                    backgroundColor: colors.card,
+                                    borderColor: colors.border,
+                                },
+                            ]}
+                        >
+                            <Ionicons name="chevron-forward" size={18} color={colors.text} />
+                        </Pressable>
+                    </View>
+
+                    <View style={styles.weekdayRow}>
+                        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((weekday) => (
+                            <Text
+                                key={weekday}
+                                style={[styles.weekdayText, { color: colors.mutedText }]}
+                            >
+                                {weekday}
+                            </Text>
+                        ))}
+                    </View>
+
+                    <View style={styles.calendarGrid}>
+                        {calendarDays.map((day, index) => {
+                            if (!day) {
+                                return <View key={`empty-${index}`} style={styles.calendarDaySlot} />;
+                            }
+
+                            const dayKey = formatDateInput(day);
+                            const selected = dayKey === selectedKey;
+                            const today = dayKey === todayKey;
+
+                            return (
+                                <Pressable
+                                    key={dayKey}
+                                    onPress={() => {
+                                        onSelect(dayKey);
+                                        onClose();
+                                    }}
+                                    style={({ pressed }) => [
+                                        styles.calendarDaySlot,
+                                        styles.calendarDayButton,
+                                        {
+                                            backgroundColor: selected
+                                                ? colors.primary
+                                                : pressed
+                                                    ? colors.primarySoft
+                                                    : today
+                                                        ? colors.card
+                                                        : 'transparent',
+                                            borderColor: selected
+                                                ? colors.primary
+                                                : today
+                                                    ? colors.primarySoftBorder
+                                                    : 'transparent',
+                                        },
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.calendarDayText,
+                                            {
+                                                color: selected ? '#fff' : colors.text,
+                                            },
+                                        ]}
+                                    >
+                                        {day.getDate()}
+                                    </Text>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+
+                    <View style={styles.calendarFooter}>
+                        <Pressable
+                            onPress={() => {
+                                onSelect('');
+                                onClose();
+                            }}
+                            style={({ pressed }) => [
+                                styles.calendarClearButton,
+                                {
+                                    backgroundColor: pressed ? colors.muted : 'transparent',
+                                    borderColor: colors.border,
+                                },
+                            ]}
+                        >
+                            <Text style={[styles.calendarClearButtonText, { color: colors.text }]}>
+                                Leeren
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => {
+                                onSelect(formatDateInput(new Date()));
+                                onClose();
+                            }}
+                            style={({ pressed }) => [
+                                styles.calendarTodayButton,
+                                {
+                                    backgroundColor: pressed ? colors.primarySoft : colors.primary,
+                                },
+                            ]}
+                        >
+                            <Text style={styles.calendarTodayButtonText}>Heute</Text>
+                        </Pressable>
+                    </View>
+                </Pressable>
+            </Pressable>
+        </Modal>
     );
 }
 
@@ -859,26 +1109,29 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 function TeamCard({ team }: { team: ClubTeam }) {
     const { colors } = useTheme();
+    const canOpen = Boolean(team.id);
 
     return (
         <Card
-            pressable={Boolean(team.groupId && team.association)}
+            pressable={canOpen}
             style={styles.teamCard}
-            onPress={() => {
-                if (!team.groupId || !team.association) return;
-
-                router.push({
-                    pathname: '/league/[leagueKey]',
-                    params: {
-                        leagueKey: team.groupId,
-                        association: team.association,
-                        groupId: team.groupId,
-                        season: team.season ?? '25/26',
-                        leagueSlug: team.leagueSlug ?? 'x',
-                        title: team.leagueName,
-                    },
-                });
-            }}
+            onPress={
+                canOpen
+                    ? () =>
+                        router.push({
+                            pathname: '/team/[teamId]',
+                            params: {
+                                teamId: team.id!,
+                                teamName: team.teamName,
+                                leagueTitle: team.leagueName ?? '',
+                                association: team.association ?? '',
+                                groupId: team.groupId ?? '',
+                                season: team.season ?? '25/26',
+                                leagueSlug: team.leagueSlug ?? 'x',
+                            },
+                        })
+                    : undefined
+            }
         >
             <View style={styles.teamTopRow}>
                 <View
@@ -902,7 +1155,7 @@ function TeamCard({ team }: { team: ClubTeam }) {
                     </Text>
                 </View>
 
-                <Ionicons name="chevron-forward" size={18} color={colors.mutedText} />
+                {canOpen ? <Ionicons name="chevron-forward" size={18} color={colors.mutedText} /> : null}
             </View>
 
             <View style={styles.badgeRow}>
@@ -1778,6 +2031,42 @@ function parseDateInput(value?: string) {
     return date;
 }
 
+function formatDateInput(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+function addMonths(date: Date, amount: number) {
+    return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function buildCalendarMonthDays(monthDate: Date) {
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const firstWeekdayMondayBased = (firstDay.getDay() + 6) % 7;
+    const days: Array<Date | null> = [];
+
+    for (let index = 0; index < firstWeekdayMondayBased; index += 1) {
+        days.push(null);
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+        days.push(new Date(year, month, day));
+    }
+
+    while (days.length % 7 !== 0) {
+        days.push(null);
+    }
+
+    return days;
+}
+
 function getClubFavoriteIds(organization?: string, clubNumber?: string, routeClubKey?: string) {
     const ids = new Set<string>();
     const canonicalId = getClubFavoriteId(organization, clubNumber);
@@ -2400,5 +2689,143 @@ const styles = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    dateButton: {
+        height: 42,
+        borderWidth: 1,
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
+    dateButtonText: {
+        flex: 1,
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '800',
+    },
+    calendarOverlay: {
+        flex: 1,
+        padding: 18,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    calendarSheet: {
+        width: '100%',
+        maxWidth: 390,
+        borderRadius: 28,
+        borderWidth: 1,
+        padding: 16,
+        gap: 16,
+    },
+    calendarTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    calendarTitle: {
+        fontSize: 18,
+        lineHeight: 24,
+        fontWeight: '900',
+    },
+    calendarSubtitle: {
+        marginTop: 2,
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    calendarCloseButton: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        borderWidth: StyleSheet.hairlineWidth,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    calendarMonthRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    calendarNavButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: StyleSheet.hairlineWidth,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    calendarMonthText: {
+        flex: 1,
+        textAlign: 'center',
+        fontSize: 15,
+        lineHeight: 21,
+        fontWeight: '900',
+        textTransform: 'capitalize',
+    },
+    weekdayRow: {
+        flexDirection: 'row',
+    },
+    weekdayText: {
+        flex: 1,
+        textAlign: 'center',
+        fontSize: 12,
+        lineHeight: 16,
+        fontWeight: '900',
+    },
+    calendarGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        rowGap: 6,
+    },
+    calendarDaySlot: {
+        width: `${100 / 7}%`,
+        height: 38,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    calendarDayButton: {
+        borderRadius: 14,
+        borderWidth: 1,
+    },
+    calendarDayText: {
+        fontSize: 14,
+        lineHeight: 19,
+        fontWeight: '900',
+    },
+    calendarFooter: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 10,
+    },
+    calendarClearButton: {
+        minHeight: 40,
+        borderRadius: 14,
+        borderWidth: 1,
+        paddingHorizontal: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    calendarClearButtonText: {
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '900',
+    },
+    calendarTodayButton: {
+        minHeight: 40,
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    calendarTodayButtonText: {
+        color: '#fff',
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '900',
     },
 });

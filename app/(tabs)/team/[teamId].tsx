@@ -424,19 +424,21 @@ export default function TeamDetailsScreen() {
                 <View style={styles.headerRow}>
                     <BackButton />
 
-                    <View style={styles.headerText}>
-                        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-                            {team.teamName}
-                        </Text>
+                    <LeagueDetailsButton team={team} />
+                </View>
 
-                        <View style={styles.headerMetaRow}>
-                            <Badge tone="outline" icon="calendar-outline">
-                                Saison {team.season}
-                            </Badge>
+                <View style={styles.teamTitleBlock}>
+                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+                        {team.teamName}
+                    </Text>
 
-                            {team.association ? <Badge tone="secondary">{team.association}</Badge> : null}
-                            {team.groupId ? <Badge tone="outline">Gruppe {team.groupId}</Badge> : null}
-                        </View>
+                    <View style={styles.headerMetaRow}>
+                        <Badge tone="outline" icon="calendar-outline">
+                            Saison {team.season}
+                        </Badge>
+
+                        {team.association ? <Badge tone="secondary">{team.association}</Badge> : null}
+                        {team.groupId ? <Badge tone="outline">Gruppe {team.groupId}</Badge> : null}
                     </View>
                 </View>
 
@@ -542,6 +544,55 @@ function BackButton() {
             ]}
         >
             <Ionicons name="arrow-back" size={23} color={colors.text} />
+        </Pressable>
+    );
+}
+
+function LeagueDetailsButton({ team }: { team: TeamContext }) {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+    const canOpenLeague = Boolean(team.association && team.groupId);
+
+    function openLeagueDetails() {
+        if (!canOpenLeague) return;
+
+        router.push({
+            pathname: '/league/[leagueKey]',
+            params: {
+                leagueKey: team.groupId!,
+                association: team.association!,
+                groupId: team.groupId!,
+                season: team.season,
+                leagueSlug: team.leagueSlug,
+                title: team.leagueTitle ?? 'Ligadetails',
+            },
+        });
+    }
+
+    return (
+        <Pressable
+            onPress={openLeagueDetails}
+            disabled={!canOpenLeague}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Zugehörige Liga öffnen"
+            style={({ pressed }) => [
+                styles.headerActionButton,
+                noWebOutline,
+                {
+                    backgroundColor:
+                        pressed && canOpenLeague ? colors.primarySoft : 'transparent',
+                    borderColor:
+                        pressed && canOpenLeague ? colors.primarySoftBorder : colors.border,
+                    opacity: canOpenLeague ? 1 : 0.4,
+                },
+            ]}
+        >
+            <Ionicons
+                name="podium-outline"
+                size={22}
+                color={canOpenLeague ? colors.text : colors.mutedText}
+            />
         </Pressable>
     );
 }
@@ -2227,6 +2278,7 @@ const styles = StyleSheet.create({
         minHeight: 42,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         gap: 10,
     },
     backButton: {
@@ -2236,6 +2288,17 @@ const styles = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    headerActionButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        borderWidth: StyleSheet.hairlineWidth,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    teamTitleBlock: {
+        gap: 8,
     },
     headerText: {
         flex: 1,
