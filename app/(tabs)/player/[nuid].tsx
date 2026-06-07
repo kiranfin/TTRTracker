@@ -487,7 +487,28 @@ export default function PlayerDetailsScreen() {
     }
 
     function handleOpenHeadToHead() {
-        // Kommt später: Navigation zur Head-to-Head-Vergleichsseite.
+        const meNuid = normalizeMePlayerNuid(storedMePlayerNuid);
+        const otherNuid = normalizeMePlayerNuid(nuid);
+
+        if (!otherNuid) {
+            setError('Für diesen Spieler fehlt die NUID.');
+            return;
+        }
+
+        if (!meNuid) {
+            setError('Lege zuerst über den Person-Button deinen „Ich“-Spieler fest.');
+            return;
+        }
+
+        router.push({
+            pathname: '/player/player-compare',
+            params: {
+                leftNuid: meNuid,
+                rightNuid: otherNuid,
+                leftTitle: 'Ich',
+                rightTitle: displayName,
+            },
+        });
     }
 
     const allEventsNewestFirst = useMemo(() => {

@@ -80,6 +80,14 @@ export const ttApi = {
     );
   },
 
+  comparePlayers(leftNuid: string, rightNuid: string) {
+    return apiGet<unknown>(
+        `/api/players/${segment(leftNuid)}/compare/${segment(rightNuid)}`,
+        undefined,
+        { authenticated: true }
+    );
+  },
+
   async getLeaguesByRegion(region: string, season = '25/26') {
     const response = await apiGet<unknown>('/api/leagues', {
       region,
