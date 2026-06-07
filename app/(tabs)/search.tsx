@@ -144,6 +144,16 @@ export default function SearchScreen() {
     }
   }, [query, resetSearchResults]);
 
+  function findClubForPlayer(player: NormalizedPlayer) {
+    const playerClubName = player.clubName.trim().toLowerCase();
+
+    if (!playerClubName) return undefined;
+
+    return clubs.find((club) => {
+      return club.name.trim().toLowerCase() === playerClubName;
+    });
+  }
+
   async function togglePlayerFavorite(player: NormalizedPlayer) {
     const key = favoriteKey('player', player.id);
 
@@ -157,6 +167,8 @@ export default function SearchScreen() {
       return;
     }
 
+    const playerClub = findClubForPlayer(player);
+
     await addFavorite({
       id: player.id,
       type: 'player',
@@ -164,6 +176,11 @@ export default function SearchScreen() {
       subtitle: player.clubName,
       params: {
         clubName: player.clubName,
+        clubKey: playerClub?.id ?? '',
+        organization: playerClub?.organization ?? '',
+        organizationName: playerClub?.organizationName ?? '',
+        clubNumber: playerClub?.clubNumber ?? '',
+        externalId: playerClub?.externalId ?? '',
         personId: player.personId ?? '',
         internalId: player.internalId ?? '',
         state: player.state ?? '',
@@ -193,9 +210,12 @@ export default function SearchScreen() {
       title: club.name,
       subtitle: [club.clubNumber, club.state ?? club.organization].filter(Boolean).join(' • '),
       params: {
+        clubKey: club.id,
         organization: club.organization ?? '',
+        organizationName: club.organizationName ?? '',
         clubNumber: club.clubNumber ?? '',
         state: club.state ?? '',
+        externalId: club.externalId ?? '',
       },
     });
 
@@ -223,6 +243,8 @@ export default function SearchScreen() {
   function openPlayerDetails(player: NormalizedPlayer) {
     if (!player.internalId) return;
 
+    const playerClub = findClubForPlayer(player);
+
     setSelectedPlayer(null);
 
     router.push({
@@ -231,6 +253,12 @@ export default function SearchScreen() {
         nuid: player.internalId,
         title: player.fullName,
         clubName: player.clubName,
+        clubKey: playerClub?.id ?? '',
+        organization: playerClub?.organization ?? '',
+        organizationName: playerClub?.organizationName ?? '',
+        clubNumber: playerClub?.clubNumber ?? '',
+        state: player.state ?? playerClub?.state ?? '',
+        externalId: playerClub?.externalId ?? '',
         ttr: player.ttr ? String(player.ttr) : '',
       },
     });

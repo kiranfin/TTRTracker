@@ -37,6 +37,7 @@ import {
 } from '../../../src/storage/favorites';
 import {
     formatDate,
+    normalizeClub,
     normalizePlayerTtrHistory,
 } from '../../../src/utils/normalizers';
 
@@ -66,6 +67,23 @@ type PlayerStats = {
     bestGain?: number;
     worstLoss?: number;
 };
+
+type ClubRouteParams = {
+    clubKey: string;
+    title?: string;
+    organization?: string;
+    organizationName?: string;
+    clubNumber?: string;
+    state?: string;
+    externalId?: string;
+};
+
+function normalizeClubLookupText(value?: string | null) {
+    return (value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -303,6 +321,7 @@ export default function PlayerDetailsScreen() {
 
     const [history, setHistory] = useState<NormalizedPlayerTtrHistory | null>(null);
     const [apiHistoryData, setApiHistoryData] = useState<Record<string, unknown> | null>(null);
+    const [resolvedClubRouteParams, setResolvedClubRouteParams] = useState<ClubRouteParams | null>(null);
     const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
     const [chartRange, setChartRange] = useState<ChartRangeId>('12m');
     const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
@@ -319,11 +338,30 @@ export default function PlayerDetailsScreen() {
     const [isFavoritePlayer, setIsFavoritePlayer] = useState(false);
 
     const nuid = params.nuid;
+    const routeClubKey = params.clubKey?.trim() ?? '';
     const normalizedCurrentNuid = normalizeMePlayerNuid(nuid);
     const isMeProfile =
         normalizedCurrentNuid.length > 0 &&
         normalizeMePlayerNuid(storedMePlayerNuid) === normalizedCurrentNuid;
     const title = params.title ?? 'Spieler';
+
+    const displayName = history?.personName ?? title;
+    const clubName = history?.clubName ?? params.clubName;
+
+    const routeClubRouteParams: ClubRouteParams | null = routeClubKey
+        ? {
+            clubKey: routeClubKey,
+            title: clubName ?? 'Verein',
+            organization: params.organization ?? '',
+            organizationName: params.organizationName ?? '',
+            clubNumber: params.clubNumber ?? '',
+            state: params.state ?? '',
+            externalId: params.externalId ?? '',
+        }
+        : null;
+
+    const clubRouteParams = routeClubRouteParams ?? resolvedClubRouteParams;
+    const effectiveClubKey = clubRouteParams?.clubKey?.trim() ?? '';
 
     useEffect(() => {
         async function load() {
@@ -354,6 +392,67 @@ export default function PlayerDetailsScreen() {
 
         load().catch(() => undefined);
     }, [nuid]);
+
+    useEffect(() => {
+        let active = true;
+
+        async function resolveClubKeyFromClubName() {
+            setResolvedClubRouteParams(null);
+
+            if (routeClubKey) return;
+
+            const searchName = clubName?.trim();
+
+            if (!searchName) return;
+
+            try {
+                const rows = await ttApi.searchClubs(searchName);
+
+                if (!active) return;
+
+                const normalizedClubs = Array.isArray(rows)
+                    ? rows.map((row) => normalizeClub(row))
+                    : [];
+
+                const wantedName = normalizeClubLookupText(searchName);
+
+                const exactMatch = normalizedClubs.find((club) => {
+                    return normalizeClubLookupText(club.name) === wantedName;
+                });
+
+                const fuzzyMatch = exactMatch ?? normalizedClubs.find((club) => {
+                    const candidateName = normalizeClubLookupText(club.name);
+
+                    return (
+                        candidateName.includes(wantedName) ||
+                        wantedName.includes(candidateName)
+                    );
+                });
+
+                if (!fuzzyMatch) return;
+
+                setResolvedClubRouteParams({
+                    clubKey: fuzzyMatch.id,
+                    title: fuzzyMatch.name,
+                    organization: fuzzyMatch.organization ?? '',
+                    organizationName: fuzzyMatch.organizationName ?? '',
+                    clubNumber: fuzzyMatch.clubNumber ?? '',
+                    state: fuzzyMatch.state ?? '',
+                    externalId: fuzzyMatch.externalId ?? '',
+                });
+            } catch {
+                if (!active) return;
+
+                setResolvedClubRouteParams(null);
+            }
+        }
+
+        resolveClubKeyFromClubName().catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [routeClubKey, clubName]);
 
     useEffect(() => {
         setPage(0);
@@ -413,8 +512,6 @@ export default function PlayerDetailsScreen() {
         };
     }, [normalizedCurrentNuid]);
 
-    const displayName = history?.personName ?? title;
-
     async function handleMarkAsMe() {
         if (!nuid) return;
 
@@ -435,8 +532,6 @@ export default function PlayerDetailsScreen() {
             setMePlayerLoading(false);
         }
     }
-
-    const clubName = history?.clubName ?? params.clubName;
 
     const currentTtr =
         parseOptionalNumber(history?.ttr) ??
@@ -507,6 +602,26 @@ export default function PlayerDetailsScreen() {
                 rightNuid: otherNuid,
                 leftTitle: 'Ich',
                 rightTitle: displayName,
+            },
+        });
+    }
+
+    function handleOpenClubDetails() {
+        if (!effectiveClubKey) {
+            setError('Für diesen Spieler konnte kein Vereins-Key gefunden werden.');
+            return;
+        }
+
+        router.push({
+            pathname: '/club/[clubKey]',
+            params: {
+                clubKey: effectiveClubKey,
+                title: clubRouteParams?.title ?? clubName ?? 'Verein',
+                organization: clubRouteParams?.organization ?? params.organization ?? '',
+                organizationName: clubRouteParams?.organizationName ?? params.organizationName ?? '',
+                clubNumber: clubRouteParams?.clubNumber ?? params.clubNumber ?? '',
+                state: clubRouteParams?.state ?? params.state ?? '',
+                externalId: clubRouteParams?.externalId ?? params.externalId ?? '',
             },
         });
     }
@@ -690,6 +805,11 @@ export default function PlayerDetailsScreen() {
                             active={isFavoritePlayer}
                             loading={favoritePlayerLoading}
                             onPress={handleToggleFavoritePlayer}
+                        />
+
+                        <OpenClubButton
+                            disabled={!effectiveClubKey}
+                            onPress={handleOpenClubDetails}
                         />
 
                         <HeadToHeadButton onPress={handleOpenHeadToHead} />
@@ -1096,6 +1216,42 @@ function FavoritePlayerButton({
                     color={active ? colors.primary : colors.text}
                 />
             )}
+        </Pressable>
+    );
+}
+
+function OpenClubButton({
+                            disabled,
+                            onPress,
+                        }: {
+    disabled: boolean;
+    onPress: () => void;
+}) {
+    const { colors } = useTheme();
+    const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={disabled}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Vereinsdetails öffnen"
+            style={({ pressed }) => [
+                styles.headerActionButton,
+                noWebOutline,
+                {
+                    backgroundColor: pressed && !disabled ? colors.primarySoft : 'transparent',
+                    borderColor: pressed && !disabled ? colors.primarySoftBorder : colors.border,
+                    opacity: disabled ? 0.35 : 1,
+                },
+            ]}
+        >
+            <Ionicons
+                name="tennisball-outline"
+                size={22}
+                color={disabled ? colors.mutedText : colors.text}
+            />
         </Pressable>
     );
 }

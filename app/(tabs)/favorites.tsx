@@ -43,7 +43,12 @@ export default function FavoritesScreen() {
           nuid,
           title: item.title,
           clubName: item.params?.clubName ?? item.subtitle ?? '',
+          clubKey: item.params?.clubKey ?? '',
+          organization: item.params?.organization ?? '',
+          organizationName: item.params?.organizationName ?? '',
+          clubNumber: item.params?.clubNumber ?? '',
           state: item.params?.state ?? '',
+          externalId: item.params?.externalId ?? '',
           ttr: item.params?.ttr ?? '',
         },
       });
