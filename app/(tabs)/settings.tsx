@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ImageBackground,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -270,7 +272,17 @@ function parseClubIdInput(value: string) {
 }
 
 export default function SettingsScreen() {
-  const { colors, mode, accent, setMode, setAccent } = useTheme();
+  const {
+    colors,
+    mode,
+    accent,
+    setMode,
+    setAccent,
+    backgroundImageUri,
+    setBackgroundImageUri,
+    clearBackgroundImageUri,
+  } = useTheme();
+
   const { user, isAuthenticated, login, register, logout } = useAuth();
 
   const [health, setHealth] = useState<string | null>(null);
@@ -304,6 +316,9 @@ export default function SettingsScreen() {
   const [meClubMessage, setMeClubMessage] = useState<string | null>(null);
   const [meClubLoading, setMeClubLoading] = useState<'save' | 'clear' | null>(null);
 
+  const [backgroundMessage, setBackgroundMessage] = useState<string | null>(null);
+  const [backgroundLoading, setBackgroundLoading] = useState<'pick' | 'clear' | null>(null);
+
   const [draftAccent, setDraftAccent] = useState(() => normalizeHexColor(accent));
 
   const savedAccent = useMemo(() => normalizeHexColor(accent), [accent]);
@@ -314,8 +329,6 @@ export default function SettingsScreen() {
       return savedAccent;
     });
   }, [savedAccent]);
-
-  const hasUnsavedAccentChanges = draftAccent !== savedAccent;
 
   const accentTextColor = useMemo(
       () => getReadableTextColor(draftAccent),
@@ -349,6 +362,61 @@ export default function SettingsScreen() {
 
   function handleResetAccentPreview() {
     handlePreviewAccent(DEFAULT_ACCENT);
+  }
+
+  async function handlePickBackgroundImage() {
+    setBackgroundLoading('pick');
+    setBackgroundMessage(null);
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        throw new Error(
+            'Bitte erlaube den Zugriff auf deine Fotos, um ein Hintergrundbild auszuwählen.',
+        );
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.88,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        setBackgroundMessage('Keine Änderung vorgenommen.');
+        return;
+      }
+
+      await setBackgroundImageUri(result.assets[0].uri);
+      setBackgroundMessage('Hintergrundbild gespeichert.');
+    } catch (error) {
+      setBackgroundMessage(
+          error instanceof Error
+              ? error.message
+              : 'Hintergrundbild konnte nicht gespeichert werden',
+      );
+    } finally {
+      setBackgroundLoading(null);
+    }
+  }
+
+  async function handleClearBackgroundImage() {
+    setBackgroundLoading('clear');
+    setBackgroundMessage(null);
+
+    try {
+      await clearBackgroundImageUri();
+      setBackgroundMessage('Standard-Hintergrund wiederhergestellt.');
+    } catch (error) {
+      setBackgroundMessage(
+          error instanceof Error
+              ? error.message
+              : 'Hintergrundbild konnte nicht entfernt werden',
+      );
+    } finally {
+      setBackgroundLoading(null);
+    }
   }
 
   useFocusEffect(
@@ -681,45 +749,6 @@ export default function SettingsScreen() {
               <Text style={[styles.cardTitle, { color: colors.text }]}>Akzentfarbe</Text>
             </View>
 
-            <Text style={[styles.backendText, { color: colors.mutedText }]}>
-              Wähle deine Akzentfarbe frei aus. Slider und Farbfelder ändern nur die
-              Vorschau. Erst mit Übernehmen wird die Farbe gespeichert.
-            </Text>
-
-            <View
-                style={[
-                  styles.accentPreview,
-                  {
-                    backgroundColor: draftAccent,
-                    borderColor: colors.border,
-                  },
-                ]}
-            >
-              <View style={styles.accentPreviewTextBlock}>
-                <Text style={[styles.accentPreviewTitle, { color: accentTextColor }]}>
-                  Vorschau
-                </Text>
-
-                <Text style={[styles.accentPreviewMeta, { color: accentTextColor }]}>
-                  {draftAccent.toUpperCase()} · Schrift{' '}
-                  {accentTextColor === '#ffffff' ? 'weiß' : 'dunkel'}
-                </Text>
-              </View>
-
-              <View
-                  style={[
-                    styles.contrastBadge,
-                    {
-                      backgroundColor: accentTextColor,
-                    },
-                  ]}
-              >
-                <Text style={[styles.contrastBadgeText, { color: draftAccent }]}>
-                  {accentContrast.toFixed(2)}:1
-                </Text>
-              </View>
-            </View>
-
             <View style={styles.colorPickerBox}>
               <ColorPicker
                   value={draftAccent}
@@ -791,6 +820,105 @@ export default function SettingsScreen() {
                 Übernehmen
               </Button>
             </View>
+          </Card>
+
+          <Card style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Ionicons name="image-outline" size={21} color={colors.text} />
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Hintergrundbild</Text>
+            </View>
+
+            <View
+                style={[
+                  styles.backgroundPreview,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.background,
+                  },
+                ]}
+            >
+              {backgroundImageUri ? (
+                  <ImageBackground
+                      source={{ uri: backgroundImageUri }}
+                      resizeMode="cover"
+                      style={styles.backgroundPreviewImage}
+                  >
+                    <View
+                        style={[
+                          styles.backgroundPreviewOverlay,
+                          {
+                            backgroundColor:
+                                mode === 'dark'
+                                    ? 'rgba(2, 6, 23, 0.52)'
+                                    : 'rgba(248, 250, 252, 0.48)',
+                          },
+                        ]}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={24} color={colors.text} />
+
+                      <Text style={[styles.backgroundPreviewTitle, { color: colors.text }]}>
+                        Eigenes Bild aktiv
+                      </Text>
+
+                      <Text style={[styles.backgroundPreviewMeta, { color: colors.mutedText }]}>
+                        Dieses Bild wird auf allen Screens als Hintergrund genutzt.
+                      </Text>
+                    </View>
+                  </ImageBackground>
+              ) : (
+                  <View style={styles.backgroundPreviewEmpty}>
+                    <Ionicons name="image-outline" size={28} color={colors.mutedText} />
+
+                    <Text style={[styles.backgroundPreviewTitle, { color: colors.text }]}>
+                      Kein Hintergrundbild
+                    </Text>
+
+                    <Text style={[styles.backgroundPreviewMeta, { color: colors.mutedText }]}>
+                      Die App nutzt den normalen Theme-Hintergrund.
+                    </Text>
+                  </View>
+              )}
+            </View>
+
+            <View style={styles.twoGrid}>
+              <Button
+                  variant="primary"
+                  icon="image-outline"
+                  loading={backgroundLoading === 'pick'}
+                  onPress={handlePickBackgroundImage}
+                  style={styles.halfButton}
+              >
+                Bild wählen
+              </Button>
+
+              <Button
+                  variant="outline"
+                  icon="trash-outline"
+                  loading={backgroundLoading === 'clear'}
+                  onPress={handleClearBackgroundImage}
+                  style={styles.halfButton}
+              >
+                Entfernen
+              </Button>
+            </View>
+
+            {backgroundMessage ? (
+                <Text
+                    style={[
+                      styles.backendText,
+                      {
+                        color:
+                            backgroundMessage.includes('gespeichert') ||
+                            backgroundMessage.includes('Standard') ||
+                            backgroundMessage.includes('Keine Änderung')
+                                ? '#16a34a'
+                                : colors.destructive,
+                      },
+                    ]}
+                >
+                  {backgroundMessage}
+                </Text>
+            ) : null}
           </Card>
 
           <Card style={styles.card}>
@@ -982,7 +1110,8 @@ export default function SettingsScreen() {
                         styles.backendText,
                         {
                           color:
-                              meNuidMessage.includes('gespeichert') || meNuidMessage.includes('entfernt')
+                              meNuidMessage.includes('gespeichert') ||
+                              meNuidMessage.includes('entfernt')
                                   ? '#16a34a'
                                   : colors.destructive,
                         },
@@ -1085,7 +1214,8 @@ export default function SettingsScreen() {
                         styles.backendText,
                         {
                           color:
-                              meClubMessage.includes('gespeichert') || meClubMessage.includes('entfernt')
+                              meClubMessage.includes('gespeichert') ||
+                              meClubMessage.includes('entfernt')
                                   ? '#16a34a'
                                   : colors.destructive,
                         },
@@ -1406,6 +1536,40 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     borderRadius: 14,
+  },
+  backgroundPreview: {
+    height: 148,
+    borderWidth: 1,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  backgroundPreviewImage: {
+    flex: 1,
+  },
+  backgroundPreviewOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+  },
+  backgroundPreviewEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    padding: 16,
+  },
+  backgroundPreviewTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  backgroundPreviewMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
   },
   accentPreview: {
     minHeight: 78,

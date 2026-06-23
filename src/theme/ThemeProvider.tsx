@@ -2,6 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { ColorSchemeName, useColorScheme } from 'react-native';
 
+import {
+  clearCustomBackgroundImageUri,
+  getCustomBackgroundImageUri,
+  saveCustomBackgroundImageUri,
+} from '../storage/backgroundImage';
+
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 // Ab jetzt ist jede gültige Hex-Farbe erlaubt, z. B. "#2563eb"
@@ -30,8 +36,13 @@ type ThemeContextValue = {
   accent: AccentColor;
   isDark: boolean;
   colors: AppColors;
+
   setMode: (mode: ThemeMode) => Promise<void>;
   setAccent: (accent: AccentColor) => Promise<void>;
+
+  backgroundImageUri: string | null;
+  setBackgroundImageUri: (uri: string) => Promise<void>;
+  clearBackgroundImageUri: () => Promise<void>;
 };
 
 const STORAGE_THEME = 'tttracker.theme';
@@ -176,17 +187,24 @@ function resolveIsDark(mode: ThemeMode, systemScheme: ColorSchemeName) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
+
   const [mode, setModeState] = useState<ThemeMode>('light');
   const [accent, setAccentState] = useState<AccentColor>(DEFAULT_ACCENT);
+  const [backgroundImageUri, setBackgroundImageUriState] = useState<string | null>(null);
 
   const isDark = resolveIsDark(mode, systemScheme);
 
   useEffect(() => {
+    let active = true;
+
     async function loadTheme() {
-      const [storedMode, storedAccent] = await Promise.all([
+      const [storedMode, storedAccent, storedBackgroundImageUri] = await Promise.all([
         AsyncStorage.getItem(STORAGE_THEME),
         AsyncStorage.getItem(STORAGE_ACCENT),
+        getCustomBackgroundImageUri(),
       ]);
+
+      if (!active) return;
 
       if (storedMode === 'light' || storedMode === 'dark' || storedMode === 'system') {
         setModeState(storedMode);
@@ -195,6 +213,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const normalizedAccent = normalizeHexColor(storedAccent);
       setAccentState(normalizedAccent);
 
+      if (storedBackgroundImageUri) {
+        setBackgroundImageUriState(storedBackgroundImageUri);
+      } else {
+        setBackgroundImageUriState(null);
+      }
+
       // Alte Werte wie "blue", "green", "pink" direkt zu Hex migrieren.
       if (storedAccent && storedAccent !== normalizedAccent) {
         await AsyncStorage.setItem(STORAGE_ACCENT, normalizedAccent);
@@ -202,6 +226,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
 
     loadTheme().catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const value = useMemo<ThemeContextValue>(
@@ -210,18 +238,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         accent,
         isDark,
         colors: createColors(isDark, accent),
+
         async setMode(nextMode) {
           setModeState(nextMode);
           await AsyncStorage.setItem(STORAGE_THEME, nextMode);
         },
+
         async setAccent(nextAccent) {
           const normalizedAccent = normalizeHexColor(nextAccent);
 
           setAccentState(normalizedAccent);
           await AsyncStorage.setItem(STORAGE_ACCENT, normalizedAccent);
         },
+
+        backgroundImageUri,
+
+        async setBackgroundImageUri(uri) {
+          await saveCustomBackgroundImageUri(uri);
+          setBackgroundImageUriState(uri);
+        },
+
+        async clearBackgroundImageUri() {
+          await clearCustomBackgroundImageUri();
+          setBackgroundImageUriState(null);
+        },
       }),
-      [accent, isDark, mode],
+      [accent, backgroundImageUri, isDark, mode],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
