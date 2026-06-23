@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -9,6 +9,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import ColorPicker, {
+  HueCircular,
+  Panel1,
+  Preview,
+} from 'reanimated-color-picker';
 
 import { getApiBaseUrl } from '../../src/api/client';
 import {
@@ -17,30 +22,51 @@ import {
   getMyttStatus,
   revokeMyttGrant,
 } from '../../src/api/mytt';
-import {
-  clearMePlayerNuid,
-  getMePlayerNuid,
-  setMePlayerNuid,
-} from '../../src/storage/mePlayer';
+import { ttApi } from '../../src/api/tttracker';
+import { useAuth } from '../../src/auth/AuthProvider';
+import { Button } from '../../src/components/Button';
+import { Card } from '../../src/components/Card';
+import { Screen } from '../../src/components/Screen';
 import {
   clearMeClub,
   getMeClub,
   setMeClub as saveMeClub,
 } from '../../src/storage/meClub';
 import type { MeClub } from '../../src/storage/meClub';
-import { ttApi } from '../../src/api/tttracker';
-import { useAuth } from '../../src/auth/AuthProvider';
-import { Button } from '../../src/components/Button';
-import { Card } from '../../src/components/Card';
-import { Screen } from '../../src/components/Screen';
-import { AccentColor, useTheme } from '../../src/theme/ThemeProvider';
+import {
+  clearMePlayerNuid,
+  getMePlayerNuid,
+  setMePlayerNuid,
+} from '../../src/storage/mePlayer';
+import { useTheme } from '../../src/theme/ThemeProvider';
 
-const accentColors: { id: AccentColor; name: string; color: string }[] = [
-  { id: 'default', name: 'Weiß', color: '#f3f4f6' },
-  { id: 'blue', name: 'Blau', color: '#2563eb' },
-  { id: 'green', name: 'Grün', color: '#16a34a' },
-  { id: 'orange', name: 'Orange', color: '#ea580c' },
-  { id: 'pink', name: 'Pink', color: '#db2777' },
+const DEFAULT_ACCENT = '#2563eb';
+
+const legacyAccentMap: Record<string, string> = {
+  default: DEFAULT_ACCENT,
+  blue: '#2563eb',
+  green: '#16a34a',
+  orange: '#ea580c',
+  pink: '#db2777',
+};
+
+const accentSwatches = [
+  '#111827',
+  '#f3f4f6',
+  '#dc2626',
+  '#e11d48',
+  '#ea580c',
+  '#d97706',
+  '#facc15',
+  '#65a30d',
+  '#16a34a',
+  '#059669',
+  '#0d9488',
+  '#0891b2',
+  '#0284c7',
+  '#2563eb',
+  '#4f46e5',
+  '#7c3aed',
 ];
 
 type MyttStatusView = {
@@ -58,6 +84,77 @@ type MyttGrant = {
   createdAt?: string;
   expiresAt?: string | null;
 };
+
+function normalizeHexColor(value?: string | null) {
+  if (!value) return DEFAULT_ACCENT;
+
+  const trimmed = value.trim();
+
+  if (legacyAccentMap[trimmed]) {
+    return legacyAccentMap[trimmed];
+  }
+
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    const r = trimmed[1];
+    const g = trimmed[2];
+    const b = trimmed[3];
+
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+
+  return DEFAULT_ACCENT;
+}
+
+function hexToRgb(hex: string) {
+  const normalized = normalizeHexColor(hex).replace('#', '');
+
+  return {
+    r: parseInt(normalized.slice(0, 2), 16),
+    g: parseInt(normalized.slice(2, 4), 16),
+    b: parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function srgbToLinear(value: number) {
+  const normalized = value / 255;
+
+  if (normalized <= 0.04045) {
+    return normalized / 12.92;
+  }
+
+  return Math.pow((normalized + 0.055) / 1.055, 2.4);
+}
+
+function getRelativeLuminance(hex: string) {
+  const { r, g, b } = hexToRgb(hex);
+
+  const red = srgbToLinear(r);
+  const green = srgbToLinear(g);
+  const blue = srgbToLinear(b);
+
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function getContrastRatio(colorA: string, colorB: string) {
+  const luminanceA = getRelativeLuminance(colorA);
+  const luminanceB = getRelativeLuminance(colorB);
+
+  const lighter = Math.max(luminanceA, luminanceB);
+  const darker = Math.min(luminanceA, luminanceB);
+
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function getReadableTextColor(backgroundColor: string) {
+  const whiteContrast = getContrastRatio('#ffffff', backgroundColor);
+  const darkContrast = getContrastRatio('#111827', backgroundColor);
+
+  return whiteContrast >= darkContrast ? '#ffffff' : '#111827';
+}
 
 function unwrapData(value: unknown): unknown {
   if (!value || typeof value !== 'object') {
@@ -91,7 +188,7 @@ function normalizeMyttStatus(response: unknown): MyttStatusView {
       object.ownSession ??
       object.hasOwnSession ??
       object.hasSession ??
-      object.connected
+      object.connected,
   );
 
   const expired = Boolean(object.expired ?? object.isExpired);
@@ -206,6 +303,53 @@ export default function SettingsScreen() {
   const [savedMeClub, setSavedMeClub] = useState<MeClub | null>(null);
   const [meClubMessage, setMeClubMessage] = useState<string | null>(null);
   const [meClubLoading, setMeClubLoading] = useState<'save' | 'clear' | null>(null);
+
+  const [draftAccent, setDraftAccent] = useState(() => normalizeHexColor(accent));
+
+  const savedAccent = useMemo(() => normalizeHexColor(accent), [accent]);
+
+  useEffect(() => {
+    setDraftAccent((current) => {
+      if (current === savedAccent) return current;
+      return savedAccent;
+    });
+  }, [savedAccent]);
+
+  const hasUnsavedAccentChanges = draftAccent !== savedAccent;
+
+  const accentTextColor = useMemo(
+      () => getReadableTextColor(draftAccent),
+      [draftAccent],
+  );
+
+  const accentContrast = useMemo(
+      () => getContrastRatio(accentTextColor, draftAccent),
+      [accentTextColor, draftAccent],
+  );
+
+  function handlePreviewAccent(hex: string) {
+    const normalized = normalizeHexColor(hex);
+
+    setDraftAccent((current) => {
+      if (current === normalized) return current;
+      return normalized;
+    });
+  }
+
+  function handleApplyAccent() {
+    const normalized = normalizeHexColor(draftAccent);
+
+    setDraftAccent((current) => {
+      if (current === normalized) return current;
+      return normalized;
+    });
+
+    setAccent(normalized).catch(() => undefined);
+  }
+
+  function handleResetAccentPreview() {
+    handlePreviewAccent(DEFAULT_ACCENT);
+  }
 
   useFocusEffect(
       useCallback(() => {
@@ -496,9 +640,6 @@ export default function SettingsScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
             <Text style={[styles.title, { color: colors.text }]}>Einstellungen</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedText }]}>
-              App-Design, Konto und myTischtennis-Verbindung
-            </Text>
           </View>
 
           <Card style={styles.card}>
@@ -540,44 +681,115 @@ export default function SettingsScreen() {
               <Text style={[styles.cardTitle, { color: colors.text }]}>Akzentfarbe</Text>
             </View>
 
-            <View style={styles.twoGrid}>
-              {accentColors.map((entry) => (
-                  <Pressable
-                      key={entry.id}
-                      onPress={() => setAccent(entry.id)}
-                      style={({ pressed }) => [
-                        styles.accentButton,
-                        {
-                          backgroundColor:
-                              accent === entry.id ? colors.primarySoft : 'transparent',
-                          borderColor:
-                              accent === entry.id ? colors.primarySoftBorder : colors.border,
-                          opacity: pressed ? 0.75 : 1,
-                        },
-                      ]}
-                  >
-                    <View
-                        style={[
-                          styles.colorDot,
-                          {
-                            backgroundColor: entry.color,
-                            borderColor: colors.border,
-                          },
-                        ]}
-                    />
+            <Text style={[styles.backendText, { color: colors.mutedText }]}>
+              Wähle deine Akzentfarbe frei aus. Slider und Farbfelder ändern nur die
+              Vorschau. Erst mit Übernehmen wird die Farbe gespeichert.
+            </Text>
 
-                    <Text
-                        style={[
-                          styles.accentButtonText,
+            <View
+                style={[
+                  styles.accentPreview,
+                  {
+                    backgroundColor: draftAccent,
+                    borderColor: colors.border,
+                  },
+                ]}
+            >
+              <View style={styles.accentPreviewTextBlock}>
+                <Text style={[styles.accentPreviewTitle, { color: accentTextColor }]}>
+                  Vorschau
+                </Text>
+
+                <Text style={[styles.accentPreviewMeta, { color: accentTextColor }]}>
+                  {draftAccent.toUpperCase()} · Schrift{' '}
+                  {accentTextColor === '#ffffff' ? 'weiß' : 'dunkel'}
+                </Text>
+              </View>
+
+              <View
+                  style={[
+                    styles.contrastBadge,
+                    {
+                      backgroundColor: accentTextColor,
+                    },
+                  ]}
+              >
+                <Text style={[styles.contrastBadgeText, { color: draftAccent }]}>
+                  {accentContrast.toFixed(2)}:1
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.colorPickerBox}>
+              <ColorPicker
+                  value={draftAccent}
+                  thumbAnimationDuration={0}
+                  onCompleteJS={({ hex }) => {
+                    handlePreviewAccent(hex);
+                  }}
+              >
+                <Preview style={styles.colorPreview} hideInitialColor hideText />
+
+                <View style={styles.colorWheelRow}>
+                  <HueCircular
+                      thumbSize={28}
+                      sliderThickness={22}
+                      style={styles.hueCircular}
+                  />
+
+                  <Panel1 style={styles.colorPanel} />
+                </View>
+              </ColorPicker>
+            </View>
+
+            <View style={styles.swatchGrid}>
+              {accentSwatches.map((swatch) => {
+                const normalizedSwatch = normalizeHexColor(swatch);
+                const selected = normalizeHexColor(draftAccent) === normalizedSwatch;
+                const swatchIconColor = getReadableTextColor(normalizedSwatch);
+
+                return (
+                    <Pressable
+                        key={normalizedSwatch}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Akzentfarbe ${normalizedSwatch}`}
+                        onPress={() => handlePreviewAccent(normalizedSwatch)}
+                        style={({ pressed }) => [
+                          styles.swatchButton,
                           {
-                            color: accent === entry.id ? colors.primary : colors.text,
+                            backgroundColor: normalizedSwatch,
+                            borderColor: selected ? colors.text : colors.border,
+                            opacity: pressed ? 0.72 : 1,
+                            transform: [{ scale: selected ? 1.06 : 1 }],
                           },
                         ]}
                     >
-                      {entry.name}
-                    </Text>
-                  </Pressable>
-              ))}
+                      {selected ? (
+                          <Ionicons name="checkmark" size={17} color={swatchIconColor} />
+                      ) : null}
+                    </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.twoGrid}>
+              <Button
+                  variant="outline"
+                  icon="refresh-outline"
+                  onPress={handleResetAccentPreview}
+                  style={styles.halfButton}
+              >
+                Standard
+              </Button>
+
+              <Button
+                  variant="primary"
+                  icon="checkmark-outline"
+                  onPress={handleApplyAccent}
+                  style={styles.halfButton}
+              >
+                Übernehmen
+              </Button>
             </View>
           </Card>
 
@@ -704,9 +916,6 @@ export default function SettingsScreen() {
 
                 <View style={styles.profileSectionTitleBlock}>
                   <Text style={[styles.profileSectionTitle, { color: colors.text }]}>Spieler</Text>
-                  <Text style={[styles.profileSectionSubtitle, { color: colors.mutedText }]}>
-                    NUID für TTR und Verlauf
-                  </Text>
                 </View>
               </View>
 
@@ -794,9 +1003,6 @@ export default function SettingsScreen() {
 
                 <View style={styles.profileSectionTitleBlock}>
                   <Text style={[styles.profileSectionTitle, { color: colors.text }]}>Verein</Text>
-                  <Text style={[styles.profileSectionSubtitle, { color: colors.mutedText }]}>
-                    Vereins-ID für letzte Begegnungen
-                  </Text>
                 </View>
               </View>
 
@@ -1139,9 +1345,6 @@ export default function SettingsScreen() {
             <Text style={[styles.versionText, { color: colors.mutedText }]}>
               Tischtennis Tracker v1.0
             </Text>
-            <Text style={[styles.versionSubtext, { color: colors.mutedText }]}>
-              Daten von myTischtennis über dein eigenes Backend
-            </Text>
           </Card>
         </ScrollView>
       </Screen>
@@ -1204,28 +1407,84 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 14,
   },
-  accentButton: {
-    minHeight: 42,
-    minWidth: '47%',
+  accentPreview: {
+    minHeight: 78,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  accentPreviewTextBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  accentPreviewTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '900',
+  },
+  accentPreviewMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '800',
+    opacity: 0.9,
+  },
+  contrastBadge: {
+    minWidth: 68,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contrastBadgeText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
+  },
+  colorPickerBox: {
+    alignItems: 'center',
+    gap: 14,
+  },
+  colorPreview: {
+    width: '100%',
+    height: 34,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+  colorWheelRow: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 16,
   },
-  accentButtonText: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '800',
+  hueCircular: {
+    width: 132,
+    height: 132,
   },
-  colorDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+  colorPanel: {
+    width: 132,
+    height: 132,
+    borderRadius: 18,
+  },
+  swatchGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  swatchButton: {
+    width: 31,
+    height: 31,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backendText: {
     fontSize: 13,

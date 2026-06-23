@@ -97,9 +97,6 @@ export default function FavoritesScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
             <Text style={[styles.title, { color: colors.text }]}>Favoriten</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedText }]}>
-              Deine gespeicherten Spieler, Vereine und Ligen
-            </Text>
           </View>
 
           {favorites.length === 0 ? (

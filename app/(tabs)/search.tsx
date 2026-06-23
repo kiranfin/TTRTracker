@@ -294,7 +294,6 @@ export default function SearchScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
             <Text style={[styles.title, { color: colors.text }]}>Suche</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedText }]}>Suche nach Spielern und Vereinen</Text>
           </View>
 
           <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabOptions} />
@@ -304,7 +303,7 @@ export default function SearchScreen() {
                 value={query}
                 onChangeText={handleQueryChange}
                 onSubmitEditing={runSearch}
-                placeholder="Name, Verein oder Region eingeben..."
+                placeholder="Name oder Verein eingeben..."
             />
             <Button
                 icon="search-outline"
@@ -326,7 +325,7 @@ export default function SearchScreen() {
 
           {!loading && activeTab === 'players' ? (
               <View style={styles.stack}>
-                {!query.trim() ? <EmptyState icon="search-outline" title="Suchbegriff eingeben" subtitle="Die Suche startet erst über den Suchen-Button." /> : null}
+                {!query.trim() ? <EmptyState icon="search-outline" title="Suchbegriff eingeben" /> : null}
                 {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title="Bereit zum Suchen" subtitle="Tippe auf Suchen, damit dein Backend angefragt wird." /> : null}
                 {hasSubmitted && players.length === 0 ? <EmptyState icon="person-outline" title="Keine Spieler gefunden" subtitle={`Keine Treffer für „${submittedQuery}“`} /> : null}
 

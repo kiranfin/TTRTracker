@@ -53,9 +53,6 @@ export default function LeaguesScreen() {
           <View style={styles.headerRow}>
             <View style={styles.titleBlock}>
               <Text style={[styles.title, { color: colors.text }]}>Verbände</Text>
-              <Text style={[styles.subtitle, { color: colors.mutedText }]}>
-                Danach werden Kreise, Bezirke und Spielklassen über dein Backend geladen.
-              </Text>
             </View>
           </View>
 

@@ -387,16 +387,11 @@ export default function HomeScreen() {
               <Text style={[styles.heroTitle, { color: colors.text }]}>
                 Willkommen{firstName ? ` ${firstName}` : ''}
               </Text>
-
-              <Text style={[styles.heroSubtitle, { color: colors.mutedText }]}>
-                Schneller Zugriff auf deine Tischtennis-Daten aus myTischtennis
-              </Text>
             </View>
 
             <View style={styles.shortcutGrid}>
               <ShortcutCard
                   title="Suche"
-                  subtitle="Spieler & Vereine"
                   icon="search"
                   iconBg="#dbeafe"
                   iconColor="#2563eb"
@@ -405,7 +400,6 @@ export default function HomeScreen() {
 
               <ShortcutCard
                   title="Ligen"
-                  subtitle="Tabellen"
                   icon="trophy"
                   iconBg="#f3e8ff"
                   iconColor="#9333ea"
@@ -414,7 +408,6 @@ export default function HomeScreen() {
 
               <ShortcutCard
                   title="Favoriten"
-                  subtitle="Schnellzugriff"
                   icon="star"
                   iconBg="#fef3c7"
                   iconColor="#d97706"
@@ -463,7 +456,6 @@ type ShortcutCardProps = {
 
 function ShortcutCard({
                         title,
-                        subtitle,
                         icon,
                         iconBg,
                         iconColor,
@@ -489,10 +481,6 @@ function ShortcutCard({
 
         <Text style={[styles.shortcutTitle, { color: colors.text }]} numberOfLines={1}>
           {title}
-        </Text>
-
-        <Text style={[styles.shortcutSubtitle, { color: colors.mutedText }]} numberOfLines={1}>
-          {subtitle}
         </Text>
       </Pressable>
   );

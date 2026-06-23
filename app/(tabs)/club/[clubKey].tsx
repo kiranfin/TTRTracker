@@ -487,9 +487,6 @@ export default function ClubDetailsScreen() {
                         <View style={styles.sectionHeader}>
                             <View>
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Mannschaften</Text>
-                                <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                    Teams und zugehörige Ligen
-                                </Text>
                             </View>
 
                             <Badge tone="secondary">{teams.length}</Badge>
@@ -512,9 +509,6 @@ export default function ClubDetailsScreen() {
                         <View style={styles.sectionHeader}>
                             <View>
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Spieler</Text>
-                                <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                    andro-Rangliste dieses Vereins
-                                </Text>
                             </View>
 
                             <Badge tone="secondary">{players.length}</Badge>
@@ -545,9 +539,6 @@ export default function ClubDetailsScreen() {
                         <View style={styles.sectionHeader}>
                             <View>
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Spielplan</Text>
-                                <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                    Begegnungen aller Vereinsmannschaften
-                                </Text>
                             </View>
 
                             <Badge tone="secondary">{scheduleMatches.length}</Badge>
