@@ -880,9 +880,6 @@ export default function PlayerDetailsScreen() {
                                 <Ionicons name="stats-chart-outline" size={19} color={colors.primary} />
                                 <View>
                                     <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('player.statistics')}</Text>
-                                    <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                        {t('player.ttrHistoryCalculated')}
-                                    </Text>
                                 </View>
                             </View>
 

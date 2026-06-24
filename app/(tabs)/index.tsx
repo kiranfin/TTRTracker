@@ -707,10 +707,6 @@ function ClubQuickStatsCard({
             <Text style={[styles.clubTitle, { color: colors.text }]} numberOfLines={1}>
               {clubName ?? t('entities.clubUnknown')}
             </Text>
-
-            <Text style={[styles.clubSubtitle, { color: colors.mutedText }]} numberOfLines={1}>
-              {t('home.latestCompletedMatches')}
-            </Text>
           </View>
 
           <Pressable

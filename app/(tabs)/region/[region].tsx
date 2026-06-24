@@ -42,10 +42,6 @@ export default function RegionLeaguesScreen() {
 
   const pageTitle = selectedRegion ? selectedRegion.name : associationTitle;
 
-  const pageSubtitle = selectedRegion
-      ? t('region.classesInRegion', { region: selectedRegion.name })
-      : t('region.districtsInAssociation', { association: shortName });
-
   const sortedRegions = useMemo(
       () =>
           [...regions].sort((left, right) => {
@@ -197,10 +193,6 @@ export default function RegionLeaguesScreen() {
             <View style={styles.headerText}>
               <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
                 {pageTitle}
-              </Text>
-
-              <Text style={[styles.subtitle, { color: colors.mutedText }]}>
-                {pageSubtitle}
               </Text>
 
               <View style={styles.metaRow}>

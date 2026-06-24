@@ -345,7 +345,7 @@ export default function SearchScreen() {
 
           {!loading && activeTab === 'clubs' ? (
               <View style={styles.stack}>
-                {!query.trim() ? <EmptyState icon="search-outline" title={t('search.enterTerm')} subtitle={t('search.startsAfterButton')} /> : null}
+                {!query.trim() ? <EmptyState icon="search-outline" title={t('search.enterTerm')} /> : null}
                 {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title={t('search.readyTitle')} subtitle={t('search.readySubtitle')} /> : null}
                 {hasSubmitted && clubs.length === 0 ? <EmptyState icon="business-outline" title={t('search.noClubs')} subtitle={t('search.noResultsFor', { query: submittedQuery })} /> : null}
 
