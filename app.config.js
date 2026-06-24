@@ -21,7 +21,7 @@ export default {
         android: {
             adaptiveIcon: {
                 foregroundImage: "./assets/images/icon.png",
-                backgroundColor: "#013762",
+                backgroundColor: "#082255",
             },
             edgeToEdgeEnabled: true,
             predictiveBackGestureEnabled: false,
@@ -43,9 +43,9 @@ export default {
                     image: "./assets/images/android-icon-foreground.png",
                     imageWidth: 200,
                     resizeMode: "contain",
-                    backgroundColor: "#005F92",
+                    backgroundColor: "#0041B6",
                     dark: {
-                        backgroundColor: "#002143",
+                        backgroundColor: "#082255",
                     },
                 },
             ],
