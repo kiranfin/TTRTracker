@@ -143,7 +143,7 @@ type ScheduleSummary = {
 export default function TeamDetailsScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
     const { colors } = useTheme();
-    const { t } = useI18n();
+    const { t, language } = useI18n();
 
     const [activeTab, setActiveTab] = useState<DetailTab>('infos');
     const [roundFilter, setRoundFilter] = useState<RoundFilter>('gesamt');
@@ -320,7 +320,7 @@ export default function TeamDetailsScreen() {
                 }
 
                 if (scheduleResult.status === 'fulfilled') {
-                    setSchedule(normalizeTeamSchedule(scheduleResult.value, team, t));
+                    setSchedule(normalizeTeamSchedule(scheduleResult.value, team, t, language));
                 } else {
                     setSchedule([]);
                     warnings.push(t('team.scheduleLoadError'));
@@ -378,6 +378,7 @@ export default function TeamDetailsScreen() {
         team.teamId,
         team.teamName,
         team.teamNameSlug,
+        language,
         t,
     ]);
 
@@ -620,7 +621,7 @@ function InfosTab({
     summary: ScheduleSummary;
 }) {
     const { colors } = useTheme();
-    const { t } = useI18n();
+    const { t, language } = useI18n();
 
     const contact = info?.contact;
     const headInfos = info?.headInfos;
@@ -657,7 +658,7 @@ function InfosTab({
                         value={
                             summary.nextMatch
                                 ? t('team.nextMatchValue', {
-                                    date: formatDateLabel(summary.nextMatch.date),
+                                    date: formatDateLabel(summary.nextMatch.date, language),
                                     opponent: getOpponentName(summary.nextMatch, team),
                                 })
                                 : undefined
@@ -1128,7 +1129,7 @@ function TeamMatchCard({
     highlighted?: boolean;
 }) {
     const { colors } = useTheme();
-    const { t } = useI18n();
+    const { t, language } = useI18n();
     const canOpen = Boolean(match.id) && match.status !== 'free';
 
     return (
@@ -1159,7 +1160,7 @@ function TeamMatchCard({
                 <View style={styles.metaLine}>
                     <Ionicons name="calendar-outline" size={13} color={colors.mutedText} />
                     <Text style={[styles.metaText, { color: colors.mutedText }]}>
-                        {formatDateLabel(match.date)}
+                        {formatDateLabel(match.date, language)}
                         {match.time ? ` • ${match.time}` : ''}
                     </Text>
                 </View>
@@ -1605,6 +1606,7 @@ function normalizeTeamSchedule(
     response: unknown,
     team: TeamContext,
     t: ReturnType<typeof useI18n>['t'],
+    language: ReturnType<typeof useI18n>['language'],
 ): TeamScheduleMatch[] {
     const data = unwrapData(response);
     const row = asRecord(data);
@@ -1619,7 +1621,7 @@ function normalizeTeamSchedule(
         ]) ?? [];
 
     return rows
-        .map((value) => normalizeScheduleRow(value, team, t))
+        .map((value) => normalizeScheduleRow(value, team, t, language))
         .filter((match) => match.homeTeam || match.awayTeam)
         .sort((a, b) => {
             const dateA = parseDate(a.date)?.getTime() ?? 0;
@@ -1632,12 +1634,13 @@ function normalizeScheduleRow(
     value: unknown,
     team: TeamContext,
     t: ReturnType<typeof useI18n>['t'],
+    language: ReturnType<typeof useI18n>['language'],
 ): TeamScheduleMatch {
     const row = asRecord(value);
 
     const date = pickString(row, ['date', 'datetime', 'start_time', 'startTime']);
     const time =
-        pickString(row, ['time', 'start_time_label', 'timeLabel']) ?? formatTimeLabel(date);
+        pickString(row, ['time', 'start_time_label', 'timeLabel']) ?? formatTimeLabel(date, language);
 
     const homeTeamId = pickString(row, ['team_home_id', 'homeTeamId', 'home_team_id']);
     const awayTeamId = pickString(row, ['team_away_id', 'awayTeamId', 'away_team_id']);
@@ -1645,7 +1648,7 @@ function normalizeScheduleRow(
     const opponent = pickString(row, ['opponent_team_name', 'opponentTeamName', 'opponent']);
     const homeTeam =
         pickString(row, ['team_home', 'homeTeam', 'home_team']) ??
-        (opponent ? team.teamName : 'Heim');
+        (opponent ? team.teamName : t('match.home'));
     const awayTeam =
         pickString(row, ['team_away', 'awayTeam', 'away_team']) ??
         opponent ??
@@ -2181,18 +2184,18 @@ function parseDate(value?: string) {
     return undefined;
 }
 
-function formatDateLabel(value?: string) {
+function formatDateLabel(value?: string, language: ReturnType<typeof useI18n>['language'] = 'de') {
     const date = parseDate(value);
     if (!date) return cleanValue(value) ?? '-';
 
-    return new Intl.DateTimeFormat('de-DE', {
+    return new Intl.DateTimeFormat(languageToLocale(language), {
         day: '2-digit',
         month: '2-digit',
         year: '2-digit',
     }).format(date);
 }
 
-function formatTimeLabel(value?: string) {
+function formatTimeLabel(value?: string, language: ReturnType<typeof useI18n>['language'] = 'de') {
     const date = parseDate(value);
     if (!date) return undefined;
 
@@ -2201,10 +2204,14 @@ function formatTimeLabel(value?: string) {
 
     if (hours === 0 && minutes === 0) return undefined;
 
-    return new Intl.DateTimeFormat('de-DE', {
+    return new Intl.DateTimeFormat(languageToLocale(language), {
         hour: '2-digit',
         minute: '2-digit',
     }).format(date);
+}
+
+function languageToLocale(language: ReturnType<typeof useI18n>['language']) {
+    return language === 'en' ? 'en-US' : 'de-DE';
 }
 
 function formatPercent(value?: number) {

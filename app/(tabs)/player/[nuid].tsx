@@ -49,13 +49,12 @@ type ChartRangeId = '6m' | '12m' | '24m' | 'all';
 
 const CHART_RANGES: Array<{
     id: ChartRangeId;
-    label: string;
     months?: number;
 }> = [
-    { id: '6m', label: '6M', months: 6 },
-    { id: '12m', label: '12M', months: 12 },
-    { id: '24m', label: '24M', months: 24 },
-    { id: 'all', label: 'Alle' },
+    { id: '6m', months: 6 },
+    { id: '12m', months: 12 },
+    { id: '24m', months: 24 },
+    { id: 'all' },
 ];
 
 type PlayerStats = {
@@ -353,7 +352,7 @@ export default function PlayerDetailsScreen() {
     const routeClubRouteParams: ClubRouteParams | null = routeClubKey
         ? {
             clubKey: routeClubKey,
-            title: clubName ?? 'Verein',
+            title: clubName ?? t('entities.club'),
             organization: params.organization ?? '',
             organizationName: params.organizationName ?? '',
             clubNumber: params.clubNumber ?? '',
@@ -602,7 +601,7 @@ export default function PlayerDetailsScreen() {
             params: {
                 leftNuid: meNuid,
                 rightNuid: otherNuid,
-                leftTitle: 'Ich',
+                leftTitle: t('player.meShort'),
                 rightTitle: displayName,
             },
         });
@@ -618,7 +617,7 @@ export default function PlayerDetailsScreen() {
             pathname: '/club/[clubKey]',
             params: {
                 clubKey: effectiveClubKey,
-                title: clubRouteParams?.title ?? clubName ?? 'Verein',
+                title: clubRouteParams?.title ?? clubName ?? t('entities.club'),
                 organization: clubRouteParams?.organization ?? params.organization ?? '',
                 organizationName: clubRouteParams?.organizationName ?? params.organizationName ?? '',
                 clubNumber: clubRouteParams?.clubNumber ?? params.clubNumber ?? '',
@@ -787,7 +786,13 @@ export default function PlayerDetailsScreen() {
         setLeagueDropdownOpen(false);
     }
 
-    const selectedChartRangeLabel = CHART_RANGES.find((range) => range.id === chartRange)?.label ?? '12M';
+    const chartRangeLabels: Record<ChartRangeId, string> = {
+        '6m': t('player.chartRange6m'),
+        '12m': t('player.chartRange12m'),
+        '24m': t('player.chartRange24m'),
+        all: t('player.chartRangeAll'),
+    };
+    const selectedChartRangeLabel = chartRangeLabels[chartRange] ?? t('player.chartRange12m');
     const filtersActive = selectedLeague !== null || historySearchQuery.trim().length > 0;
 
     return (
@@ -853,19 +858,19 @@ export default function PlayerDetailsScreen() {
                                 <OverviewFact
                                     label="Q-TTR"
                                     value={formatOptionalNumber(qTtr)}
-                                    helper="Quartalswert"
+                                    helper={t('player.quarterValue')}
                                 />
 
                                 <OverviewFact
-                                    label="Peak"
+                                    label={t('player.peak')}
                                     value={formatOptionalNumber(maxTtr)}
-                                    helper={history?.maxTtrDate ? formatDate(history.maxTtrDate) : 'Bestwert'}
+                                    helper={history?.maxTtrDate ? formatDate(history.maxTtrDate) : t('player.bestValue')}
                                 />
 
                                 <OverviewFact
-                                    label="Historie"
+                                    label={t('player.history')}
                                     value={String(stats.eventCount)}
-                                    helper="Einträge"
+                                    helper={t('player.entries')}
                                 />
                             </View>
                         </Card>
@@ -874,7 +879,7 @@ export default function PlayerDetailsScreen() {
                             <View style={styles.sectionHeader}>
                                 <Ionicons name="stats-chart-outline" size={19} color={colors.primary} />
                                 <View>
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Statistik</Text>
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('player.statistics')}</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
                                         {t('player.ttrHistoryCalculated')}
                                     </Text>
@@ -884,26 +889,26 @@ export default function PlayerDetailsScreen() {
                             <View style={styles.statGrid}>
                                 <StatTile
                                     icon="tennisball-outline"
-                                    label="Spiele"
+                                    label={t('player.games')}
                                     value={String(stats.matchCount)}
                                     helper={t('player.fromTtrHistory')}
                                 />
 
                                 <StatTile
                                     icon="calendar-outline"
-                                    label="Einträge"
+                                    label={t('player.entries')}
                                     value={String(stats.eventCount)}
-                                    helper="Historieneinträge"
+                                    helper={t('player.historyEntries')}
                                 />
 
                                 <StatTile
                                     icon="pie-chart-outline"
-                                    label="Quote"
+                                    label={t('player.quote')}
                                     value={formatPercent(stats.winRate)}
                                     helper={
                                         stats.ratedMatchCount > 0
-                                            ? `${stats.matchesWon}/${stats.ratedMatchCount} Spiele gewonnen`
-                                            : 'Keine auswertbaren Spiele'
+                                            ? t('player.gamesWonRatio', { won: stats.matchesWon, total: stats.ratedMatchCount })
+                                            : t('player.noRatedGames')
                                     }
                                     positive={isFiniteNumber(stats.winRate) && stats.winRate >= 50}
                                     negative={isFiniteNumber(stats.winRate) && stats.winRate < 50}
@@ -911,26 +916,26 @@ export default function PlayerDetailsScreen() {
 
                                 <StatTile
                                     icon="swap-vertical-outline"
-                                    label="Ø Änderung"
+                                    label={t('player.averageChange')}
                                     value={formatSignedAverage(stats.averageDelta)}
-                                    helper="pro Historieneintrag"
+                                    helper={t('player.perHistoryEntry')}
                                     positive={isFiniteNumber(stats.averageDelta) && stats.averageDelta > 0}
                                     negative={isFiniteNumber(stats.averageDelta) && stats.averageDelta < 0}
                                 />
 
                                 <StatTile
                                     icon="arrow-up-circle-outline"
-                                    label="Bester Sprung"
+                                    label={t('player.bestJump')}
                                     value={formatSignedNumber(stats.bestGain)}
-                                    helper="größter Gewinn"
+                                    helper={t('player.biggestGain')}
                                     positive={isFiniteNumber(stats.bestGain) && stats.bestGain > 0}
                                 />
 
                                 <StatTile
                                     icon="arrow-down-circle-outline"
-                                    label="Größter Verlust"
+                                    label={t('player.biggestLoss')}
                                     value={formatSignedNumber(stats.worstLoss)}
-                                    helper="größter Abzug"
+                                    helper={t('player.biggestDeduction')}
                                     negative={isFiniteNumber(stats.worstLoss) && stats.worstLoss < 0}
                                 />
                             </View>
@@ -941,9 +946,9 @@ export default function PlayerDetailsScreen() {
                                 <View style={styles.sectionHeader}>
                                     <Ionicons name="trending-up-outline" size={19} color={colors.primary} />
                                     <View>
-                                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Verlauf</Text>
+                                        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('player.chartTitle')}</Text>
                                         <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                            {selectedChartRangeLabel} · {chartEvents.length} Werte
+                                            {t('player.chartSubtitle', { range: selectedChartRangeLabel, count: chartEvents.length })}
                                         </Text>
                                     </View>
                                 </View>
@@ -952,7 +957,7 @@ export default function PlayerDetailsScreen() {
                                     {CHART_RANGES.map((range) => (
                                         <ChartRangeButton
                                             key={range.id}
-                                            label={range.label}
+                                            label={chartRangeLabels[range.id]}
                                             selected={chartRange === range.id}
                                             onPress={() => setChartRange(range.id)}
                                         />
@@ -972,9 +977,9 @@ export default function PlayerDetailsScreen() {
                         <Card style={styles.historyControlsCard}>
                             <View style={styles.historyControlsTopRow}>
                                 <View>
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Historie</Text>
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('player.history')}</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                        {filteredEventsNewestFirst.length} von {allEventsNewestFirst.length} Einträgen
+                                        {t('player.historyCount', { filtered: filteredEventsNewestFirst.length, total: allEventsNewestFirst.length })}
                                     </Text>
                                 </View>
 
@@ -1054,14 +1059,14 @@ export default function PlayerDetailsScreen() {
                                         double
                                         disabled={page === 0}
                                         onPress={goFirstPage}
-                                        accessibilityLabel="Erste Seite"
+                                        accessibilityLabel={t('player.firstPage')}
                                     />
 
                                     <PaginationIconButton
                                         icon="chevron-back"
                                         disabled={page === 0}
                                         onPress={goPreviousPage}
-                                        accessibilityLabel="Vorherige Seite"
+                                        accessibilityLabel={t('player.previousPage')}
                                     />
 
                                     <View style={styles.pageInfo}>
@@ -1077,7 +1082,7 @@ export default function PlayerDetailsScreen() {
                                         icon="chevron-forward"
                                         disabled={page >= pageCount - 1}
                                         onPress={goNextPage}
-                                        accessibilityLabel="Nächste Seite"
+                                        accessibilityLabel={t('player.nextPage')}
                                     />
 
                                     <PaginationIconButton
@@ -1085,7 +1090,7 @@ export default function PlayerDetailsScreen() {
                                         double
                                         disabled={page >= pageCount - 1}
                                         onPress={goLastPage}
-                                        accessibilityLabel="Letzte Seite"
+                                        accessibilityLabel={t('player.lastPage')}
                                     />
                                 </View>
                             </View>
@@ -1541,7 +1546,7 @@ function HistoryEventCard({
 
                 {eventMatchCount > 0 ? (
                     <Badge tone="secondary" icon="tennisball-outline">
-                        {eventMatchCount} Spiele
+                        {t('player.gamesCount', { count: eventMatchCount })}
                     </Badge>
                 ) : null}
 
@@ -1600,7 +1605,7 @@ function HistoryMatchCard({ match }: { match: NormalizedTtrHistoryMatch }) {
                 <View style={styles.eventBottomRow}>
                     {match.setResults.map((setResult, index) => (
                         <Badge key={`${match.id}-set-${index}`} tone="outline">
-                            Satz {index + 1}: {setResult}
+                            {t('player.setResult', { number: index + 1, result: setResult })}
                         </Badge>
                     ))}
                 </View>
@@ -1609,12 +1614,12 @@ function HistoryMatchCard({ match }: { match: NormalizedTtrHistoryMatch }) {
             <View style={styles.eventBottomRow}>
                 {match.ownPoints !== undefined || match.otherPoints !== undefined ? (
                     <Badge tone="secondary">
-                        Punkte {match.ownPoints ?? 0}:{match.otherPoints ?? 0}
+                        {t('player.pointsResult', { own: match.ownPoints ?? 0, other: match.otherPoints ?? 0 })}
                     </Badge>
                 ) : null}
 
                 {match.expectedResult ? (
-                    <Badge tone="outline">Erwartung {match.expectedResult}</Badge>
+                    <Badge tone="outline">{t('player.expectedResult', { result: match.expectedResult })}</Badge>
                 ) : null}
             </View>
         </View>
@@ -1629,6 +1634,7 @@ function TtrLineChart({
     highlightedEvent: NormalizedTtrHistoryEvent | null;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const width = 320;
     const height = 180;
@@ -1678,7 +1684,7 @@ function TtrLineChart({
                             fontSize="12"
                             fontWeight="800"
                         >
-                            Top {highlightedPoint.value}
+                            {t('player.topValue', { value: highlightedPoint.value })}
                         </SvgText>
                     </>
                 ) : null}

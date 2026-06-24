@@ -17,11 +17,10 @@ import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
 import { SegmentedTabs } from '../../../src/components/SegmentedTabs';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '../../../src/storage/favorites';
+import { useI18n } from '../../../src/i18n/I18nProvider';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import type { ScheduleMatch, TableRow } from '../../../src/types/tttracker';
 import {
-    formatDate,
-    matchStatusLabel,
     normalizeSchedule,
     normalizeTable,
 } from '../../../src/utils/normalizers';
@@ -56,23 +55,15 @@ type LeagueInfo = {
     favoriteId: string;
 };
 
-const periodOptions: { value: SchedulePeriodFilter; label: string }[] = [
-    { value: 'all', label: 'Alle' },
-    { value: 'past30', label: 'Letzte 30 Tage' },
-    { value: 'next30', label: 'Nächste 30 Tage' },
-];
-
-const roundOptions: { value: RoundFilter; label: string }[] = [
-    { value: 'all', label: 'Alle' },
-    { value: 'vr', label: 'Hinrunde' },
-    { value: 'rr', label: 'Rückrunde' },
-];
+const periodFilters: SchedulePeriodFilter[] = ['all', 'past30', 'next30'];
+const roundFilters: RoundFilter[] = ['all', 'vr', 'rr'];
 
 const LEAGUE_FAVORITE_TYPE = 'league' as const;
 
 export default function LeagueDetailsScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const [activeTab, setActiveTab] = useState<DetailTab>('table');
     const [tableRows, setTableRows] = useState<TableRow[]>([]);
@@ -89,7 +80,7 @@ export default function LeagueDetailsScreen() {
         const groupId = params.groupId ?? params.leagueKey;
 
         return {
-            title: params.title ?? 'Ligadetails',
+            title: params.title ?? t('league.defaultTitle'),
             association: params.association,
             groupId,
             season: params.season ?? '25/26',
@@ -113,6 +104,7 @@ export default function LeagueDetailsScreen() {
         params.leagueSlug,
         params.season,
         params.title,
+        t,
     ]);
 
 
@@ -157,7 +149,7 @@ export default function LeagueDetailsScreen() {
                 id: league.favoriteId,
                 type: LEAGUE_FAVORITE_TYPE,
                 title: league.title,
-                subtitle: `${league.association ?? 'Verband unbekannt'} • Saison ${formatSeasonLabel(league.season)}`,
+                subtitle: `${league.association ?? t('league.associationUnknown')} • ${t('favorites.seasonValue', { season: formatSeasonLabel(league.season) })}`,
                 params: {
                     association: league.association,
                     groupId: league.groupId,
@@ -181,7 +173,7 @@ export default function LeagueDetailsScreen() {
         async function loadLeague() {
             if (!league.association || !league.groupId) {
                 setLoading(false);
-                setError('Für diese Liga fehlen association oder groupId.');
+                setError(t('league.missingLeagueData'));
                 return;
             }
 
@@ -211,7 +203,7 @@ export default function LeagueDetailsScreen() {
                 setError(
                     loadError instanceof Error
                         ? loadError.message
-                        : 'Ligadaten konnten nicht geladen werden',
+                        : t('league.loadError'),
                 );
             } finally {
                 setLoading(false);
@@ -219,7 +211,7 @@ export default function LeagueDetailsScreen() {
         }
 
         loadLeague().catch(() => undefined);
-    }, [league.association, league.groupId, league.leagueSlug, league.season]);
+    }, [league.association, league.groupId, league.leagueSlug, league.season, t]);
 
     const filteredMatches = useMemo(
         () =>
@@ -243,6 +235,32 @@ export default function LeagueDetailsScreen() {
 
     const scheduleStatsByTeam = useMemo(() => buildScheduleStats(matches), [matches]);
 
+    const localizedTabOptions = useMemo(
+        () => [
+            { value: 'table' as const, label: t('league.table'), icon: 'podium-outline' as const },
+            { value: 'matches' as const, label: t('league.schedule'), icon: 'calendar-outline' as const },
+        ],
+        [t],
+    );
+
+    const localizedPeriodOptions = useMemo(
+        () =>
+            periodFilters.map((value) => ({
+                value,
+                label: periodFilterLabel(value, t),
+            })),
+        [t],
+    );
+
+    const localizedRoundOptions = useMemo(
+        () =>
+            roundFilters.map((value) => ({
+                value,
+                label: roundFilterLabel(value, t),
+            })),
+        [t],
+    );
+
     return (
         <Screen>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -263,21 +281,18 @@ export default function LeagueDetailsScreen() {
 
                     <View style={styles.headerMetaRow}>
                         <Badge tone="outline" icon="calendar-outline">
-                            Saison {league.season}
+                            {t('favorites.seasonValue', { season: league.season })}
                         </Badge>
 
                         {league.association ? <Badge tone="secondary">{league.association}</Badge> : null}
-                        {league.groupId ? <Badge tone="outline">Gruppe {league.groupId}</Badge> : null}
+                        {league.groupId ? <Badge tone="outline">{t('team.groupValue', { groupId: league.groupId })}</Badge> : null}
                     </View>
                 </View>
 
                 <SegmentedTabs
                     value={activeTab}
                     onChange={setActiveTab}
-                    options={[
-                        { value: 'table', label: 'Tabelle', icon: 'podium-outline' },
-                        { value: 'matches', label: 'Spielplan', icon: 'calendar-outline' },
-                    ]}
+                    options={localizedTabOptions}
                 />
 
                 {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
@@ -299,15 +314,15 @@ export default function LeagueDetailsScreen() {
                             </View>
 
                             <View>
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Tabelle</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('league.table')}</Text>
                                 <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                    Punkte, Spiele, Bilanz und Verhältnis
+                                    {t('league.tableSubtitle')}
                                 </Text>
                             </View>
                         </View>
 
                         {tableRows.length === 0 ? (
-                            <EmptyState icon="list-outline" title="Keine Tabelle gefunden" />
+                            <EmptyState icon="list-outline" title={t('league.noTable')} />
                         ) : (
                             <View style={styles.teamCardList}>
                                 {tableRows.map((row, index) => {
@@ -333,13 +348,13 @@ export default function LeagueDetailsScreen() {
                         <Card style={styles.filterCard}>
                             <View style={styles.sectionHeaderCompact}>
                                 <Ionicons name="filter-outline" size={18} color={colors.primary} />
-                                <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>Filter</Text>
+                                <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>{t('league.filter')}</Text>
                             </View>
 
                             <View style={styles.filterBlock}>
-                                <Text style={[styles.filterLabel, { color: colors.mutedText }]}>Zeitraum</Text>
+                                <Text style={[styles.filterLabel, { color: colors.mutedText }]}>{t('league.period')}</Text>
                                 <View style={styles.filterChipRow}>
-                                    {periodOptions.map((option) => (
+                                    {localizedPeriodOptions.map((option) => (
                                         <FilterChip
                                             key={option.value}
                                             label={option.label}
@@ -352,10 +367,10 @@ export default function LeagueDetailsScreen() {
 
                             <View style={styles.filterBlock}>
                                 <Text style={[styles.filterLabel, { color: colors.mutedText }]}>
-                                    Hin-/Rückrunde
+                                    {t('league.halfSeries')}
                                 </Text>
                                 <View style={styles.filterChipRow}>
-                                    {roundOptions.map((option) => (
+                                    {localizedRoundOptions.map((option) => (
                                         <FilterChip
                                             key={option.value}
                                             label={option.label}
@@ -367,12 +382,12 @@ export default function LeagueDetailsScreen() {
                             </View>
 
                             <Text style={[styles.filterHint, { color: colors.mutedText }]}>
-                                {filteredMatches.length} von {matches.length} Spielen sichtbar
+                                {t('league.visibleGames', { filtered: filteredMatches.length, total: matches.length })}
                             </Text>
                         </Card>
 
                         {filteredMatches.length === 0 ? (
-                            <EmptyState icon="calendar-outline" title="Keine Spiele für diesen Filter gefunden" />
+                            <EmptyState icon="calendar-outline" title={t('league.noGamesForFilter')} />
                         ) : null}
 
                         {upcoming.length > 0 ? (
@@ -380,7 +395,7 @@ export default function LeagueDetailsScreen() {
                                 <View style={styles.sectionHeaderCompact}>
                                     <Ionicons name="time-outline" size={18} color={colors.primary} />
                                     <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                                        Offene Spiele ({upcoming.length})
+                                        {t('league.openGames')} ({upcoming.length})
                                     </Text>
                                 </View>
 
@@ -401,7 +416,7 @@ export default function LeagueDetailsScreen() {
                                 <View style={styles.sectionHeaderCompact}>
                                     <Ionicons name="checkmark-circle-outline" size={18} color={colors.primary} />
                                     <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                                        Abgeschlossene Spiele ({completed.length})
+                                        {t('league.completedGames')} ({completed.length})
                                     </Text>
                                 </View>
 
@@ -454,6 +469,7 @@ function FavoriteLeagueButton({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -462,7 +478,7 @@ function FavoriteLeagueButton({
             disabled={loading}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={active ? 'Liga aus Favoriten entfernen' : 'Liga zu Favoriten hinzufügen'}
+            accessibilityLabel={active ? t('league.removeFavorite') : t('league.addFavorite')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -498,7 +514,8 @@ function TableTeamRow({
     scheduleStats?: TeamScheduleStats;
 }) {
     const { colors } = useTheme();
-    const stats = getTableStats(row, index, scheduleStats);
+    const { t } = useI18n();
+    const stats = getTableStats(row, index, scheduleStats, t);
     const teamId = getTeamRouteId(row, stats.teamName);
     const accent = getTableCardAccent(row, colors);
 
@@ -551,15 +568,15 @@ function TableTeamRow({
 
             <View style={styles.leagueStatGrid}>
                 <TableStatTile
-                    label="Punkte"
+                    label={t('league.points')}
                     value={formatTablePoints(stats.points)}
                     tone="points"
                     strong
                 />
 
-                <TableStatTile label="Spiele" value={stats.games} tone="games" />
-                <TableStatTile label="S/U/N" value={stats.record} tone="record" />
-                <TableStatTile label="Verh." value={stats.ratio} tone="ratio" />
+                <TableStatTile label={t('league.games')} value={stats.games} tone="games" />
+                <TableStatTile label={t('league.record')} value={stats.record} tone="record" />
+                <TableStatTile label={t('league.ratio')} value={stats.ratio} tone="ratio" />
             </View>
         </Pressable>
     );
@@ -645,6 +662,7 @@ function FilterChip({
 
 function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?: boolean }) {
     const { colors } = useTheme();
+    const { language, t } = useI18n();
     const canOpen = Boolean(match.id) && match.status !== 'free';
 
     return (
@@ -675,7 +693,7 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
                 <View style={styles.metaLine}>
                     <Ionicons name="calendar-outline" size={13} color={colors.mutedText} />
                     <Text style={[styles.metaText, { color: colors.mutedText }]}>
-                        {formatDate(match.date)}
+                        {formatDateLabel(match.date, language)}
                         {match.time ? ` • ${match.time}` : ''}
                         {match.endTime ? `–${match.endTime}` : ''}
                     </Text>
@@ -690,7 +708,7 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
                                 : 'outline'
                     }
                 >
-                    {matchStatusLabel(match.status)}
+                    {leagueMatchStatusLabel(match.status, t)}
                 </Badge>
             </View>
 
@@ -712,7 +730,7 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
                 ) : (
                     <View style={[styles.vsBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         <Text style={[styles.vsText, { color: colors.mutedText }]}>
-                            {match.status === 'free' ? 'FREI' : 'VS'}
+                            {match.status === 'free' ? t('team.freeShort') : t('team.vs')}
                         </Text>
                     </View>
                 )}
@@ -727,7 +745,7 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
                     <View style={styles.metaLine}>
                         <Ionicons name="flag-outline" size={13} color={colors.mutedText} />
                         <Text style={[styles.metaText, { color: colors.mutedText }]}>
-                            {[match.roundName, match.meetingNumber ? `Spiel ${match.meetingNumber}` : undefined]
+                            {[match.roundName, match.meetingNumber ? t('match.matchNumber', { number: match.meetingNumber }) : undefined]
                                 .filter(Boolean)
                                 .join(' • ')}
                         </Text>
@@ -742,13 +760,61 @@ function MatchCard({ match, highlighted }: { match: ScheduleMatch; highlighted?:
                             color={colors.mutedText}
                         />
                         <Text style={[styles.metaText, { color: colors.mutedText }]}>
-                            {match.confirmed ? 'Bestätigt' : 'Nicht bestätigt'}
+                            {match.confirmed ? t('status.confirmed') : t('status.notConfirmed')}
                         </Text>
                     </View>
                 ) : null}
             </View>
         </Card>
     );
+}
+
+
+function periodFilterLabel(filter: SchedulePeriodFilter, t: ReturnType<typeof useI18n>['t']) {
+    switch (filter) {
+        case 'past30':
+            return t('league.last30Days');
+        case 'next30':
+            return t('league.next30Days');
+        case 'all':
+        default:
+            return t('common.all');
+    }
+}
+
+function roundFilterLabel(filter: RoundFilter, t: ReturnType<typeof useI18n>['t']) {
+    switch (filter) {
+        case 'vr':
+            return t('league.firstHalf');
+        case 'rr':
+            return t('league.secondHalf');
+        case 'all':
+        default:
+            return t('common.all');
+    }
+}
+
+function leagueMatchStatusLabel(status: ScheduleMatch['status'], t: ReturnType<typeof useI18n>['t']) {
+    switch (status) {
+        case 'completed':
+            return t('status.completed');
+        case 'free':
+            return t('status.free');
+        case 'scheduled':
+        default:
+            return t('status.scheduled');
+    }
+}
+
+function formatDateLabel(value: string | undefined, language: ReturnType<typeof useI18n>['language']) {
+    const date = parseMatchDate(value);
+    if (!date) return valueToString(value) ?? '-';
+
+    return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+    }).format(date);
 }
 
 function getLeagueFavoriteId({
@@ -816,7 +882,12 @@ function formatSeasonLabel(value?: string) {
     return String(value ?? '25/26').replace(/--/g, '/');
 }
 
-function getTableStats(row: TableRow, index: number, scheduleStats?: TeamScheduleStats) {
+function getTableStats(
+    row: TableRow,
+    index: number,
+    scheduleStats: TeamScheduleStats | undefined,
+    t: ReturnType<typeof useI18n>['t'],
+) {
     const raw = row as RichTableRow;
 
     const position =
@@ -827,7 +898,7 @@ function getTableStats(row: TableRow, index: number, scheduleStats?: TeamSchedul
     const teamName =
         valueToString(row.teamName) ??
         pickString(raw, ['teamName', 'team_name', 'name']) ??
-        'Unbekannte Mannschaft';
+        t('league.unknownTeam');
 
     const officialPoints =
         valueToString(row.points) ??

@@ -19,6 +19,8 @@ import { useI18n } from '../../../src/i18n/I18nProvider';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import { formatDate } from '../../../src/utils/normalizers';
 
+type Translate = ReturnType<typeof useI18n>['t'];
+
 type SideId = 'left' | 'right';
 type Leader = SideId | 'tie' | 'unknown';
 
@@ -189,12 +191,12 @@ function numberFromUnknown(value: unknown) {
     return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function getPlayerName(player?: PlayerCompareSide | null) {
-    return player?.identity?.personName ?? 'Unbekannter Spieler';
+function getPlayerName(player: PlayerCompareSide | null | undefined, t: Translate) {
+    return player?.identity?.personName ?? t('player.unknownPlayer');
 }
 
-function getClubName(player?: PlayerCompareSide | null) {
-    return player?.identity?.clubName ?? 'Verein unbekannt';
+function getClubName(player: PlayerCompareSide | null | undefined, t: Translate) {
+    return player?.identity?.clubName ?? t('entities.clubUnknown');
 }
 
 function getEvents(player?: PlayerCompareSide | null) {
@@ -320,11 +322,11 @@ function formatProbability(value: number | null | undefined) {
     return `${Math.round(value * 100)} %`;
 }
 
-function getLeaderName(leader?: Leader) {
-    if (leader === 'left') return 'Links vorne';
-    if (leader === 'right') return 'Rechts vorne';
-    if (leader === 'tie') return 'Gleichstand';
-    return 'Unklar';
+function getLeaderName(leader: Leader | undefined, t: Translate) {
+    if (leader === 'left') return t('compare.leftAhead');
+    if (leader === 'right') return t('compare.rightAhead');
+    if (leader === 'tie') return t('compare.tie');
+    return t('compare.unclear');
 }
 
 function getLeaderForNuid(data: PlayerComparisonData, nuid?: string | null): SideId | undefined {
@@ -352,7 +354,7 @@ export default function PlayerCompareScreen() {
             if (!leftNuid || !rightNuid) {
                 setComparison(null);
                 setLoading(false);
-                setError('Für den Vergleich fehlen zwei NUIDs.');
+                setError(t('compare.missingNuids'));
                 return;
             }
 
@@ -364,12 +366,12 @@ export default function PlayerCompareScreen() {
                 const data = unwrapComparisonResponse(response);
 
                 if (!data) {
-                    throw new Error('Die Vergleichsdaten konnten nicht gelesen werden.');
+                    throw new Error(t('compare.parseError'));
                 }
 
                 setComparison(data);
             } catch (loadError) {
-                setError(loadError instanceof Error ? loadError.message : 'Vergleich konnte nicht geladen werden');
+                setError(loadError instanceof Error ? loadError.message : t('compare.loadError'));
                 setComparison(null);
             } finally {
                 setLoading(false);
@@ -397,8 +399,8 @@ export default function PlayerCompareScreen() {
             pathname: '/player/[nuid]',
             params: {
                 nuid: player.nuid,
-                title: getPlayerName(player),
-                clubName: getClubName(player),
+                title: getPlayerName(player, t),
+                clubName: getClubName(player, t),
             },
         });
     }
@@ -413,7 +415,7 @@ export default function PlayerCompareScreen() {
                 <View style={styles.titleBlock}>
                     <Text style={[styles.title, { color: colors.text }]}>{t('compare.title')}</Text>
                     <Text style={[styles.subtitle, { color: colors.mutedText }]}>
-                        TTR, Form, Quote und direkter Vergleich
+                        {t('compare.subtitle')}
                     </Text>
                 </View>
 
@@ -431,7 +433,7 @@ export default function PlayerCompareScreen() {
                             />
 
                             <View style={[styles.vsBubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Text style={[styles.vsText, { color: colors.mutedText }]}>VS</Text>
+                                <Text style={[styles.vsText, { color: colors.mutedText }]}>{t('compare.vs')}</Text>
                             </View>
 
                             <PlayerHeroCard
@@ -466,7 +468,7 @@ export default function PlayerCompareScreen() {
                                     <View style={styles.favoriteMainRow}>
                                         <View style={styles.favoriteSide}>
                                             <Text style={[styles.favoriteName, { color: colors.text }]} numberOfLines={1}>
-                                                {getPlayerName(comparison.left)}
+                                                {getPlayerName(comparison.left, t)}
                                             </Text>
                                             <Text
                                                 style={[
@@ -482,7 +484,7 @@ export default function PlayerCompareScreen() {
 
                                         <View style={styles.favoriteSideRight}>
                                             <Text style={[styles.favoriteName, { color: colors.text }]} numberOfLines={1}>
-                                                {getPlayerName(comparison.right)}
+                                                {getPlayerName(comparison.right, t)}
                                             </Text>
                                             <Text
                                                 style={[
@@ -504,15 +506,15 @@ export default function PlayerCompareScreen() {
 
                                     <View style={styles.eventBottomRow}>
                                         <Badge tone="outline">
-                                            TTR-Differenz {formatSignedNumber(currentOdds.ttrDifference)}
+                                            {t('compare.ttrDifferenceValue', { value: formatSignedNumber(currentOdds.ttrDifference) })}
                                         </Badge>
 
                                         <Badge tone="secondary">
                                             {favoriteSide === 'left'
-                                                ? `${getPlayerName(comparison.left)} favorisiert`
+                                                ? t('compare.favoritePlayer', { player: getPlayerName(comparison.left, t) })
                                                 : favoriteSide === 'right'
-                                                    ? `${getPlayerName(comparison.right)} favorisiert`
-                                                    : 'Favorit unklar'}
+                                                    ? t('compare.favoritePlayer', { player: getPlayerName(comparison.right, t) })
+                                                    : t('compare.favoriteUnknown')}
                                         </Badge>
                                     </View>
                                 </>
@@ -527,9 +529,9 @@ export default function PlayerCompareScreen() {
                             <View style={styles.sectionHeader}>
                                 <Ionicons name="analytics-outline" size={19} color={colors.primary} />
                                 <View>
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Kennzahlen</Text>
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('compare.keyMetrics')}</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                        Links gegen rechts
+                                        {t('compare.leftVsRight')}
                                     </Text>
                                 </View>
                             </View>
@@ -538,7 +540,7 @@ export default function PlayerCompareScreen() {
                                 <MetricComparisonRow
                                     icon="speedometer-outline"
                                     label={t('compare.currentTtr')}
-                                    helper="momentaner Leistungswert"
+                                    helper={t('compare.currentPerformanceValue')}
                                     leftValue={comparison.comparison?.ratings?.currentTtr?.left}
                                     rightValue={comparison.comparison?.ratings?.currentTtr?.right}
                                     difference={comparison.comparison?.ratings?.currentTtr?.difference}
@@ -547,8 +549,8 @@ export default function PlayerCompareScreen() {
 
                                 <MetricComparisonRow
                                     icon="calendar-outline"
-                                    label="Q-TTR"
-                                    helper="Quartalswert"
+                                    label={t('compare.qttr')}
+                                    helper={t('compare.quarterValue')}
                                     leftValue={comparison.comparison?.ratings?.qttr?.left}
                                     rightValue={comparison.comparison?.ratings?.qttr?.right}
                                     difference={comparison.comparison?.ratings?.qttr?.difference}
@@ -557,7 +559,7 @@ export default function PlayerCompareScreen() {
 
                                 <MetricComparisonRow
                                     icon="trophy-outline"
-                                    label="Peak"
+                                    label={t('compare.peak')}
                                     helper={t('compare.bestKnownTtr')}
                                     leftValue={comparison.comparison?.ratings?.maxTtr?.left}
                                     rightValue={comparison.comparison?.ratings?.maxTtr?.right}
@@ -567,7 +569,7 @@ export default function PlayerCompareScreen() {
 
                                 <MetricComparisonRow
                                     icon="pulse-outline"
-                                    label="Letzte 5"
+                                    label={t('compare.lastFive')}
                                     helper={t('compare.recentDelta')}
                                     leftValue={leftStats?.recentDelta5}
                                     rightValue={rightStats?.recentDelta5}
@@ -594,23 +596,23 @@ export default function PlayerCompareScreen() {
                             <View style={styles.sectionHeader}>
                                 <Ionicons name="stats-chart-outline" size={19} color={colors.primary} />
                                 <View>
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Form & Quote</Text>
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('compare.formAndQuote')}</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                        Aus den letzten gelieferten Events berechnet
+                                        {t('compare.recentEventsCalculated')}
                                     </Text>
                                 </View>
                             </View>
 
                             <View style={styles.doubleStatsRow}>
                                 <PlayerStatsColumn
-                                    label="Links"
+                                    label={t('compare.left')}
                                     player={comparison.left}
                                     stats={leftStats}
                                     highlighted={favoriteSide === 'left'}
                                 />
 
                                 <PlayerStatsColumn
-                                    label="Rechts"
+                                    label={t('compare.right')}
                                     player={comparison.right}
                                     stats={rightStats}
                                     highlighted={favoriteSide === 'right'}
@@ -623,9 +625,9 @@ export default function PlayerCompareScreen() {
                                 <View style={styles.sectionHeader}>
                                     <MaterialIcons name="compare-arrows" size={20} color={colors.primary} />
                                     <View>
-                                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Head-to-Head</Text>
+                                        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('compare.headToHead')}</Text>
                                         <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                            Direkte Begegnungen
+                                            {t('compare.directMeetings')}
                                         </Text>
                                     </View>
                                 </View>
@@ -676,10 +678,10 @@ export default function PlayerCompareScreen() {
 
                                                 <View style={styles.unparsedH2HText}>
                                                     <Text style={[styles.unparsedH2HTitle, { color: colors.text }]}>
-                                                        {itemCount} direkte Begegnungen gefunden
+                                                        {t('compare.directMeetingsFound', { count: itemCount })}
                                                     </Text>
                                                     <Text style={[styles.unparsedH2HSubtitle, { color: colors.mutedText }]}>
-                                                        Die Ergebnisse konnten noch nicht sauber ausgewertet werden.
+                                                        {t('compare.directMeetingsParseMissing')}
                                                     </Text>
                                                 </View>
                                             </View>
@@ -689,7 +691,7 @@ export default function PlayerCompareScreen() {
                                     if (parsedItemCount <= 0) {
                                         return (
                                             <Text style={[styles.mutedText, { color: colors.mutedText }]}>
-                                                Für diese Kombination sind keine direkten Duelle vorhanden.
+                                                {t('compare.noDirectDuels')}
                                             </Text>
                                         );
                                     }
@@ -699,7 +701,7 @@ export default function PlayerCompareScreen() {
                                             <View style={styles.h2hScoreRow}>
                                                 <View style={[styles.h2hPlayerBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                                                     <Text style={[styles.h2hPlayerName, { color: colors.mutedText }]} numberOfLines={1}>
-                                                        {getPlayerName(comparison.left)}
+                                                        {getPlayerName(comparison.left, t)}
                                                     </Text>
                                                     <Text style={[styles.h2hPlayerScore, { color: colors.text }]}>
                                                         {leftWins}
@@ -710,18 +712,18 @@ export default function PlayerCompareScreen() {
                                                 </View>
 
                                                 <View style={[styles.h2hCenterBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                                    <Text style={[styles.h2hCenterLabel, { color: colors.mutedText }]}>Bilanz</Text>
+                                                    <Text style={[styles.h2hCenterLabel, { color: colors.mutedText }]}>{t('compare.record')}</Text>
                                                     <Text style={[styles.h2hCenterScore, { color: colors.text }]}>
                                                         {leftWins}:{rightWins}
                                                     </Text>
                                                     <Text style={[styles.h2hCenterHelper, { color: colors.mutedText }]}>
-                                                        {draws > 0 ? `${draws} Remis · ` : ''}{parsedItemCount} Spiele
+                                                        {draws > 0 ? `${t('compare.drawsCount', { count: draws })} · ` : ''}{t('compare.matchesCount', { count: parsedItemCount })}
                                                     </Text>
                                                 </View>
 
                                                 <View style={[styles.h2hPlayerBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                                                     <Text style={[styles.h2hPlayerName, { color: colors.mutedText }]} numberOfLines={1}>
-                                                        {getPlayerName(comparison.right)}
+                                                        {getPlayerName(comparison.right, t)}
                                                     </Text>
                                                     <Text style={[styles.h2hPlayerScore, { color: colors.text }]}>
                                                         {rightWins}
@@ -736,7 +738,7 @@ export default function PlayerCompareScreen() {
                                 })()
                             ) : (
                                 <Text style={[styles.mutedText, { color: colors.mutedText }]}>
-                                    Für diese Kombination sind keine direkten Duelle vorhanden.
+                                    {t('compare.noDirectDuels')}
                                 </Text>
                             )}
                         </Card>
@@ -745,7 +747,7 @@ export default function PlayerCompareScreen() {
                             <View style={styles.sectionHeader}>
                                 <Ionicons name="time-outline" size={19} color={colors.primary} />
                                 <View>
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Letzte Events</Text>
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('compare.latestEvents')}</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
                                         {t('compare.latestEntriesBoth')}
                                     </Text>
@@ -761,7 +763,7 @@ export default function PlayerCompareScreen() {
                 ) : null}
 
                 {!loading && !error && !comparison ? (
-                    <EmptyState icon="swap-horizontal-outline" title="Kein Vergleich gefunden" />
+                    <EmptyState icon="swap-horizontal-outline" title={t('compare.noComparisonFound')} />
                 ) : null}
             </ScrollView>
         </Screen>
@@ -823,29 +825,29 @@ function PlayerHeroCard({
 
                 {active ? (
                     <Badge tone="secondary" icon="flash-outline">
-                        Favorit
+                        {t('compare.favorite')}
                     </Badge>
                 ) : null}
             </View>
 
             <Text style={[styles.playerName, { color: colors.text }]} numberOfLines={2}>
-                {getPlayerName(player)}
+                {getPlayerName(player, t)}
             </Text>
 
             <Text style={[styles.playerClub, { color: colors.mutedText }]} numberOfLines={1}>
-                {getClubName(player)}
+                {getClubName(player, t)}
             </Text>
 
             <View style={styles.playerRatingRow}>
                 <View>
-                    <Text style={[styles.ratingLabel, { color: colors.mutedText }]}>TTR</Text>
+                    <Text style={[styles.ratingLabel, { color: colors.mutedText }]}>{t('compare.ttr')}</Text>
                     <Text style={[styles.ratingValue, { color: colors.text }]}>
                         {formatOptionalNumber(player.ratings?.currentTtr)}
                     </Text>
                 </View>
 
                 <View style={styles.ratingRight}>
-                    <Text style={[styles.ratingLabel, { color: colors.mutedText }]}>Q-TTR</Text>
+                    <Text style={[styles.ratingLabel, { color: colors.mutedText }]}>{t('compare.qttr')}</Text>
                     <Text style={[styles.ratingValueSmall, { color: colors.text }]}>
                         {formatOptionalNumber(player.ratings?.qttr)}
                     </Text>
@@ -853,7 +855,7 @@ function PlayerHeroCard({
             </View>
 
             <Text style={[styles.ratingDate, { color: colors.mutedText }]} numberOfLines={1}>
-                Stand {player.ratings?.ttrDate ? formatDate(player.ratings.ttrDate) : 'unbekannt'}
+                {t('compare.asOf', { date: player.ratings?.ttrDate ? formatDate(player.ratings.ttrDate) : t('compare.unknownLower') })}
             </Text>
         </Card>
     );
@@ -915,6 +917,7 @@ function MetricComparisonRow({
     signed?: boolean;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     return (
         <View style={[styles.metricRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -928,7 +931,7 @@ function MetricComparisonRow({
                     <Text style={[styles.metricHelper, { color: colors.mutedText }]}>{helper}</Text>
                 </View>
 
-                <Text style={[styles.metricLeader, { color: colors.primary }]}>{getLeaderName(leader)}</Text>
+                <Text style={[styles.metricLeader, { color: colors.primary }]}>{getLeaderName(leader, t)}</Text>
             </View>
 
             <View style={styles.metricValues}>
@@ -984,6 +987,7 @@ function PlayerStatsColumn({
     highlighted: boolean;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     if (!stats) return null;
 
@@ -1000,17 +1004,17 @@ function PlayerStatsColumn({
             <View style={styles.statsColumnHeader}>
                 <Text style={[styles.statsColumnLabel, { color: colors.mutedText }]}>{label}</Text>
                 <Text style={[styles.statsColumnName, { color: colors.text }]} numberOfLines={1}>
-                    {getPlayerName(player)}
+                    {getPlayerName(player, t)}
                 </Text>
             </View>
 
             <View style={styles.statGrid}>
-                <SmallStat label="Spiele" value={String(stats.matchCount)} helper={`${stats.wins}:${stats.losses}`} />
-                <SmallStat label="Quote" value={formatPercent(stats.winRate)} helper="gewonnen" />
-                <SmallStat label="Events" value={String(stats.eventCount)} helper="Historie" />
-                <SmallStat label="Gesamt" value={formatSignedNumber(stats.totalDelta)} helper="TTR" />
-                <SmallStat label="Ø" value={formatSignedAverage(stats.averageDelta)} helper="je Event" />
-                <SmallStat label="Top" value={formatSignedNumber(stats.bestGain)} helper="Sprung" />
+                <SmallStat label={t('compare.matches')} value={String(stats.matchCount)} helper={`${stats.wins}:${stats.losses}`} />
+                <SmallStat label={t('compare.quote')} value={formatPercent(stats.winRate)} helper={t('compare.won')} />
+                <SmallStat label={t('compare.events')} value={String(stats.eventCount)} helper={t('compare.history')} />
+                <SmallStat label={t('compare.total')} value={formatSignedNumber(stats.totalDelta)} helper={t('compare.ttr')} />
+                <SmallStat label={t('compare.averageShort')} value={formatSignedAverage(stats.averageDelta)} helper={t('compare.perEvent')} />
+                <SmallStat label={t('compare.top')} value={formatSignedNumber(stats.bestGain)} helper={t('compare.jump')} />
             </View>
         </View>
     );
@@ -1077,10 +1081,10 @@ function RecentEventColumn({
         <View style={styles.eventColumn}>
             <View style={styles.eventColumnHeader}>
                 <Text style={[styles.eventColumnSide, { color: colors.primary }]}>
-                    {side === 'left' ? 'Links' : 'Rechts'}
+                    {side === 'left' ? t('compare.left') : t('compare.right')}
                 </Text>
                 <Text style={[styles.eventColumnName, { color: colors.text }]} numberOfLines={1}>
-                    {getPlayerName(player)}
+                    {getPlayerName(player, t)}
                 </Text>
             </View>
 
@@ -1139,7 +1143,7 @@ function RecentEventCard({ event }: { event: RecentEvent }) {
                 </Badge>
 
                 <Badge tone="secondary" icon="tennisball-outline">
-                    {getEventMatchCount(event)} Spiele
+                    {t('compare.matchesCount', { count: getEventMatchCount(event) })}
                 </Badge>
 
                 <Badge tone="outline">
