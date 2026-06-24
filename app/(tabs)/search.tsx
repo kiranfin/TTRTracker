@@ -11,6 +11,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Screen } from '../../src/components/Screen';
 import { SearchInput } from '../../src/components/SearchInput';
 import { SegmentedTabs } from '../../src/components/SegmentedTabs';
+import { useI18n } from '../../src/i18n/I18nProvider';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '../../src/storage/favorites';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import type { ClubTeam, NormalizedClub, NormalizedPlayer, SearchCategory } from '../../src/types/tttracker';
@@ -33,6 +34,7 @@ function uniqueById<T extends { id: string }>(items: T[]) {
 
 export default function SearchScreen() {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [activeTab, setActiveTab] = useState<SearchCategory>('players');
@@ -104,7 +106,7 @@ export default function SearchScreen() {
 
     if (text.length < 2) {
       resetSearchResults();
-      setError('Bitte mindestens 2 Zeichen eingeben.');
+      setError(t('search.minCharacters'));
       return;
     }
 
@@ -138,7 +140,7 @@ export default function SearchScreen() {
       setSubmittedQuery(text);
       setPlayers([]);
       setClubs([]);
-      setError(searchError instanceof Error ? searchError.message : 'Suche fehlgeschlagen');
+      setError(searchError instanceof Error ? searchError.message : t('search.failed'));
     } finally {
       setLoading(false);
     }
@@ -282,9 +284,9 @@ export default function SearchScreen() {
   }
 
   const tabOptions = useMemo(() => [
-    { value: 'players' as const, label: players.length > 0 ? `Spieler ${players.length}` : 'Spieler', icon: 'person-outline' as const },
-    { value: 'clubs' as const, label: clubs.length > 0 ? `Vereine ${clubs.length}` : 'Vereine', icon: "tennisball-outline" as const },
-  ], [clubs.length, players.length]);
+    { value: 'players' as const, label: players.length > 0 ? t('search.playersTabCount', { count: players.length }) : t('search.playersTab'), icon: 'person-outline' as const },
+    { value: 'clubs' as const, label: clubs.length > 0 ? t('search.clubsTabCount', { count: clubs.length }) : t('search.clubsTab'), icon: "tennisball-outline" as const },
+  ], [clubs.length, players.length, t]);
 
   const hasSubmitted = submittedQuery.length > 0;
   const queryChanged = query.trim().length > 0 && query.trim() !== submittedQuery;
@@ -293,7 +295,7 @@ export default function SearchScreen() {
       <Screen>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: colors.text }]}>Suche</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('search.title')}</Text>
           </View>
 
           <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabOptions} />
@@ -303,7 +305,7 @@ export default function SearchScreen() {
                 value={query}
                 onChangeText={handleQueryChange}
                 onSubmitEditing={runSearch}
-                placeholder="Name oder Verein eingeben..."
+                placeholder={t('search.placeholder')}
             />
             <Button
                 icon="search-outline"
@@ -312,12 +314,12 @@ export default function SearchScreen() {
                 onPress={runSearch}
                 style={styles.searchButton}
             >
-              Suchen
+              {t('common.search')}
             </Button>
           </View>
 
           {queryChanged ? (
-              <Text style={[styles.hint, { color: colors.mutedText }]}>Tippe auf „Suchen“, um die Ergebnisse zu aktualisieren.</Text>
+              <Text style={[styles.hint, { color: colors.mutedText }]}>{t('search.updateHint')}</Text>
           ) : null}
 
           {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
@@ -325,9 +327,9 @@ export default function SearchScreen() {
 
           {!loading && activeTab === 'players' ? (
               <View style={styles.stack}>
-                {!query.trim() ? <EmptyState icon="search-outline" title="Suchbegriff eingeben" /> : null}
-                {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title="Bereit zum Suchen" subtitle="Tippe auf Suchen, damit dein Backend angefragt wird." /> : null}
-                {hasSubmitted && players.length === 0 ? <EmptyState icon="person-outline" title="Keine Spieler gefunden" subtitle={`Keine Treffer für „${submittedQuery}“`} /> : null}
+                {!query.trim() ? <EmptyState icon="search-outline" title={t('search.enterTerm')} /> : null}
+                {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title={t('search.readyTitle')} subtitle={t('search.readySubtitle')} /> : null}
+                {hasSubmitted && players.length === 0 ? <EmptyState icon="person-outline" title={t('search.noPlayers')} subtitle={t('search.noResultsFor', { query: submittedQuery })} /> : null}
 
                 {players.map((player, index) => (
                     <PlayerCard
@@ -343,9 +345,9 @@ export default function SearchScreen() {
 
           {!loading && activeTab === 'clubs' ? (
               <View style={styles.stack}>
-                {!query.trim() ? <EmptyState icon="search-outline" title="Suchbegriff eingeben" subtitle="Die Suche startet erst über den Suchen-Button." /> : null}
-                {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title="Bereit zum Suchen" subtitle="Tippe auf Suchen, damit dein Backend angefragt wird." /> : null}
-                {hasSubmitted && clubs.length === 0 ? <EmptyState icon="business-outline" title="Keine Vereine gefunden" subtitle={`Keine Treffer für „${submittedQuery}“`} /> : null}
+                {!query.trim() ? <EmptyState icon="search-outline" title={t('search.enterTerm')} subtitle={t('search.startsAfterButton')} /> : null}
+                {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title={t('search.readyTitle')} subtitle={t('search.readySubtitle')} /> : null}
+                {hasSubmitted && clubs.length === 0 ? <EmptyState icon="business-outline" title={t('search.noClubs')} subtitle={t('search.noResultsFor', { query: submittedQuery })} /> : null}
 
                 {clubs.map((club, index) => (
                     <ClubCard
@@ -376,15 +378,15 @@ export default function SearchScreen() {
         >
           {selectedPlayer ? (
               <View style={styles.sheetStack}>
-                <DetailRow label="Verein" value={selectedPlayer.clubName} />
-                <DetailRow label="TTR" value={selectedPlayer.ttr ? String(selectedPlayer.ttr) : 'Nicht verfügbar'} />
+                <DetailRow label={t('entities.club')} value={selectedPlayer.clubName} />
+                <DetailRow label="TTR" value={selectedPlayer.ttr ? String(selectedPlayer.ttr) : t('common.notAvailable')} />
 
                 {selectedPlayer.internalId ? (
                     <Button icon="stats-chart-outline" onPress={() => openPlayerDetails(selectedPlayer)}>
-                      See more
+                      {t('search.seeMore')}
                     </Button>
                 ) : (
-                    <Text style={[styles.sheetMuted, { color: colors.mutedText }]}>Für diesen Spieler fehlt die NUID.</Text>
+                    <Text style={[styles.sheetMuted, { color: colors.mutedText }]}>{t('search.playerMissingNuid')}</Text>
                 )}
               </View>
           ) : null}
@@ -406,19 +408,19 @@ export default function SearchScreen() {
         >
           {selectedClub ? (
               <View style={styles.sheetStack}>
-                <DetailRow label="Vereinsnummer" value={selectedClub.clubNumber ?? 'Nicht gefunden'} monospace />
-                <DetailRow label="Bundesland" value={selectedClub.state ?? 'Nicht verfügbar'} />
-                <DetailRow label="Verband" value={selectedClub.organization ?? selectedClub.organizationName ?? 'Unbekannt'} />
+                <DetailRow label={t('search.clubNumber')} value={selectedClub.clubNumber ?? t('common.notFound')} monospace />
+                <DetailRow label={t('search.state')} value={selectedClub.state ?? t('common.notAvailable')} />
+                <DetailRow label={t('entities.association')} value={selectedClub.organization ?? selectedClub.organizationName ?? t('common.unknown')} />
 
                 <View style={styles.sheetStatRow}>
-                  <Badge tone="secondary" icon="people-outline">{clubTeams.length} Teams</Badge>
+                  <Badge tone="secondary" icon="people-outline">{t('search.teamsCount', { count: clubTeams.length })}</Badge>
                   {selectedClub.organization ? <Badge tone="outline">{selectedClub.organization}</Badge> : null}
                 </View>
 
                 {loadingTeams ? <ActivityIndicator color={colors.primary} /> : null}
 
                 <Button icon="business-outline" onPress={() => openClubDetails(selectedClub)}>
-                  See more
+                  {t('search.seeMore')}
                 </Button>
               </View>
           ) : null}
@@ -470,6 +472,7 @@ function ClubCard({
   onToggleFavorite: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   return (
       <Card pressable onPress={onPress} style={styles.resultCard}>
@@ -477,7 +480,7 @@ function ClubCard({
           <View style={styles.cardText}>
             <Text style={[styles.resultTitle, { color: colors.text }]}>{club.name}</Text>
             <Text style={[styles.resultSubtitle, { color: colors.mutedText }]}>
-              {[club.organizationName, club.organization].filter(Boolean).join(' • ') || 'Verband unbekannt'}
+              {[club.organizationName, club.organization].filter(Boolean).join(' • ') || t('search.associationUnknown')}
             </Text>
           </View>
           <IconButton icon={favorite ? 'star' : 'star-outline'} active={favorite} onPress={onToggleFavorite} />

@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { AuthProvider } from '../src/auth/AuthProvider';
+import { I18nProvider } from '../src/i18n/I18nProvider';
 
 function RootStack() {
     const { colors, isDark } = useTheme();
@@ -31,9 +32,11 @@ export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider>
-                <AuthProvider>
-                    <RootStack />
-                </AuthProvider>
+                <I18nProvider>
+                    <AuthProvider>
+                        <RootStack />
+                    </AuthProvider>
+                </I18nProvider>
             </ThemeProvider>
         </GestureHandlerRootView>
     );

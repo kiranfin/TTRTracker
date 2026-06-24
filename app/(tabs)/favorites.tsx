@@ -7,12 +7,14 @@ import { IconButton } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Screen } from '../../src/components/Screen';
+import { useI18n } from '../../src/i18n/I18nProvider';
 import { FavoriteItem, getFavorites, removeFavorite } from '../../src/storage/favorites';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { ttrTone } from '../../src/utils/normalizers';
 
 export default function FavoritesScreen() {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
 
   const loadFavorites = useCallback(async () => {
@@ -96,19 +98,19 @@ export default function FavoritesScreen() {
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: colors.text }]}>Favoriten</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('favorites.title')}</Text>
           </View>
 
           {favorites.length === 0 ? (
               <EmptyState
                   icon="star-outline"
-                  title="Noch keine Favoriten"
-                  subtitle="Speichere Spieler oder Vereine über das Stern-Icon."
+                  title={t('favorites.emptyTitle')}
+                  subtitle={t('favorites.emptySubtitle')}
               />
           ) : null}
 
           {players.length > 0 ? (
-              <FavoriteSection title="Spieler" icon="person-outline" count={players.length}>
+              <FavoriteSection title={t('entities.players')} icon="person-outline" count={players.length}>
                 {players.map((item) => (
                     <FavoritePlayerCard
                         key={`${item.type}-${item.id}`}
@@ -121,7 +123,7 @@ export default function FavoritesScreen() {
           ) : null}
 
           {clubs.length > 0 ? (
-              <FavoriteSection title="Vereine" icon="tennisball-outline" count={clubs.length}>
+              <FavoriteSection title={t('entities.clubs')} icon="tennisball-outline" count={clubs.length}>
                 {clubs.map((item) => (
                     <FavoriteClubCard
                         key={`${item.type}-${item.id}`}
@@ -134,7 +136,7 @@ export default function FavoritesScreen() {
           ) : null}
 
           {leagues.length > 0 ? (
-              <FavoriteSection title="Ligen" icon="podium-outline" count={leagues.length}>
+              <FavoriteSection title={t('entities.leagues')} icon="podium-outline" count={leagues.length}>
                 {leagues.map((item) => (
                     <FavoriteLeagueCard
                         key={`${item.type}-${item.id}`}
@@ -189,6 +191,7 @@ function FavoritePlayerCard({
   onRemove: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const ttr = Number(item.params?.ttr);
   const hasTtr = Number.isFinite(ttr) && ttr > 0;
 
@@ -198,7 +201,7 @@ function FavoritePlayerCard({
           <View style={styles.cardText}>
             <Text style={[styles.resultTitle, { color: colors.text }]}>{item.title}</Text>
             <Text style={[styles.resultSubtitle, { color: colors.mutedText }]}>
-              {item.params?.clubName || item.subtitle || 'Verein unbekannt'}
+              {item.params?.clubName || item.subtitle || t('entities.clubUnknown')}
             </Text>
           </View>
 
@@ -226,6 +229,7 @@ function FavoriteClubCard({
   onRemove: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   return (
       <Card pressable onPress={onPress} style={styles.resultCard}>
@@ -235,7 +239,7 @@ function FavoriteClubCard({
             <Text style={[styles.resultSubtitle, { color: colors.mutedText }]}>
               {[item.params?.organizationName, item.params?.organization].filter(Boolean).join(' • ') ||
                   item.subtitle ||
-                  'Verband unbekannt'}
+                  t('search.associationUnknown')}
             </Text>
           </View>
 
@@ -263,6 +267,7 @@ function FavoriteLeagueCard({
   onRemove: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   return (
       <Card pressable onPress={onPress} style={styles.resultCard}>
@@ -270,7 +275,7 @@ function FavoriteLeagueCard({
           <View style={styles.cardText}>
             <Text style={[styles.resultTitle, { color: colors.text }]}>{item.title}</Text>
             <Text style={[styles.resultSubtitle, { color: colors.mutedText }]}>
-              {item.subtitle || 'Liga'}
+              {item.subtitle || t('entities.league')}
             </Text>
           </View>
 
@@ -278,7 +283,9 @@ function FavoriteLeagueCard({
         </View>
 
         <View style={styles.badgeRow}>
-          {item.params?.season ? <Badge tone="outline">Saison {item.params.season}</Badge> : null}
+          {item.params?.season ? (
+              <Badge tone="outline">{t('favorites.seasonValue', { season: item.params.season })}</Badge>
+          ) : null}
           {item.params?.association ? <Badge tone="secondary">{item.params.association}</Badge> : null}
         </View>
       </Card>

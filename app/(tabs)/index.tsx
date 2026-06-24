@@ -14,6 +14,8 @@ import { ttApi } from '../../src/api/tttracker';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { Screen } from '../../src/components/Screen';
+import type { TranslationKey } from '../../src/i18n';
+import { useI18n } from '../../src/i18n/I18nProvider';
 import { getMePlayerNuid } from '../../src/storage/mePlayer';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import type {
@@ -23,7 +25,6 @@ import type {
 } from '../../src/types/tttracker';
 import {
   formatDate,
-  matchStatusLabel,
   normalizePlayerTtrHistory,
   normalizeSchedule,
 } from '../../src/utils/normalizers';
@@ -92,6 +93,14 @@ const MEETING_DATE_KEYS = [
   'start_time',
   'startTime',
 ];
+
+const statusLabelKeys = {
+  completed: 'status.completed',
+  live: 'status.live',
+  free: 'status.free',
+  postponed: 'status.postponed',
+  scheduled: 'status.scheduled',
+} as const satisfies Record<ScheduleMatch['status'], TranslationKey>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -174,6 +183,7 @@ function getFirstName(value?: string | null) {
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const [meNuid, setMeNuid] = useState<string | null>(null);
   const [meHistory, setMeHistory] = useState<NormalizedPlayerTtrHistory | null>(null);
@@ -221,7 +231,7 @@ export default function HomeScreen() {
             setMeError(
                 error instanceof Error
                     ? error.message
-                    : 'Deine Quick Stats konnten nicht geladen werden',
+                    : t('home.quickStatsError'),
             );
           } finally {
             if (active) {
@@ -264,7 +274,7 @@ export default function HomeScreen() {
       }, []),
   );
 
-  const displayName = formatPersonName(meHistory?.personName) || 'Mein Profil';
+  const displayName = formatPersonName(meHistory?.personName) || t('home.profileFallback');
   const firstName = meHistory?.personName ? getFirstName(meHistory.personName) : '';
   const clubName = meHistory?.clubName;
 
@@ -327,7 +337,7 @@ export default function HomeScreen() {
         setClubError(
             error instanceof Error
                 ? error.message
-                : 'Vereinsbegegnungen konnten nicht geladen werden',
+                : t('home.clubMatchesError'),
         );
       } finally {
         if (active) {
@@ -371,7 +381,7 @@ export default function HomeScreen() {
         clubKey: `${meClub.organization}-${meClub.clubNumber}`,
         organization: meClub.organization,
         clubNumber: meClub.clubNumber,
-        title: meClub.title ?? meClub.clubName ?? 'Verein',
+        title: meClub.title ?? meClub.clubName ?? t('entities.club'),
         clubName: meClub.clubName ?? meClub.title ?? '',
         state: meClub.state ?? '',
         season: meClub.season ?? getCurrentBackendSeason(),
@@ -385,13 +395,13 @@ export default function HomeScreen() {
           <View style={styles.topArea}>
             <View style={styles.hero}>
               <Text style={[styles.heroTitle, { color: colors.text }]}>
-                Willkommen{firstName ? ` ${firstName}` : ''}
+                {t('home.welcome')}{firstName ? ` ${firstName}` : ''}
               </Text>
             </View>
 
             <View style={styles.shortcutGrid}>
               <ShortcutCard
-                  title="Suche"
+                  title={t('tabs.search')}
                   icon="search"
                   iconBg="#dbeafe"
                   iconColor="#2563eb"
@@ -399,7 +409,7 @@ export default function HomeScreen() {
               />
 
               <ShortcutCard
-                  title="Ligen"
+                  title={t('tabs.leagues')}
                   icon="trophy"
                   iconBg="#f3e8ff"
                   iconColor="#9333ea"
@@ -407,7 +417,7 @@ export default function HomeScreen() {
               />
 
               <ShortcutCard
-                  title="Favoriten"
+                  title={t('tabs.favorites')}
                   icon="star"
                   iconBg="#fef3c7"
                   iconColor="#d97706"
@@ -447,7 +457,7 @@ export default function HomeScreen() {
 
 type ShortcutCardProps = {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
   iconColor: string;
@@ -514,6 +524,7 @@ function MeQuickStatsCard({
                             onOpenSettings,
                           }: MeQuickStatsCardProps) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   if (!meNuid) {
     return (
@@ -524,16 +535,16 @@ function MeQuickStatsCard({
 
           <View style={styles.emptyTextBlock}>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              Dein Profil fehlt noch
+              {t('home.missingProfileTitle')}
             </Text>
 
             <Text style={[styles.emptySubtitle, { color: colors.mutedText }]}>
-              Speichere deine NUID lokal und sieh hier direkt TTR, Verlauf und letzte Spiele.
+              {t('home.missingProfileSubtitle')}
             </Text>
           </View>
 
           <Button variant="primary" icon="settings-outline" onPress={onOpenSettings}>
-            NUID festlegen
+            {t('home.setNuid')}
           </Button>
         </Card>
     );
@@ -548,7 +559,7 @@ function MeQuickStatsCard({
             </Text>
 
             <Text style={[styles.meSubtitle, { color: colors.mutedText }]} numberOfLines={1}>
-              {clubName ?? 'Verein unbekannt'}
+              {clubName ?? t('entities.clubUnknown')}
             </Text>
           </View>
 
@@ -572,7 +583,7 @@ function MeQuickStatsCard({
               <ActivityIndicator color={colors.primary} />
 
               <Text style={[styles.homeBody, { color: colors.mutedText }]}>
-                Lade deine Daten...
+                {t('home.loadingMyData')}
               </Text>
             </View>
         ) : error ? (
@@ -582,7 +593,7 @@ function MeQuickStatsCard({
               </Text>
 
               <Button variant="outline" icon="settings-outline" onPress={onOpenSettings}>
-                NUID prüfen
+                {t('home.checkNuid')}
               </Button>
             </>
         ) : (
@@ -598,7 +609,7 @@ function MeQuickStatsCard({
                     ]}
                 >
                   <Text style={[styles.primaryTtrLabel, { color: colors.primary }]}>
-                    Aktueller TTR
+                    {t('home.currentTtr')}
                   </Text>
 
                   <Text style={[styles.primaryTtrValue, { color: colors.text }]}>
@@ -614,12 +625,12 @@ function MeQuickStatsCard({
 
               <View style={styles.historyHeader}>
                 <Text style={[styles.historyTitle, { color: colors.text }]}>
-                  Letzte Einträge
+                  {t('home.lastEntries')}
                 </Text>
 
                 <Pressable onPress={onOpenProfile} hitSlop={8}>
                   <Text style={[styles.historyLink, { color: colors.primary }]}>
-                    Alle ansehen
+                    {t('common.viewAll')}
                   </Text>
                 </Pressable>
               </View>
@@ -632,7 +643,7 @@ function MeQuickStatsCard({
                   </View>
               ) : (
                   <Text style={[styles.homeBody, { color: colors.mutedText }]}>
-                    Noch keine Historieneinträge gefunden.
+                    {t('home.noHistoryEntries')}
                   </Text>
               )}
             </>
@@ -661,6 +672,7 @@ function ClubQuickStatsCard({
   onOpenSearch: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   if (!meNuid) {
     return null;
@@ -672,17 +684,17 @@ function ClubQuickStatsCard({
           <View style={styles.clubHeader}>
             <View style={styles.clubHeaderText}>
               <Text style={[styles.clubTitle, { color: colors.text }]}>
-                Noch kein Verein gespeichert
+                {t('home.noClubTitle')}
               </Text>
 
               <Text style={[styles.clubSubtitle, { color: colors.mutedText }]}>
-                Öffne deinen Verein und markiere ihn als „Mein Verein“.
+                {t('home.noClubSubtitle')}
               </Text>
             </View>
           </View>
 
           <Button variant="primary" icon="search-outline" onPress={onOpenSearch}>
-            Verein suchen
+            {t('home.searchClub')}
           </Button>
         </Card>
     );
@@ -693,11 +705,11 @@ function ClubQuickStatsCard({
         <View style={styles.clubHeader}>
           <View style={styles.clubHeaderText}>
             <Text style={[styles.clubTitle, { color: colors.text }]} numberOfLines={1}>
-              {clubName ?? 'Verein unbekannt'}
+              {clubName ?? t('entities.clubUnknown')}
             </Text>
 
             <Text style={[styles.clubSubtitle, { color: colors.mutedText }]} numberOfLines={1}>
-              Letzte abgeschlossene Begegnungen
+              {t('home.latestCompletedMatches')}
             </Text>
           </View>
 
@@ -720,7 +732,7 @@ function ClubQuickStatsCard({
             <View style={styles.clubLoadingBox}>
               <ActivityIndicator color={colors.primary} />
               <Text style={[styles.homeBody, { color: colors.mutedText }]}>
-                Lade Vereinsbegegnungen...
+                {t('home.loadingClubMatches')}
               </Text>
             </View>
         ) : error ? (
@@ -730,7 +742,7 @@ function ClubQuickStatsCard({
               </Text>
 
               <Button variant="outline" icon="search-outline" onPress={onOpenSearch}>
-                Verein suchen
+                {t('home.searchClub')}
               </Button>
             </View>
         ) : matches.length > 0 ? (
@@ -744,7 +756,7 @@ function ClubQuickStatsCard({
             </View>
         ) : (
             <Text style={[styles.homeBody, { color: colors.mutedText }]}>
-              Für diese Saison wurden noch keine abgeschlossenen Vereinsbegegnungen gefunden.
+              {t('home.noCompletedMatches')}
             </Text>
         )}
       </Card>
@@ -775,6 +787,7 @@ function MiniStat({
 
 function RecentHistoryRow({ event }: { event: NormalizedTtrHistoryEvent }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const delta = event.delta;
   const deltaColor =
@@ -788,11 +801,11 @@ function RecentHistoryRow({ event }: { event: NormalizedTtrHistoryEvent }) {
       <View style={[styles.recentRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
         <View style={styles.recentMain}>
           <Text style={[styles.recentTitle, { color: colors.text }]} numberOfLines={1}>
-            {event.meetingLabel ?? event.title ?? 'Historieneintrag'}
+            {event.meetingLabel ?? event.title ?? t('home.historyEntry')}
           </Text>
 
           <Text style={[styles.recentMeta, { color: colors.mutedText }]} numberOfLines={1}>
-            {event.date ? formatDate(event.date) : 'Datum unbekannt'}
+            {event.date ? formatDate(event.date) : t('common.dateUnknown')}
             {event.leagueName ? ` · ${event.leagueName}` : ''}
           </Text>
         </View>
@@ -812,6 +825,7 @@ function RecentHistoryRow({ event }: { event: NormalizedTtrHistoryEvent }) {
 
 function ClubCompletedMatchRow({ match }: { match: HomeClubMatch }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const canOpen = Boolean(match.id) && match.status !== 'free';
 
   return (
@@ -843,14 +857,14 @@ function ClubCompletedMatchRow({ match }: { match: HomeClubMatch }) {
           <View style={styles.clubMatchMeta}>
             <Ionicons name="calendar-outline" size={13} color={colors.mutedText} />
             <Text style={[styles.clubMatchMetaText, { color: colors.mutedText }]} numberOfLines={1}>
-              {match.date ? formatDate(match.date) : 'Datum unbekannt'}
+              {match.date ? formatDate(match.date) : t('common.dateUnknown')}
               {match.time ? ` · ${match.time}` : ''}
             </Text>
           </View>
 
           <View style={[styles.completedPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.completedPillText, { color: colors.mutedText }]}>
-              {matchStatusLabel(match.status)}
+              {t(statusLabelKeys[match.status])}
             </Text>
           </View>
         </View>
@@ -882,7 +896,7 @@ function ClubCompletedMatchRow({ match }: { match: HomeClubMatch }) {
 
         {match.leagueName || match.roundName || match.meetingNumber ? (
             <Text style={[styles.clubMatchFooter, { color: colors.mutedText }]} numberOfLines={1}>
-              {[match.leagueName, match.roundName, match.meetingNumber ? `Spiel ${match.meetingNumber}` : undefined]
+              {[match.leagueName, match.roundName, match.meetingNumber ? t('home.matchNumber', { number: match.meetingNumber }) : undefined]
                   .filter(Boolean)
                   .join(' • ')}
             </Text>

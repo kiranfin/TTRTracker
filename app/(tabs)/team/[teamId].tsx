@@ -18,6 +18,7 @@ import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
 import { SegmentedTabs } from '../../../src/components/SegmentedTabs';
+import { useI18n } from '../../../src/i18n/I18nProvider';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 
 type DetailTab = 'infos' | 'lineup' | 'schedule' | 'balances';
@@ -139,22 +140,10 @@ type ScheduleSummary = {
     nextMatch?: TeamScheduleMatch;
 };
 
-const tabOptions: { value: DetailTab; label: string; icon: IconName }[] = [
-    { value: 'infos', label: 'Infos', icon: 'information-circle-outline' },
-    { value: 'lineup', label: 'Spieler', icon: 'people-outline' },
-    { value: 'schedule', label: 'Spielplan', icon: 'calendar-outline' },
-    { value: 'balances', label: 'Bilanzen', icon: 'stats-chart-outline' },
-];
-
-const roundOptions: { value: RoundFilter; label: string }[] = [
-    { value: 'gesamt', label: 'Gesamt' },
-    { value: 'vr', label: 'Hinrunde' },
-    { value: 'rr', label: 'Rückrunde' },
-];
-
 export default function TeamDetailsScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const [activeTab, setActiveTab] = useState<DetailTab>('infos');
     const [roundFilter, setRoundFilter] = useState<RoundFilter>('gesamt');
@@ -172,7 +161,7 @@ export default function TeamDetailsScreen() {
 
     const team = useMemo<TeamContext>(
         () => {
-            const teamName = params.teamName ?? 'Mannschaft';
+            const teamName = params.teamName ?? t('team.defaultTitle');
 
             return {
                 teamId: params.teamId ?? '',
@@ -195,6 +184,7 @@ export default function TeamDetailsScreen() {
             params.teamId,
             params.teamName,
             params.teamNameSlug,
+            t,
         ],
     );
 
@@ -204,13 +194,13 @@ export default function TeamDetailsScreen() {
 
             if (!team.teamId) {
                 setLoading(false);
-                setError('Für diese Mannschaft fehlt die teamId.');
+                setError(t('team.missingTeamId'));
                 return;
             }
 
             if (!api.getTeamPlayers) {
                 setLoading(false);
-                setError('Frontend-API fehlt: ttApi.getTeamPlayers(teamId).');
+                setError(t('team.teamPlayersApiMissing'));
                 return;
             }
 
@@ -295,9 +285,11 @@ export default function TeamDetailsScreen() {
                 const warnings: string[] = [];
 
                 if (playersResult.status === 'fulfilled') {
-                    const normalizedPlayers = normalizeLineup(playersResult.value, team.teamName);
+                    const normalizedPlayers = normalizeLineup(playersResult.value, team.teamName, t);
 
-                    if (normalizedPlayers.length > 0 && api.getPlayerTtr) {
+                    const canLoadPlayerTtr = typeof (api as Partial<TeamApiClient>).getPlayerTtr === 'function';
+
+                    if (normalizedPlayers.length > 0 && canLoadPlayerTtr) {
                         const enrichedPlayers = await enrichLineupWithTtr(normalizedPlayers, api);
                         setLineup(enrichedPlayers);
 
@@ -306,47 +298,47 @@ export default function TeamDetailsScreen() {
                         ).length;
 
                         if (missingTtrCount > 0) {
-                            warnings.push(`${missingTtrCount} TTR-Wert(e) konnten nicht geladen werden.`);
+                            warnings.push(t('team.ttrWarnings', { count: missingTtrCount }));
                         }
                     } else {
                         setLineup(normalizedPlayers);
 
-                        if (!api.getPlayerTtr && normalizedPlayers.some((player) => Boolean(player.id) && !player.qttr)) {
-                            warnings.push('Frontend-API fehlt: ttApi.getPlayerTtr(nuid). TTR-Werte können nicht nachgeladen werden.');
+                        if (!canLoadPlayerTtr && normalizedPlayers.some((player) => Boolean(player.id) && !player.qttr)) {
+                            warnings.push(t('team.ttrApiMissing'));
                         }
                     }
                 } else {
                     setLineup([]);
-                    warnings.push('Aufstellung konnte nicht geladen werden.');
+                    warnings.push(t('team.lineupLoadError'));
                 }
 
                 if (infoResult.status === 'fulfilled') {
                     setTeamInfo(normalizeTeamInfo(infoResult.value));
                 } else {
                     setTeamInfo(null);
-                    warnings.push('Mannschaftsinfos konnten nicht geladen werden.');
+                    warnings.push(t('team.infosLoadError'));
                 }
 
                 if (scheduleResult.status === 'fulfilled') {
-                    setSchedule(normalizeTeamSchedule(scheduleResult.value, team));
+                    setSchedule(normalizeTeamSchedule(scheduleResult.value, team, t));
                 } else {
                     setSchedule([]);
-                    warnings.push('Spielplan konnte nicht geladen werden.');
+                    warnings.push(t('team.scheduleLoadError'));
                 }
 
                 const gesamtBalances =
                     balancesGesamtResult.status === 'fulfilled'
-                        ? normalizeBalances(balancesGesamtResult.value)
+                        ? normalizeBalances(balancesGesamtResult.value, t)
                         : [];
 
                 const vrBalances =
                     balancesVrResult.status === 'fulfilled'
-                        ? normalizeBalances(balancesVrResult.value)
+                        ? normalizeBalances(balancesVrResult.value, t)
                         : [];
 
                 const rrBalances =
                     balancesRrResult.status === 'fulfilled'
-                        ? normalizeBalances(balancesRrResult.value)
+                        ? normalizeBalances(balancesRrResult.value, t)
                         : [];
 
                 setBalancesByRound({
@@ -356,12 +348,12 @@ export default function TeamDetailsScreen() {
                 });
 
                 if (balancesGesamtResult.status === 'rejected') {
-                    warnings.push('Spielerbilanzen konnten nicht geladen werden.');
+                    warnings.push(t('team.balancesLoadError'));
                 }
 
                 if (!hasLeagueContext) {
                     warnings.push(
-                        'Für Mannschaftsinfos, Spielplan und Bilanzen fehlen association, groupId oder leagueSlug.',
+                        t('team.missingLeagueContext'),
                     );
                 }
 
@@ -370,7 +362,7 @@ export default function TeamDetailsScreen() {
                 setError(
                     loadError instanceof Error
                         ? loadError.message
-                        : 'Mannschaftsdaten konnten nicht geladen werden',
+                        : t('team.loadError'),
                 );
             } finally {
                 setLoading(false);
@@ -386,7 +378,27 @@ export default function TeamDetailsScreen() {
         team.teamId,
         team.teamName,
         team.teamNameSlug,
+        t,
     ]);
+
+    const localizedTabOptions = useMemo(
+        () => [
+            { value: 'infos' as const, label: t('team.infosTab'), icon: 'information-circle-outline' as const },
+            { value: 'lineup' as const, label: t('team.lineupTab'), icon: 'people-outline' as const },
+            { value: 'schedule' as const, label: t('team.scheduleTab'), icon: 'calendar-outline' as const },
+            { value: 'balances' as const, label: t('team.balancesTab'), icon: 'stats-chart-outline' as const },
+        ],
+        [t],
+    );
+
+    const localizedRoundOptions = useMemo(
+        () => [
+            { value: 'gesamt' as const, label: t('team.totalRound') },
+            { value: 'vr' as const, label: t('team.firstHalf') },
+            { value: 'rr' as const, label: t('team.secondHalf') },
+        ],
+        [t],
+    );
 
     const filteredSchedule = useMemo(
         () => filterScheduleByRound(schedule, roundFilter),
@@ -434,54 +446,54 @@ export default function TeamDetailsScreen() {
 
                     <View style={styles.headerMetaRow}>
                         <Badge tone="outline" icon="calendar-outline">
-                            Saison {team.season}
+                            {t('favorites.seasonValue', { season: team.season })}
                         </Badge>
 
                         {team.association ? <Badge tone="secondary">{team.association}</Badge> : null}
-                        {team.groupId ? <Badge tone="outline">Gruppe {team.groupId}</Badge> : null}
+                        {team.groupId ? <Badge tone="outline">{t('team.groupValue', { groupId: team.groupId })}</Badge> : null}
                     </View>
                 </View>
 
                 <View style={styles.summaryGrid}>
                     <SummaryTile
                         icon="people-outline"
-                        label="Spieler"
+                        label={t('team.players')}
                         value={String(lineup.length)}
                         tone="primary"
                     />
                     <SummaryTile
                         icon="checkmark-circle-outline"
-                        label="Spiele"
+                        label={t('team.games')}
                         value={String(scheduleSummary.played)}
                         tone="green"
                     />
                     <SummaryTile
                         icon="time-outline"
-                        label="Offen"
+                        label={t('team.open')}
                         value={String(scheduleSummary.open)}
                         tone="orange"
                     />
                     <SummaryTile
                         icon="stats-chart-outline"
-                        label="Bilanz"
+                        label={t('team.record')}
                         value={`${balanceSummary.pointsWon}:${balanceSummary.pointsLost}`}
                         tone="purple"
                     />
                 </View>
 
-                <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabOptions} />
+                <SegmentedTabs value={activeTab} onChange={setActiveTab} options={localizedTabOptions} />
 
                 {activeTab === 'schedule' || activeTab === 'balances' ? (
                     <Card style={styles.filterCard}>
                         <View style={styles.sectionHeaderCompact}>
                             <Ionicons name="filter-outline" size={18} color={colors.primary} />
                             <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                                Zeitraum
+                                {t('team.period')}
                             </Text>
                         </View>
 
                         <View style={styles.filterChipRow}>
-                            {roundOptions.map((option) => (
+                            {localizedRoundOptions.map((option) => (
                                 <FilterChip
                                     key={option.value}
                                     label={option.label}
@@ -550,6 +562,7 @@ function BackButton() {
 
 function LeagueDetailsButton({ team }: { team: TeamContext }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
     const canOpenLeague = Boolean(team.association && team.groupId);
 
@@ -564,7 +577,7 @@ function LeagueDetailsButton({ team }: { team: TeamContext }) {
                 groupId: team.groupId!,
                 season: team.season,
                 leagueSlug: team.leagueSlug,
-                title: team.leagueTitle ?? 'Ligadetails',
+                title: team.leagueTitle ?? t('team.leagueDetailsTitle'),
             },
         });
     }
@@ -575,7 +588,7 @@ function LeagueDetailsButton({ team }: { team: TeamContext }) {
             disabled={!canOpenLeague}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Zugehörige Liga öffnen"
+            accessibilityLabel={t('team.openLeagueDetails')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -607,6 +620,7 @@ function InfosTab({
     summary: ScheduleSummary;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const contact = info?.contact;
     const headInfos = info?.headInfos;
@@ -624,25 +638,28 @@ function InfosTab({
                 <View style={styles.sectionHeaderCompact}>
                     <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
                     <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                        Mannschaftsinfos
+                        {t('team.teamInfos')}
                     </Text>
                 </View>
 
                 <View style={styles.infoList}>
-                    <InfoRow icon="people-outline" label="Mannschaft" value={team.teamName} />
-                    <InfoRow icon="trophy-outline" label="Liga" value={team.leagueTitle ?? headInfos?.league_name} />
-                    <InfoRow icon="calendar-outline" label="Saison" value={headInfos?.season ?? team.season} />
-                    <InfoRow icon="git-branch-outline" label="Verband" value={headInfos?.organization_short ?? team.association} />
-                    <InfoRow icon="map-outline" label="Region" value={headInfos?.region} />
-                    <InfoRow icon="business-outline" label="Verein" value={headInfos?.club_name} />
-                    <InfoRow icon="albums-outline" label="Spielsystem" value={headInfos?.play_mode} />
-                    <InfoRow icon="person-outline" label="Altersklasse" value={headInfos?.gender_age_group} />
+                    <InfoRow icon="people-outline" label={t('team.team')} value={team.teamName} />
+                    <InfoRow icon="trophy-outline" label={t('team.league')} value={team.leagueTitle ?? headInfos?.league_name} />
+                    <InfoRow icon="calendar-outline" label={t('common.season')} value={headInfos?.season ?? team.season} />
+                    <InfoRow icon="git-branch-outline" label={t('team.association')} value={headInfos?.organization_short ?? team.association} />
+                    <InfoRow icon="map-outline" label={t('team.region')} value={headInfos?.region} />
+                    <InfoRow icon="business-outline" label={t('team.club')} value={headInfos?.club_name} />
+                    <InfoRow icon="albums-outline" label={t('team.playMode')} value={headInfos?.play_mode} />
+                    <InfoRow icon="person-outline" label={t('team.ageGroup')} value={headInfos?.gender_age_group} />
                     <InfoRow
                         icon="time-outline"
-                        label="Nächstes Spiel"
+                        label={t('team.nextMatch')}
                         value={
                             summary.nextMatch
-                                ? `${formatDateLabel(summary.nextMatch.date)} gegen ${getOpponentName(summary.nextMatch, team)}`
+                                ? t('team.nextMatchValue', {
+                                    date: formatDateLabel(summary.nextMatch.date),
+                                    opponent: getOpponentName(summary.nextMatch, team),
+                                })
                                 : undefined
                         }
                     />
@@ -653,22 +670,22 @@ function InfosTab({
                 <View style={styles.sectionHeaderCompact}>
                     <Ionicons name="person-circle-outline" size={18} color={colors.primary} />
                     <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                        Mannschaftsführung
+                        {t('team.teamLeadership')}
                     </Text>
                 </View>
 
                 {contact && hasDisplayableValues(contact) ? (
                     <View style={styles.infoList}>
-                        <InfoRow icon="person-outline" label="Kontakt" value={contact.contact_name} />
-                        <InfoRow icon="location-outline" label="Adresse" value={joinParts([contact.street, contact.zipcode, contact.city])} />
-                        <InfoRow icon="call-outline" label="Telefon privat" value={contact.phone_home} />
-                        <InfoRow icon="briefcase-outline" label="Telefon dienstlich" value={contact.phone_work} />
-                        <InfoRow icon="phone-portrait-outline" label="Mobil" value={contact.phone_mobile} />
-                        <InfoRow icon="mail-outline" label="E-Mail privat" value={contact.email_home} />
-                        <InfoRow icon="mail-unread-outline" label="E-Mail dienstlich" value={contact.email_work} />
+                        <InfoRow icon="person-outline" label={t('team.contact')} value={contact.contact_name} />
+                        <InfoRow icon="location-outline" label={t('team.address')} value={joinParts([contact.street, contact.zipcode, contact.city])} />
+                        <InfoRow icon="call-outline" label={t('team.privatePhone')} value={contact.phone_home} />
+                        <InfoRow icon="briefcase-outline" label={t('team.workPhone')} value={contact.phone_work} />
+                        <InfoRow icon="phone-portrait-outline" label={t('team.mobile')} value={contact.phone_mobile} />
+                        <InfoRow icon="mail-outline" label={t('team.privateEmail')} value={contact.email_home} />
+                        <InfoRow icon="mail-unread-outline" label={t('team.workEmail')} value={contact.email_work} />
                     </View>
                 ) : (
-                    <EmptyState icon="person-circle-outline" title="Keine Mannschaftsführung gefunden" />
+                    <EmptyState icon="person-circle-outline" title={t('team.leadershipEmpty')} />
                 )}
             </Card>
 
@@ -676,7 +693,7 @@ function InfosTab({
                 <View style={styles.sectionHeaderCompact}>
                     <Ionicons name="home-outline" size={18} color={colors.primary} />
                     <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                        {venues.length > 1 ? 'Spiellokale' : 'Spiellokal'}
+                        {venues.length > 1 ? t('team.venues') : t('team.venue')}
                     </Text>
                 </View>
 
@@ -692,7 +709,7 @@ function InfosTab({
                         ))}
                     </View>
                 ) : (
-                    <EmptyState icon="home-outline" title="Kein Spiellokal gefunden" />
+                    <EmptyState icon="home-outline" title={t('team.venueEmpty')} />
                 )}
             </Card>
 
@@ -700,13 +717,13 @@ function InfosTab({
                 <Card style={styles.sectionCard}>
                     <View style={styles.sectionHeaderCompact}>
                         <Ionicons name="document-text-outline" size={18} color={colors.primary} />
-                        <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>Dokumente</Text>
+                        <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>{t('team.documents')}</Text>
                     </View>
 
                     <View style={styles.infoList}>
-                        <InfoRow icon="chatbox-ellipses-outline" label="Bemerkungen" value={info.remarks} />
-                        <ExternalLinkRow icon="document-outline" label="Spielplan PDF" value={info.pdfVersionUrl} />
-                        <ExternalLinkRow icon="documents-outline" label="Materialien PDF" value={info.pdfMaterialsUrl} />
+                        <InfoRow icon="chatbox-ellipses-outline" label={t('team.remarks')} value={info.remarks} />
+                        <ExternalLinkRow icon="document-outline" label={t('team.schedulePdf')} value={info.pdfVersionUrl} />
+                        <ExternalLinkRow icon="documents-outline" label={t('team.materialsPdf')} value={info.pdfMaterialsUrl} />
                     </View>
                 </Card>
             ) : null}
@@ -716,9 +733,10 @@ function InfosTab({
 
 function LineupTab({ players }: { players: TeamPlayer[] }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     if (players.length === 0) {
-        return <EmptyState icon="people-outline" title="Keine Aufstellung gefunden" />;
+        return <EmptyState icon="people-outline" title={t('team.lineupEmpty')} />;
     }
 
     return (
@@ -727,9 +745,9 @@ function LineupTab({ players }: { players: TeamPlayer[] }) {
                 <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
 
                 <View style={styles.sectionHeaderText}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Aufstellung</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('team.lineup')}</Text>
                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                        Rangfolge und TTR-Werte
+                        {t('team.lineupSubtitle')}
                     </Text>
                 </View>
             </View>
@@ -753,12 +771,13 @@ function ScheduleTab({
     summary: ScheduleSummary;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const upcoming = matches.filter((match) => match.status !== 'completed');
     const completed = matches.filter((match) => match.status === 'completed');
 
     if (matches.length === 0) {
-        return <EmptyState icon="calendar-outline" title="Kein Spielplan gefunden" />;
+        return <EmptyState icon="calendar-outline" title={t('team.scheduleEmpty')} />;
     }
 
     return (
@@ -766,13 +785,13 @@ function ScheduleTab({
             <Card style={styles.sectionCard}>
                 <View style={styles.sectionHeaderCompact}>
                     <Ionicons name="analytics-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>Saisonübersicht</Text>
+                    <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>{t('team.seasonOverview')}</Text>
                 </View>
 
                 <View style={styles.miniStatRow}>
-                    <MiniStat label="S/U/N" value={`${summary.wins}-${summary.draws}-${summary.losses}`} />
-                    <MiniStat label="Gespielt" value={String(summary.played)} />
-                    <MiniStat label="Offen" value={String(summary.open)} />
+                    <MiniStat label={t('team.resultRecord')} value={`${summary.wins}-${summary.draws}-${summary.losses}`} />
+                    <MiniStat label={t('team.played')} value={String(summary.played)} />
+                    <MiniStat label={t('team.open')} value={String(summary.open)} />
                 </View>
             </Card>
 
@@ -781,7 +800,7 @@ function ScheduleTab({
                     <View style={styles.sectionHeaderCompact}>
                         <Ionicons name="time-outline" size={18} color={colors.primary} />
                         <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                            Offene Spiele ({upcoming.length})
+                            {t('team.openGames')} ({upcoming.length})
                         </Text>
                     </View>
 
@@ -803,7 +822,7 @@ function ScheduleTab({
                     <View style={styles.sectionHeaderCompact}>
                         <Ionicons name="checkmark-circle-outline" size={18} color={colors.primary} />
                         <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                            Abgeschlossene Spiele ({completed.length})
+                            {t('team.completedGames')} ({completed.length})
                         </Text>
                     </View>
 
@@ -832,9 +851,10 @@ function BalancesTab({
     roundFilter: RoundFilter;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     if (balances.length === 0) {
-        return <EmptyState icon="stats-chart-outline" title="Keine Spielerbilanzen gefunden" />;
+        return <EmptyState icon="stats-chart-outline" title={t('team.balancesEmpty')} />;
     }
 
     return (
@@ -843,14 +863,14 @@ function BalancesTab({
                 <View style={styles.sectionHeaderCompact}>
                     <Ionicons name="analytics-outline" size={18} color={colors.primary} />
                     <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                        Bilanzübersicht
+                        {t('team.balanceOverview')}
                     </Text>
                 </View>
 
                 <View style={styles.miniStatRow}>
-                    <MiniStat label="Zeitraum" value={roundFilterLabel(roundFilter)} />
-                    <MiniStat label="Punkte" value={`${summary.pointsWon}:${summary.pointsLost}`} />
-                    <MiniStat label="Quote" value={formatPercent(summary.quote)} />
+                    <MiniStat label={t('team.period')} value={roundFilterLabel(roundFilter, t)} />
+                    <MiniStat label={t('team.points')} value={`${summary.pointsWon}:${summary.pointsLost}`} />
+                    <MiniStat label={t('team.quote')} value={formatPercent(summary.quote)} />
                 </View>
             </Card>
 
@@ -869,9 +889,9 @@ function BalancesTab({
                     </View>
 
                     <View style={styles.sectionHeaderText}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Spielerbilanzen</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('team.playerBalances')}</Text>
                         <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                            Einsätze, Siege/Niederlagen und Quote
+                            {t('team.playerBalancesSubtitle')}
                         </Text>
                     </View>
                 </View>
@@ -1033,6 +1053,7 @@ function PlayerCard({ player, index }: { player: TeamPlayer; index: number }) {
 
 function BalanceCard({ balance }: { balance: TeamBalance }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const canOpen = Boolean(balance.playerId);
 
     return (
@@ -1066,7 +1087,7 @@ function BalanceCard({ balance }: { balance: TeamBalance }) {
                     </Text>
 
                     <View style={styles.personMetaRow}>
-                        {balance.rank ? <Badge tone="secondary">Rang {balance.rank}</Badge> : null}
+                        {balance.rank ? <Badge tone="secondary">{t('team.rank', { rank: balance.rank })}</Badge> : null}
                     </View>
                 </View>
 
@@ -1074,9 +1095,9 @@ function BalanceCard({ balance }: { balance: TeamBalance }) {
             </View>
 
             <View style={styles.balanceStatGrid}>
-                <BalanceStat label="Einsätze" value={balance.meetingsCount ?? '-'} />
-                <BalanceStat label="Bilanz" value={`${balance.pointsWon ?? '0'}:${balance.pointsLost ?? '0'}`} />
-                <BalanceStat label="Quote" value={formatPercent(balance.quote)} />
+                <BalanceStat label={t('team.appearances')} value={balance.meetingsCount ?? '-'} />
+                <BalanceStat label={t('team.record')} value={`${balance.pointsWon ?? '0'}:${balance.pointsLost ?? '0'}`} />
+                <BalanceStat label={t('team.quote')} value={formatPercent(balance.quote)} />
             </View>
         </Pressable>
     );
@@ -1107,6 +1128,7 @@ function TeamMatchCard({
     highlighted?: boolean;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const canOpen = Boolean(match.id) && match.status !== 'free';
 
     return (
@@ -1151,7 +1173,7 @@ function TeamMatchCard({
                                 : 'outline'
                     }
                 >
-                    {teamMatchStatusLabel(match.status)}
+                    {teamMatchStatusLabel(match.status, t)}
                 </Badge>
             </View>
 
@@ -1181,7 +1203,7 @@ function TeamMatchCard({
                 ) : (
                     <View style={[styles.vsBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         <Text style={[styles.vsText, { color: colors.mutedText }]}>
-                            {match.status === 'free' ? 'FREI' : 'VS'}
+                            {match.status === 'free' ? t('team.freeShort') : t('team.vs')}
                         </Text>
                     </View>
                 )}
@@ -1214,7 +1236,7 @@ function TeamMatchCard({
                     <View style={styles.metaLine}>
                         <Ionicons name="swap-horizontal-outline" size={13} color={colors.mutedText} />
                         <Text style={[styles.metaText, { color: colors.mutedText }]}>
-                            Gegner: {getOpponentName(match, team)}
+                            {t('team.opponent', { opponent: getOpponentName(match, team) })}
                         </Text>
                     </View>
                 ) : null}
@@ -1296,8 +1318,9 @@ function VenueCard({
     total: number;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
-    const title = venue.label ?? `Spiellokal ${index + 1}`;
+    const title = venue.label ?? t('team.venueWithNumber', { number: index + 1 });
     const name = venue.contact_name ?? venue.name;
 
     return (
@@ -1307,26 +1330,30 @@ function VenueCard({
             ) : null}
 
             <View style={styles.infoList}>
-                <InfoRow icon="business-outline" label="Name" value={name ?? title} />
+                <InfoRow icon="business-outline" label={t('team.name')} value={name ?? title} />
                 <InfoRow
                     icon="location-outline"
-                    label="Adresse"
+                    label={t('team.address')}
                     value={joinParts([venue.street, venue.zipcode, venue.city])}
                 />
 
                 {isProbablyUrl(venue.website) ? (
-                    <ExternalLinkRow icon="globe-outline" label="Website" value={venue.website} />
+                    <ExternalLinkRow icon="globe-outline" label={t('team.website')} value={venue.website} />
                 ) : (
-                    <InfoRow icon="chatbox-ellipses-outline" label="Hinweis" value={venue.website} />
+                    <InfoRow icon="chatbox-ellipses-outline" label={t('team.note')} value={venue.website} />
                 )}
 
-                <InfoRow icon="call-outline" label="Telefon" value={venue.phone_home ?? venue.phone_mobile} />
+                <InfoRow icon="call-outline" label={t('team.phone')} value={venue.phone_home ?? venue.phone_mobile} />
             </View>
         </View>
     );
 }
 
-function normalizeLineup(response: unknown, teamName: string): TeamPlayer[] {
+function normalizeLineup(
+    response: unknown,
+    teamName: string,
+    t: ReturnType<typeof useI18n>['t'],
+): TeamPlayer[] {
     const data = unwrapData(response);
     const record = asRecord(data);
 
@@ -1348,7 +1375,7 @@ function normalizeLineup(response: unknown, teamName: string): TeamPlayer[] {
         const poolPlayers = arrayValue(asRecord(matchingPool)?.teampool);
 
         if (poolPlayers.length > 0) {
-            return dedupePlayers(poolPlayers.map(normalizeLineupPlayer)).sort(sortByRank);
+            return dedupePlayers(poolPlayers.map((player) => normalizeLineupPlayer(player, t))).sort(sortByRank);
         }
     }
 
@@ -1361,7 +1388,7 @@ function normalizeLineup(response: unknown, teamName: string): TeamPlayer[] {
             arrayValue(data).filter(looksLikePlayerRecord),
         ]) ?? [];
 
-    return dedupePlayers(directRows.map(normalizeLineupPlayer)).sort(sortByRank);
+    return dedupePlayers(directRows.map((player) => normalizeLineupPlayer(player, t))).sort(sortByRank);
 }
 
 function looksLikePlayerRecord(value: unknown) {
@@ -1402,7 +1429,7 @@ function dedupePlayers(players: TeamPlayer[]) {
     });
 }
 
-function normalizeLineupPlayer(value: unknown): TeamPlayer {
+function normalizeLineupPlayer(value: unknown, t: ReturnType<typeof useI18n>['t']): TeamPlayer {
     const row = asRecord(value);
 
     const firstname = pickString(row, ['firstname', 'first_name', 'player_firstname']);
@@ -1410,7 +1437,7 @@ function normalizeLineupPlayer(value: unknown): TeamPlayer {
     const name =
         pickString(row, ['name', 'player_name', 'person_name']) ??
         joinParts([firstname, lastname]) ??
-        'Unbekannter Spieler';
+        t('team.unknownPlayer');
 
     return {
         id: pickString(row, ['internal_id', 'player_id', 'person_id', 'nuid', 'id']),
@@ -1574,7 +1601,11 @@ function normalizeTeamInfo(response: unknown): TeamInfo | null {
     };
 }
 
-function normalizeTeamSchedule(response: unknown, team: TeamContext): TeamScheduleMatch[] {
+function normalizeTeamSchedule(
+    response: unknown,
+    team: TeamContext,
+    t: ReturnType<typeof useI18n>['t'],
+): TeamScheduleMatch[] {
     const data = unwrapData(response);
     const row = asRecord(data);
 
@@ -1588,7 +1619,7 @@ function normalizeTeamSchedule(response: unknown, team: TeamContext): TeamSchedu
         ]) ?? [];
 
     return rows
-        .map((value) => normalizeScheduleRow(value, team))
+        .map((value) => normalizeScheduleRow(value, team, t))
         .filter((match) => match.homeTeam || match.awayTeam)
         .sort((a, b) => {
             const dateA = parseDate(a.date)?.getTime() ?? 0;
@@ -1597,7 +1628,11 @@ function normalizeTeamSchedule(response: unknown, team: TeamContext): TeamSchedu
         });
 }
 
-function normalizeScheduleRow(value: unknown, team: TeamContext): TeamScheduleMatch {
+function normalizeScheduleRow(
+    value: unknown,
+    team: TeamContext,
+    t: ReturnType<typeof useI18n>['t'],
+): TeamScheduleMatch {
     const row = asRecord(value);
 
     const date = pickString(row, ['date', 'datetime', 'start_time', 'startTime']);
@@ -1614,7 +1649,7 @@ function normalizeScheduleRow(value: unknown, team: TeamContext): TeamScheduleMa
     const awayTeam =
         pickString(row, ['team_away', 'awayTeam', 'away_team']) ??
         opponent ??
-        'Auswärts';
+        t('team.away');
 
     const ownIsHome = isOwnTeam(homeTeam, homeTeamId, team);
     const ownIsAway = isOwnTeam(awayTeam, awayTeamId, team);
@@ -1645,7 +1680,7 @@ function normalizeScheduleRow(value: unknown, team: TeamContext): TeamScheduleMa
     const ownScore = ownIsHome ? homeScore : ownIsAway ? awayScore : explicitOwnScore;
     const opponentScore = ownIsHome ? awayScore : ownIsAway ? homeScore : explicitOpponentScore;
 
-    const location = asRecord(row.location);
+    const location = asRecord(row?.location);
 
     const status = normalizeMatchStatus(
         pickString(row, ['state', 'status', 'meeting_state']),
@@ -1675,7 +1710,7 @@ function normalizeScheduleRow(value: unknown, team: TeamContext): TeamScheduleMa
     };
 }
 
-function normalizeBalances(response: unknown): TeamBalance[] {
+function normalizeBalances(response: unknown, t: ReturnType<typeof useI18n>['t']): TeamBalance[] {
     const data = unwrapData(response);
     const row = asRecord(data);
 
@@ -1688,8 +1723,8 @@ function normalizeBalances(response: unknown): TeamBalance[] {
             balanceSheetStats,
         ]) ?? [];
 
-    return dedupeBalances(rows.map(normalizeBalanceRow))
-        .filter((balance) => balance.name && balance.name !== 'Unbekannter Spieler')
+    return dedupeBalances(rows.map((balance) => normalizeBalanceRow(balance, t)))
+        .filter((balance) => balance.name && balance.name !== t('team.unknownPlayer'))
         .sort((a, b) => {
             const rankA = Number(a.rank ?? Number.MAX_SAFE_INTEGER);
             const rankB = Number(b.rank ?? Number.MAX_SAFE_INTEGER);
@@ -1715,7 +1750,7 @@ function dedupeBalances(balances: TeamBalance[]) {
     });
 }
 
-function normalizeBalanceRow(value: unknown): TeamBalance {
+function normalizeBalanceRow(value: unknown, t: ReturnType<typeof useI18n>['t']): TeamBalance {
     const row = asRecord(value);
 
     const firstname = pickString(row, ['player_firstname', 'firstname', 'first_name']);
@@ -1723,7 +1758,7 @@ function normalizeBalanceRow(value: unknown): TeamBalance {
     const name =
         pickString(row, ['player_name', 'name', 'person_name']) ??
         joinParts([firstname, lastname]) ??
-        'Unbekannter Spieler';
+        t('team.unknownPlayer');
 
     const pointsWon = pickString(row, ['points_won', 'won', 'matches_won']);
     const pointsLost = pickString(row, ['points_lost', 'lost', 'matches_lost']);
@@ -1731,7 +1766,7 @@ function normalizeBalanceRow(value: unknown): TeamBalance {
     const lostNumber = toNumber(pointsLost) ?? 0;
 
     const singleStats =
-        arrayValue(row.single_statistics).map((stat) => {
+        arrayValue(row?.single_statistics).map((stat) => {
             const statRow = asRecord(stat);
 
             return {
@@ -1879,27 +1914,27 @@ function normalizeMatchStatus(
     return 'scheduled';
 }
 
-function teamMatchStatusLabel(status: TeamScheduleMatch['status']) {
+function teamMatchStatusLabel(status: TeamScheduleMatch['status'], t: ReturnType<typeof useI18n>['t']) {
     switch (status) {
         case 'completed':
-            return 'Beendet';
+            return t('status.completed');
         case 'free':
-            return 'Spielfrei';
+            return t('status.free');
         case 'scheduled':
         default:
-            return 'Offen';
+            return t('team.open');
     }
 }
 
-function roundFilterLabel(filter: RoundFilter) {
+function roundFilterLabel(filter: RoundFilter, t: ReturnType<typeof useI18n>['t']) {
     switch (filter) {
         case 'vr':
-            return 'Hinrunde';
+            return t('team.firstHalf');
         case 'rr':
-            return 'Rückrunde';
+            return t('team.secondHalf');
         case 'gesamt':
         default:
-            return 'Gesamt';
+            return t('team.totalRound');
     }
 }
 

@@ -8,6 +8,7 @@ import { Badge } from '../../../src/components/Badge';
 import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
+import { useI18n } from '../../../src/i18n/I18nProvider';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -97,8 +98,9 @@ type MatchRow = {
 };
 
 export default function MatchDetailsScreen() {
-  const params = useLocalSearchParams<Record<string, string | string[] | undefined>>();
+  const params = useLocalSearchParams() as Record<string, string | string[] | undefined>;
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const meetingId = getParam(params.meetingId);
 
@@ -112,7 +114,7 @@ export default function MatchDetailsScreen() {
     async function loadMeeting() {
       if (!meetingId) {
         setLoading(false);
-        setError('Keine Meeting-ID übergeben');
+        setError(t('match.meetingIdMissing'));
         return;
       }
 
@@ -124,7 +126,7 @@ export default function MatchDetailsScreen() {
         const nextMeeting = unwrapMeetingResponse(response);
 
         if (!nextMeeting) {
-          throw new Error('Unerwartetes Begegnungsformat vom Backend');
+          throw new Error(t('match.unexpectedFormat'));
         }
 
         if (active) {
@@ -133,7 +135,7 @@ export default function MatchDetailsScreen() {
       } catch (loadError) {
         if (active) {
           setMeeting(null);
-          setError(loadError instanceof Error ? loadError.message : 'Begegnung konnte nicht geladen werden');
+          setError(loadError instanceof Error ? loadError.message : t('match.liveLoadError'));
         }
       } finally {
         if (active) {
@@ -147,14 +149,14 @@ export default function MatchDetailsScreen() {
     return () => {
       active = false;
     };
-  }, [meetingId]);
+  }, [meetingId, t]);
 
-  const lines = useMemo(() => normalizeMeetingRows(meeting), [meeting]);
+  const lines = useMemo(() => normalizeMeetingRows(meeting, t), [meeting, t]);
   const singles = useMemo(() => lines.filter((line) => line.type !== 'double'), [lines]);
   const doubles = useMemo(() => lines.filter((line) => line.type === 'double'), [lines]);
 
-  const homeTeam = meeting?.team_home ?? getParam(params.homeTeam) ?? 'Heim';
-  const awayTeam = meeting?.team_guest ?? getParam(params.awayTeam) ?? getParam(params.guestTeam) ?? 'Gast';
+  const homeTeam = meeting?.team_home ?? getParam(params.homeTeam) ?? t('match.home');
+  const awayTeam = meeting?.team_guest ?? getParam(params.awayTeam) ?? getParam(params.guestTeam) ?? t('match.away');
 
   const homeMatches = toNumber(meeting?.matches_home);
   const guestMatches = toNumber(meeting?.matches_guest);
@@ -165,13 +167,13 @@ export default function MatchDetailsScreen() {
           : 'vs';
 
   const summaryParts = [
-    formatLabeledPair('Sätze', meeting?.sets_home, meeting?.sets_guest),
-    formatLabeledPair('Bälle', meeting?.games_home, meeting?.games_guest),
+    formatLabeledPair(t('match.sets'), meeting?.sets_home, meeting?.sets_guest),
+    formatLabeledPair(t('match.balls'), meeting?.games_home, meeting?.games_guest),
   ].filter(Boolean) as string[];
 
   const startText = formatDateTime(meeting?.start_date ?? meeting?.scheduled);
   const locationText = formatLocation(meeting);
-  const statusText = formatStatus(meeting);
+  const statusText = formatStatus(meeting, t);
 
   return (
       <Screen>
@@ -179,16 +181,16 @@ export default function MatchDetailsScreen() {
           <View style={styles.headerRow}>
             <BackButton />
 
-            <Text style={[styles.title, { color: colors.text }]}>Begegnungsdetails</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('match.detailsTitle')}</Text>
           </View>
 
-          <Card style={[styles.scoreCard, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoftBorder }]}>
+          <Card style={[styles.scoreCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.teamsRow}>
               <Text style={[styles.teamName, { color: colors.text }]} numberOfLines={3}>
                 {homeTeam}
               </Text>
 
-              <View style={[styles.scorePill, { backgroundColor: colors.background, borderColor: colors.primarySoftBorder }]}>
+              <View style={[styles.scorePill, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoftBorder }]}>
                 <Text style={[styles.scoreText, { color: colors.primary }]}>{mainScore}</Text>
                 <Text style={[styles.scoreLabel, { color: colors.mutedText }]}>{statusText}</Text>
               </View>
@@ -222,13 +224,13 @@ export default function MatchDetailsScreen() {
           {!loading && !error && lines.length === 0 ? (
               <EmptyState
                   icon="analytics-outline"
-                  title="Keine Details gefunden"
-                  subtitle="Das Backend hat keine Einzel- oder Doppelspiele geliefert."
+                  title={t('match.noLines')}
+                  subtitle={t('match.noLinesSubtitle')}
               />
           ) : null}
 
-          {!loading && !error && singles.length > 0 ? <MatchSection title="Einzelspiele" rows={singles} /> : null}
-          {!loading && !error && doubles.length > 0 ? <MatchSection title="Doppelspiele" rows={doubles} /> : null}
+          {!loading && !error && singles.length > 0 ? <MatchSection title={t('match.singlesMatches')} rows={singles} /> : null}
+          {!loading && !error && doubles.length > 0 ? <MatchSection title={t('match.doublesMatches')} rows={doubles} /> : null}
         </ScrollView>
       </Screen>
   );
@@ -258,6 +260,7 @@ function BackButton() {
 
 function MatchSection({ title, rows }: { title: string; rows: MatchRow[] }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   return (
       <Card style={styles.sectionCard}>
@@ -284,7 +287,7 @@ function MatchSection({ title, rows }: { title: string; rows: MatchRow[] }) {
                   <View style={styles.matchMetaRow}>
                     <Text style={[styles.matchName, { color: colors.mutedText }]}>{row.name}</Text>
                     <Text style={[styles.matchType, { color: colors.mutedText }]}>
-                      {row.type === 'double' ? 'Doppel' : 'Einzel'}
+                      {row.type === 'double' ? t('match.doubles') : t('match.singles')}
                     </Text>
                   </View>
 
@@ -326,7 +329,7 @@ function InfoPill({ icon, text }: { icon: IconName; text: string }) {
   );
 }
 
-function normalizeMeetingRows(meeting: MeetingDetails | null): MatchRow[] {
+function normalizeMeetingRows(meeting: MeetingDetails | null, t: ReturnType<typeof useI18n>['t']): MatchRow[] {
   const matches = Array.isArray(meeting?.match) ? meeting.match : [];
 
   return matches.map((match, index) => {
@@ -355,14 +358,14 @@ function normalizeMeetingRows(meeting: MeetingDetails | null): MatchRow[] {
                     : 'guest'
                 : null;
 
-    const games = formatLabeledPair('Bälle', match.games_home, match.games_guest);
+    const games = formatLabeledPair(t('match.balls'), match.games_home, match.games_guest);
 
     return {
       id: match.match_uuid ?? `${match.match_name ?? 'match'}-${index}`,
-      name: match.match_name ?? `${index + 1}. Spiel`,
+      name: match.match_name ?? t('match.matchNumber', { number: index + 1 }),
       type,
-      homePlayer: formatSide([match.mm_player11, match.mm_player12], match.home_wo ? 'kampflos' : 'Heim'),
-      awayPlayer: formatSide([match.mm_player21, match.mm_player22], match.guest_wo ? 'kampflos' : 'Gast'),
+      homePlayer: formatSide([match.mm_player11, match.mm_player12], match.home_wo ? t('match.walkover') : t('match.home')),
+      awayPlayer: formatSide([match.mm_player21, match.mm_player22], match.guest_wo ? t('match.walkover') : t('match.away')),
       result: hasResult ? `${setsHome}:${setsGuest}` : '-',
       sets: setScores,
       games,
@@ -508,20 +511,20 @@ function formatLocation(meeting: MeetingDetails | null): string | null {
   return [hall, city].filter(Boolean).join(', ') || null;
 }
 
-function formatStatus(meeting: MeetingDetails | null): string {
+function formatStatus(meeting: MeetingDetails | null, t: ReturnType<typeof useI18n>['t']): string {
   if (meeting?.live) {
-    return 'Live';
+    return t('status.live');
   }
 
   if (meeting?.is_completed || meeting?.is_meeting_complete) {
-    return 'Endstand';
+    return t('match.finalScore');
   }
 
   if (meeting?.results_available) {
-    return 'Ergebnis';
+    return t('match.result');
   }
 
-  return 'Geplant';
+  return t('status.scheduled');
 }
 
 const styles = StyleSheet.create({

@@ -29,6 +29,8 @@ import { useAuth } from '../../src/auth/AuthProvider';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { Screen } from '../../src/components/Screen';
+import { AppLanguage, languageOptions } from '../../src/i18n';
+import { useI18n } from '../../src/i18n/I18nProvider';
 import {
   clearMeClub,
   getMeClub,
@@ -172,15 +174,15 @@ function unwrapData(value: unknown): unknown {
   return value;
 }
 
-function normalizeMyttStatus(response: unknown): MyttStatusView {
+function normalizeMyttStatus(response: unknown, t: ReturnType<typeof useI18n>['t']): MyttStatusView {
   const data = unwrapData(response);
 
   if (!data || typeof data !== 'object') {
     return {
       hasSession: false,
       expired: false,
-      label: 'Unbekannter Status',
-      detail: 'Das Backend hat keinen lesbaren Status zurückgegeben.',
+      label: t('settings.statusUnknown'),
+      detail: t('settings.statusUnknownDetail'),
     };
   }
 
@@ -199,8 +201,8 @@ function normalizeMyttStatus(response: unknown): MyttStatusView {
     return {
       hasSession,
       expired,
-      label: 'Verbunden',
-      detail: 'Deine myTischtennis-Verbindung ist aktiv.',
+      label: t('settings.statusConnected'),
+      detail: t('settings.statusConnectedDetail'),
     };
   }
 
@@ -208,16 +210,16 @@ function normalizeMyttStatus(response: unknown): MyttStatusView {
     return {
       hasSession,
       expired,
-      label: 'Abgelaufen',
-      detail: 'Deine myTischtennis-Verbindung ist abgelaufen. Bitte neu verbinden.',
+      label: t('settings.statusExpired'),
+      detail: t('settings.statusExpiredDetail'),
     };
   }
 
   return {
     hasSession,
     expired,
-    label: 'Nicht verbunden',
-    detail: 'Es ist noch keine myTischtennis-Verbindung gespeichert.',
+    label: t('settings.statusDisconnected'),
+    detail: t('settings.statusDisconnectedDetail'),
   };
 }
 
@@ -283,6 +285,7 @@ export default function SettingsScreen() {
     clearBackgroundImageUri,
   } = useTheme();
 
+  const { language, setLanguage, t } = useI18n();
   const { user, isAuthenticated, login, register, logout } = useAuth();
 
   const [health, setHealth] = useState<string | null>(null);
@@ -373,7 +376,7 @@ export default function SettingsScreen() {
 
       if (!permission.granted) {
         throw new Error(
-            'Bitte erlaube den Zugriff auf deine Fotos, um ein Hintergrundbild auszuwählen.',
+            t('settings.backgroundPermissionError'),
         );
       }
 
@@ -384,17 +387,17 @@ export default function SettingsScreen() {
       });
 
       if (result.canceled || !result.assets?.[0]?.uri) {
-        setBackgroundMessage('Keine Änderung vorgenommen.');
+        setBackgroundMessage(t('settings.backgroundNoChange'));
         return;
       }
 
       await setBackgroundImageUri(result.assets[0].uri);
-      setBackgroundMessage('Hintergrundbild gespeichert.');
+      setBackgroundMessage(t('settings.backgroundSaved'));
     } catch (error) {
       setBackgroundMessage(
           error instanceof Error
               ? error.message
-              : 'Hintergrundbild konnte nicht gespeichert werden',
+              : t('settings.backgroundSaveError'),
       );
     } finally {
       setBackgroundLoading(null);
@@ -407,12 +410,12 @@ export default function SettingsScreen() {
 
     try {
       await clearBackgroundImageUri();
-      setBackgroundMessage('Standard-Hintergrund wiederhergestellt.');
+      setBackgroundMessage(t('settings.backgroundRestored'));
     } catch (error) {
       setBackgroundMessage(
           error instanceof Error
               ? error.message
-              : 'Hintergrundbild konnte nicht entfernt werden',
+              : t('settings.backgroundRemoveError'),
       );
     } finally {
       setBackgroundLoading(null);
@@ -460,9 +463,9 @@ export default function SettingsScreen() {
 
     try {
       const response = await ttApi.health();
-      setHealth(response.ok ? 'Backend erreichbar' : 'Backend antwortet, aber ok=false');
+      setHealth(response.ok ? t('settings.backendReachable') : t('settings.backendOkFalse'));
     } catch (error) {
-      setHealth(error instanceof Error ? error.message : 'Backend nicht erreichbar');
+      setHealth(error instanceof Error ? error.message : t('settings.backendUnreachable'));
     } finally {
       setChecking(false);
     }
@@ -479,9 +482,9 @@ export default function SettingsScreen() {
       });
 
       setPassword('');
-      setAuthMessage(`Eingeloggt als ${loggedInUser.username}`);
+      setAuthMessage(t('settings.loggedInAs', { username: loggedInUser.username }));
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'Login fehlgeschlagen');
+      setAuthMessage(error instanceof Error ? error.message : t('settings.loginFailed'));
     } finally {
       setAuthLoading(null);
     }
@@ -498,9 +501,9 @@ export default function SettingsScreen() {
       });
 
       setPassword('');
-      setAuthMessage(`Registriert und eingeloggt als ${registeredUser.username}`);
+      setAuthMessage(t('settings.registeredAs', { username: registeredUser.username }));
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'Registrierung fehlgeschlagen');
+      setAuthMessage(error instanceof Error ? error.message : t('settings.registerFailed'));
     } finally {
       setAuthLoading(null);
     }
@@ -517,9 +520,9 @@ export default function SettingsScreen() {
     try {
       await logout();
       setPassword('');
-      setAuthMessage('Erfolgreich ausgeloggt');
+      setAuthMessage(t('settings.logoutSuccess'));
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'Logout fehlgeschlagen');
+      setAuthMessage(error instanceof Error ? error.message : t('settings.logoutFailed'));
     } finally {
       setAuthLoading(null);
     }
@@ -531,10 +534,10 @@ export default function SettingsScreen() {
 
     try {
       const status = await getMyttStatus();
-      setMyttStatus(normalizeMyttStatus(status));
+      setMyttStatus(normalizeMyttStatus(status, t));
     } catch (error) {
       setMyttStatus(null);
-      setMyttMessage(error instanceof Error ? error.message : 'Status konnte nicht geladen werden');
+      setMyttMessage(error instanceof Error ? error.message : t('settings.statusLoadError'));
     } finally {
       setMyttLoading(null);
     }
@@ -548,7 +551,7 @@ export default function SettingsScreen() {
       const response = await getMyttGrants();
       setGrants(normalizeGrants(response));
     } catch (error) {
-      setGrantMessage(error instanceof Error ? error.message : 'Freigaben konnten nicht geladen werden');
+      setGrantMessage(error instanceof Error ? error.message : t('settings.grantsLoadError'));
     } finally {
       setGrantLoading(null);
     }
@@ -565,12 +568,12 @@ export default function SettingsScreen() {
       });
 
       setGrantUsername('');
-      setGrantMessage('Freigabe erstellt');
+      setGrantMessage(t('settings.grantCreated'));
 
       const response = await getMyttGrants();
       setGrants(normalizeGrants(response));
     } catch (error) {
-      setGrantMessage(error instanceof Error ? error.message : 'Freigabe konnte nicht erstellt werden');
+      setGrantMessage(error instanceof Error ? error.message : t('settings.grantCreateError'));
     } finally {
       setGrantLoading(null);
     }
@@ -583,9 +586,9 @@ export default function SettingsScreen() {
     try {
       await revokeMyttGrant(grantId);
       setGrants((current) => current.filter((grant) => grant.id !== grantId));
-      setGrantMessage('Freigabe entfernt');
+      setGrantMessage(t('settings.grantRemoved'));
     } catch (error) {
-      setGrantMessage(error instanceof Error ? error.message : 'Freigabe konnte nicht entfernt werden');
+      setGrantMessage(error instanceof Error ? error.message : t('settings.grantRemoveError'));
     } finally {
       setDeletingGrantId(null);
     }
@@ -599,9 +602,9 @@ export default function SettingsScreen() {
       const saved = await setMePlayerNuid(meNuidInput);
       setSavedMeNuid(saved);
       setMeNuidInput(saved);
-      setMeNuidMessage('Dein Profil wurde lokal gespeichert.');
+      setMeNuidMessage(t('settings.profileSaved'));
     } catch (error) {
-      setMeNuidMessage(error instanceof Error ? error.message : 'NUID konnte nicht gespeichert werden');
+      setMeNuidMessage(error instanceof Error ? error.message : t('settings.nuidSaveError'));
     } finally {
       setMeNuidLoading(null);
     }
@@ -615,9 +618,9 @@ export default function SettingsScreen() {
       await clearMePlayerNuid();
       setSavedMeNuid(null);
       setMeNuidInput('');
-      setMeNuidMessage('Dein lokales Profil wurde entfernt.');
+      setMeNuidMessage(t('settings.profileRemoved'));
     } catch (error) {
-      setMeNuidMessage(error instanceof Error ? error.message : 'NUID konnte nicht entfernt werden');
+      setMeNuidMessage(error instanceof Error ? error.message : t('settings.nuidRemoveError'));
     } finally {
       setMeNuidLoading(null);
     }
@@ -631,7 +634,7 @@ export default function SettingsScreen() {
       const parsed = parseClubIdInput(clubIdInput);
 
       if (!parsed) {
-        throw new Error('Bitte nutze das Format Verband:Vereinsnummer, z. B. TTBW:2055064.');
+        throw new Error(t('settings.clubFormatError'));
       }
 
       const displayName = clubNameInput.trim();
@@ -646,9 +649,9 @@ export default function SettingsScreen() {
       setSavedMeClub(saved);
       setClubIdInput(formatClubId(saved));
       setClubNameInput(getClubDisplayName(saved));
-      setMeClubMessage('Dein Verein wurde lokal gespeichert.');
+      setMeClubMessage(t('settings.clubSaved'));
     } catch (error) {
-      setMeClubMessage(error instanceof Error ? error.message : 'Verein konnte nicht gespeichert werden');
+      setMeClubMessage(error instanceof Error ? error.message : t('settings.clubSaveError'));
     } finally {
       setMeClubLoading(null);
     }
@@ -663,9 +666,9 @@ export default function SettingsScreen() {
       setSavedMeClub(null);
       setClubIdInput('');
       setClubNameInput('');
-      setMeClubMessage('Dein lokaler Verein wurde entfernt.');
+      setMeClubMessage(t('settings.clubRemoved'));
     } catch (error) {
-      setMeClubMessage(error instanceof Error ? error.message : 'Verein konnte nicht entfernt werden');
+      setMeClubMessage(error instanceof Error ? error.message : t('settings.clubRemoveError'));
     } finally {
       setMeClubLoading(null);
     }
@@ -680,7 +683,7 @@ export default function SettingsScreen() {
         clubKey: `${savedMeClub.organization}-${savedMeClub.clubNumber}`,
         organization: savedMeClub.organization,
         clubNumber: savedMeClub.clubNumber,
-        title: savedMeClub.title ?? savedMeClub.clubName ?? 'Mein Verein',
+        title: savedMeClub.title ?? savedMeClub.clubName ?? t('settings.clubSavedTitle'),
         clubName: savedMeClub.clubName ?? savedMeClub.title ?? '',
         state: savedMeClub.state ?? '',
         season: savedMeClub.season ?? '',
@@ -695,7 +698,7 @@ export default function SettingsScreen() {
       pathname: '/(tabs)/player/[nuid]',
       params: {
         nuid: savedMeNuid,
-        title: 'Ich',
+        title: t('home.profileFallback'),
       },
     });
   }
@@ -707,8 +710,35 @@ export default function SettingsScreen() {
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: colors.text }]}>Einstellungen</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('settings.title')}</Text>
           </View>
+
+          <Card style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Ionicons name="language-outline" size={21} color={colors.text} />
+              <Text style={[styles.cardTitle, { color: colors.text }]}>
+                {t('settings.languageTitle')}
+              </Text>
+            </View>
+
+            <Text style={[styles.backendText, { color: colors.mutedText }]}>
+              {t('settings.languageDescription')}
+            </Text>
+
+            <View style={styles.twoGrid}>
+              {languageOptions.map((option) => (
+                  <Button
+                      key={option.value}
+                      variant={language === option.value ? 'primary' : 'outline'}
+                      icon={option.value === 'de' ? 'flag-outline' : 'language-outline'}
+                      onPress={() => setLanguage(option.value as AppLanguage)}
+                      style={styles.halfButton}
+                  >
+                    {t(option.labelKey)}
+                  </Button>
+              ))}
+            </View>
+          </Card>
 
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
@@ -717,10 +747,10 @@ export default function SettingsScreen() {
                   size={21}
                   color={colors.text}
               />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Erscheinungsbild</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.appearance')}</Text>
             </View>
 
-            <Text style={[styles.label, { color: colors.text }]}>Theme</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('settings.theme')}</Text>
 
             <View style={styles.twoGrid}>
               <Button
@@ -729,7 +759,7 @@ export default function SettingsScreen() {
                   onPress={() => setMode('light')}
                   style={styles.halfButton}
               >
-                Hell
+                {t('settings.themeLight')}
               </Button>
 
               <Button
@@ -738,7 +768,7 @@ export default function SettingsScreen() {
                   onPress={() => setMode('dark')}
                   style={styles.halfButton}
               >
-                Dunkel
+                {t('settings.themeDark')}
               </Button>
             </View>
           </Card>
@@ -746,7 +776,7 @@ export default function SettingsScreen() {
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="color-palette-outline" size={21} color={colors.text} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Akzentfarbe</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.accentColor')}</Text>
             </View>
 
             <View style={styles.colorPickerBox}>
@@ -781,7 +811,7 @@ export default function SettingsScreen() {
                     <Pressable
                         key={normalizedSwatch}
                         accessibilityRole="button"
-                        accessibilityLabel={`Akzentfarbe ${normalizedSwatch}`}
+                        accessibilityLabel={`${t('settings.accentColor')} ${normalizedSwatch}`}
                         onPress={() => handlePreviewAccent(normalizedSwatch)}
                         style={({ pressed }) => [
                           styles.swatchButton,
@@ -808,7 +838,7 @@ export default function SettingsScreen() {
                   onPress={handleResetAccentPreview}
                   style={styles.halfButton}
               >
-                Standard
+                {t('settings.resetAccent')}
               </Button>
 
               <Button
@@ -817,7 +847,7 @@ export default function SettingsScreen() {
                   onPress={handleApplyAccent}
                   style={styles.halfButton}
               >
-                Übernehmen
+                {t('settings.applyAccent')}
               </Button>
             </View>
           </Card>
@@ -825,7 +855,7 @@ export default function SettingsScreen() {
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="image-outline" size={21} color={colors.text} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Hintergrundbild</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.background')}</Text>
             </View>
 
             <View
@@ -857,11 +887,11 @@ export default function SettingsScreen() {
                       <Ionicons name="checkmark-circle-outline" size={24} color={colors.text} />
 
                       <Text style={[styles.backgroundPreviewTitle, { color: colors.text }]}>
-                        Eigenes Bild aktiv
+                        {t('settings.backgroundPreviewTitle')}
                       </Text>
 
                       <Text style={[styles.backgroundPreviewMeta, { color: colors.mutedText }]}>
-                        Dieses Bild wird auf allen Screens als Hintergrund genutzt.
+                        {t('settings.backgroundDescription')}
                       </Text>
                     </View>
                   </ImageBackground>
@@ -870,11 +900,11 @@ export default function SettingsScreen() {
                     <Ionicons name="image-outline" size={28} color={colors.mutedText} />
 
                     <Text style={[styles.backgroundPreviewTitle, { color: colors.text }]}>
-                      Kein Hintergrundbild
+                      {t('settings.backgroundPreviewDefaultTitle')}
                     </Text>
 
                     <Text style={[styles.backgroundPreviewMeta, { color: colors.mutedText }]}>
-                      Die App nutzt den normalen Theme-Hintergrund.
+                      {t('settings.backgroundPreviewDefaultMeta')}
                     </Text>
                   </View>
               )}
@@ -888,7 +918,7 @@ export default function SettingsScreen() {
                   onPress={handlePickBackgroundImage}
                   style={styles.halfButton}
               >
-                Bild wählen
+                {t('settings.backgroundPick')}
               </Button>
 
               <Button
@@ -898,7 +928,7 @@ export default function SettingsScreen() {
                   onPress={handleClearBackgroundImage}
                   style={styles.halfButton}
               >
-                Entfernen
+                {t('common.remove')}
               </Button>
             </View>
 
@@ -910,7 +940,10 @@ export default function SettingsScreen() {
                         color:
                             backgroundMessage.includes('gespeichert') ||
                             backgroundMessage.includes('Standard') ||
-                            backgroundMessage.includes('Keine Änderung')
+                            backgroundMessage.includes('Keine Änderung') ||
+                            backgroundMessage.includes('saved') ||
+                            backgroundMessage.includes('restored') ||
+                            backgroundMessage.includes('No changes')
                                 ? '#16a34a'
                                 : colors.destructive,
                       },
@@ -924,13 +957,13 @@ export default function SettingsScreen() {
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="person-circle-outline" size={21} color={colors.text} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Konto</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.account')}</Text>
             </View>
 
             <Text style={[styles.backendText, { color: colors.mutedText }]}>
               {isAuthenticated && user
-                  ? `Eingeloggt als ${user.username}`
-                  : 'Melde dich an oder erstelle einen neuen TTTracker-Account.'}
+                  ? t('settings.loggedInAs', { username: user.username })
+                  : t('settings.accountDescription')}
             </Text>
 
             {!isAuthenticated ? (
@@ -938,7 +971,7 @@ export default function SettingsScreen() {
                   <TextInput
                       value={username}
                       onChangeText={setUsername}
-                      placeholder="TTTracker-Benutzername"
+                      placeholder={t('settings.usernamePlaceholder')}
                       placeholderTextColor={colors.mutedText}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -954,7 +987,7 @@ export default function SettingsScreen() {
                   <TextInput
                       value={password}
                       onChangeText={setPassword}
-                      placeholder="App-Passwort"
+                      placeholder={t('settings.passwordPlaceholder')}
                       placeholderTextColor={colors.mutedText}
                       secureTextEntry
                       autoCapitalize="none"
@@ -976,7 +1009,7 @@ export default function SettingsScreen() {
                         onPress={handleLogin}
                         style={styles.halfButton}
                     >
-                      Login
+                      {t('settings.login')}
                     </Button>
 
                     <Button
@@ -986,13 +1019,13 @@ export default function SettingsScreen() {
                         onPress={handleRegister}
                         style={styles.halfButton}
                     >
-                      Registrieren
+                      {t('settings.register')}
                     </Button>
                   </View>
 
                   {!canSubmitAuth ? (
                       <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                        Benutzername mindestens 2 Zeichen, Passwort mindestens 8 Zeichen.
+                        {t('settings.authHint')}
                       </Text>
                   ) : null}
                 </>
@@ -1003,7 +1036,7 @@ export default function SettingsScreen() {
                     loading={authLoading === 'logout'}
                     onPress={handleLogout}
                 >
-                  Logout
+                  {t('settings.logout')}
                 </Button>
             )}
 
@@ -1015,7 +1048,9 @@ export default function SettingsScreen() {
                         color:
                             authMessage.includes('Eingeloggt') ||
                             authMessage.includes('Registriert') ||
-                            authMessage.includes('ausgeloggt')
+                            authMessage.includes('ausgeloggt') ||
+                            authMessage.includes('Logged') ||
+                            authMessage.includes('Registered')
                                 ? '#16a34a'
                                 : colors.destructive,
                       },
@@ -1029,11 +1064,11 @@ export default function SettingsScreen() {
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="id-card-outline" size={21} color={colors.text} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Meine Daten</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.localProfile')}</Text>
             </View>
 
             <Text style={[styles.backendText, { color: colors.mutedText }]}>
-              Speichere lokal dein Spielerprofil und deinen Verein für die Startseite.
+              {t('settings.localProfileDescription')}
             </Text>
 
             <View style={styles.profileSection}>
@@ -1043,14 +1078,14 @@ export default function SettingsScreen() {
                 </View>
 
                 <View style={styles.profileSectionTitleBlock}>
-                  <Text style={[styles.profileSectionTitle, { color: colors.text }]}>Spieler</Text>
+                  <Text style={[styles.profileSectionTitle, { color: colors.text }]}>{t('settings.player')}</Text>
                 </View>
               </View>
 
               <TextInput
                   value={meNuidInput}
                   onChangeText={setMeNuidInput}
-                  placeholder="Meine NUID"
+                  placeholder={t('settings.nuidPlaceholder')}
                   placeholderTextColor={colors.mutedText}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -1071,7 +1106,7 @@ export default function SettingsScreen() {
                     onPress={handleSaveMeNuid}
                     style={styles.halfButton}
                 >
-                  Speichern
+                  {t('common.save')}
                 </Button>
 
                 <Button
@@ -1081,7 +1116,7 @@ export default function SettingsScreen() {
                     onPress={handleClearMeNuid}
                     style={styles.halfButton}
                 >
-                  Entfernen
+                  {t('common.remove')}
                 </Button>
               </View>
 
@@ -1091,7 +1126,7 @@ export default function SettingsScreen() {
 
                     <View style={styles.savedBoxText}>
                       <Text style={[styles.savedBoxTitle, { color: colors.text }]}>
-                        Spieler gespeichert
+                        {t('settings.profileSavedTitle')}
                       </Text>
                       <Text style={[styles.savedBoxMeta, { color: colors.mutedText }]} numberOfLines={1}>
                         {savedMeNuid}
@@ -1111,7 +1146,9 @@ export default function SettingsScreen() {
                         {
                           color:
                               meNuidMessage.includes('gespeichert') ||
-                              meNuidMessage.includes('entfernt')
+                              meNuidMessage.includes('entfernt') ||
+                              meNuidMessage.includes('saved') ||
+                              meNuidMessage.includes('removed')
                                   ? '#16a34a'
                                   : colors.destructive,
                         },
@@ -1131,14 +1168,14 @@ export default function SettingsScreen() {
                 </View>
 
                 <View style={styles.profileSectionTitleBlock}>
-                  <Text style={[styles.profileSectionTitle, { color: colors.text }]}>Verein</Text>
+                  <Text style={[styles.profileSectionTitle, { color: colors.text }]}>{t('settings.club')}</Text>
                 </View>
               </View>
 
               <TextInput
                   value={clubIdInput}
                   onChangeText={setClubIdInput}
-                  placeholder="Vereins-ID, z. B. TTBW:2055064"
+                  placeholder={t('settings.clubIdPlaceholder')}
                   placeholderTextColor={colors.mutedText}
                   autoCapitalize="characters"
                   autoCorrect={false}
@@ -1154,7 +1191,7 @@ export default function SettingsScreen() {
               <TextInput
                   value={clubNameInput}
                   onChangeText={setClubNameInput}
-                  placeholder="Vereinsname optional"
+                  placeholder={t('settings.clubNamePlaceholder')}
                   placeholderTextColor={colors.mutedText}
                   autoCapitalize="words"
                   autoCorrect={false}
@@ -1175,7 +1212,7 @@ export default function SettingsScreen() {
                     onPress={handleSaveMeClub}
                     style={styles.halfButton}
                 >
-                  Speichern
+                  {t('common.save')}
                 </Button>
 
                 <Button
@@ -1185,7 +1222,7 @@ export default function SettingsScreen() {
                     onPress={handleClearMeClub}
                     style={styles.halfButton}
                 >
-                  Entfernen
+                  {t('common.remove')}
                 </Button>
               </View>
 
@@ -1195,10 +1232,10 @@ export default function SettingsScreen() {
 
                     <View style={styles.savedBoxText}>
                       <Text style={[styles.savedBoxTitle, { color: colors.text }]}>
-                        Verein gespeichert
+                        {t('settings.clubSavedTitle')}
                       </Text>
                       <Text style={[styles.savedBoxMeta, { color: colors.mutedText }]} numberOfLines={1}>
-                        {getClubDisplayName(savedMeClub) || 'Mein Verein'} · {formatClubId(savedMeClub)}
+                        {getClubDisplayName(savedMeClub) || t('settings.clubSavedTitle')} · {formatClubId(savedMeClub)}
                       </Text>
                     </View>
 
@@ -1215,7 +1252,9 @@ export default function SettingsScreen() {
                         {
                           color:
                               meClubMessage.includes('gespeichert') ||
-                              meClubMessage.includes('entfernt')
+                              meClubMessage.includes('entfernt') ||
+                              meClubMessage.includes('saved') ||
+                              meClubMessage.includes('removed')
                                   ? '#16a34a'
                                   : colors.destructive,
                         },
@@ -1233,13 +1272,12 @@ export default function SettingsScreen() {
                   <View style={styles.cardTitleRow}>
                     <Ionicons name="key-outline" size={21} color={colors.text} />
                     <Text style={[styles.cardTitle, { color: colors.text }]}>
-                      myTischtennis verbinden
+                      {t('settings.myttConnect')}
                     </Text>
                   </View>
 
                   <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                    Verbinde deinen myTischtennis-Account, damit TTR und TTR-Verlauf geladen
-                    werden können. Deine Anmeldung erfolgt direkt über myTischtennis.
+                    {t('settings.myttConnectDescription')}
                   </Text>
 
                   <View style={styles.twoGrid}>
@@ -1249,7 +1287,7 @@ export default function SettingsScreen() {
                         onPress={() => router.push('/mytt-connect')}
                         style={styles.halfButton}
                     >
-                      Verbinden
+                      {t('settings.connect')}
                     </Button>
 
                     <Button
@@ -1259,7 +1297,7 @@ export default function SettingsScreen() {
                         onPress={handleCheckMyttStatus}
                         style={styles.halfButton}
                     >
-                      Status prüfen
+                      {t('settings.checkStatus')}
                     </Button>
                   </View>
 
@@ -1328,18 +1366,17 @@ export default function SettingsScreen() {
                 <Card style={styles.card}>
                   <View style={styles.cardTitleRow}>
                     <Ionicons name="share-social-outline" size={21} color={colors.text} />
-                    <Text style={[styles.cardTitle, { color: colors.text }]}>Session freigeben</Text>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.grantsTitle')}</Text>
                   </View>
 
                   <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                    Gib einem anderen App-User Zugriff auf TTR und TTR-Verlauf, ohne deinen
-                    Cookie zu teilen.
+                    {t('settings.grantsDescription')}
                   </Text>
 
                   <TextInput
                       value={grantUsername}
                       onChangeText={setGrantUsername}
-                      placeholder="Benutzername des anderen Users"
+                      placeholder={t('settings.grantUsernamePlaceholder')}
                       placeholderTextColor={colors.mutedText}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -1354,7 +1391,7 @@ export default function SettingsScreen() {
 
                   {!canCreateGrant && grantUsername.length > 0 ? (
                       <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                        Benutzername ist zu kurz.
+                        {t('settings.grantUsernameTooShort')}
                       </Text>
                   ) : null}
 
@@ -1366,7 +1403,7 @@ export default function SettingsScreen() {
                         onPress={handleCreateGrant}
                         style={styles.halfButton}
                     >
-                      Freigabe erstellen
+                      {t('settings.createGrant')}
                     </Button>
 
                     <Button
@@ -1376,14 +1413,14 @@ export default function SettingsScreen() {
                         onPress={handleLoadGrants}
                         style={styles.halfButton}
                     >
-                      Freigaben laden
+                      {t('settings.loadGrants')}
                     </Button>
                   </View>
 
                   {grants.length > 0 ? (
                       <View style={styles.grantList}>
                         {grants.map((grant) => {
-                          const title = grant.granteeUsername || 'Unbekannter Benutzer';
+                          const title = grant.granteeUsername || t('settings.grantUnknownUser');
 
                           return (
                               <View
@@ -1401,7 +1438,7 @@ export default function SettingsScreen() {
                                   </Text>
 
                                   <Text style={[styles.grantSubtitle, { color: colors.mutedText }]}>
-                                    Zugriff auf TTR und TTR-Verlauf
+                                    {t('settings.grantAccess')}
                                   </Text>
                                 </View>
 
@@ -1411,7 +1448,7 @@ export default function SettingsScreen() {
                                     loading={deletingGrantId === grant.id}
                                     onPress={() => handleRevokeGrant(grant.id)}
                                 >
-                                  Entfernen
+                                  {t('common.remove')}
                                 </Button>
                               </View>
                           );
@@ -1419,7 +1456,7 @@ export default function SettingsScreen() {
                       </View>
                   ) : (
                       <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                        Noch keine Freigaben geladen oder keine Freigaben vorhanden.
+                        {t('settings.grantsEmpty')}
                       </Text>
                   )}
 
@@ -1430,7 +1467,9 @@ export default function SettingsScreen() {
                             {
                               color:
                                   grantMessage.includes('erstellt') ||
-                                  grantMessage.includes('entfernt')
+                                  grantMessage.includes('entfernt') ||
+                                  grantMessage.includes('created') ||
+                                  grantMessage.includes('removed')
                                       ? '#16a34a'
                                       : colors.destructive,
                             },
@@ -1446,15 +1485,15 @@ export default function SettingsScreen() {
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="server-outline" size={21} color={colors.text} />
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Backend</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('settings.backend')}</Text>
             </View>
 
             <Text style={[styles.backendText, { color: colors.mutedText }]}>
-              {getApiBaseUrl() || 'EXPO_PUBLIC_API_BASE_URL fehlt'}
+              {getApiBaseUrl() || t('settings.apiBaseMissing')}
             </Text>
 
             <Button variant="outline" icon="pulse-outline" loading={checking} onPress={checkHealth}>
-              Health prüfen
+              {t('settings.checkHealth')}
             </Button>
 
             {health ? (
@@ -1462,7 +1501,7 @@ export default function SettingsScreen() {
                     style={[
                       styles.backendText,
                       {
-                        color: health.includes('erreichbar') ? '#16a34a' : colors.destructive,
+                        color: health.includes('erreichbar') || health.includes('reachable') ? '#16a34a' : colors.destructive,
                       },
                     ]}
                 >
@@ -1473,7 +1512,7 @@ export default function SettingsScreen() {
 
           <Card style={styles.versionCard}>
             <Text style={[styles.versionText, { color: colors.mutedText }]}>
-              Tischtennis Tracker v1.0
+              {t('settings.version')}
             </Text>
           </Card>
         </ScrollView>

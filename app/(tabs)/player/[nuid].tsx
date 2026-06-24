@@ -18,6 +18,7 @@ import { Badge } from '../../../src/components/Badge';
 import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
+import { useI18n } from '../../../src/i18n/I18nProvider';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import type {
     NormalizedPlayerTtrHistory,
@@ -318,6 +319,7 @@ function historyEventMatchesSearch(event: NormalizedTtrHistoryEvent, query: stri
 export default function PlayerDetailsScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const [history, setHistory] = useState<NormalizedPlayerTtrHistory | null>(null);
     const [apiHistoryData, setApiHistoryData] = useState<Record<string, unknown> | null>(null);
@@ -343,7 +345,7 @@ export default function PlayerDetailsScreen() {
     const isMeProfile =
         normalizedCurrentNuid.length > 0 &&
         normalizeMePlayerNuid(storedMePlayerNuid) === normalizedCurrentNuid;
-    const title = params.title ?? 'Spieler';
+    const title = params.title ?? t('player.defaultTitle');
 
     const displayName = history?.personName ?? title;
     const clubName = history?.clubName ?? params.clubName;
@@ -367,7 +369,7 @@ export default function PlayerDetailsScreen() {
         async function load() {
             if (!nuid) {
                 setLoading(false);
-                setError('Für diesen Spieler fehlt die NUID.');
+                setError(t('player.missingNuid'));
                 setApiHistoryData(null);
                 return;
             }
@@ -384,7 +386,7 @@ export default function PlayerDetailsScreen() {
                 setApiHistoryData(getPlayerHistoryData(response));
                 setHistory(normalizePlayerTtrHistory(response));
             } catch (loadError) {
-                setError(loadError instanceof Error ? loadError.message : 'TTR-Historie konnte nicht geladen werden');
+                setError(loadError instanceof Error ? loadError.message : t('player.historyLoadError'));
             } finally {
                 setLoading(false);
             }
@@ -564,7 +566,7 @@ export default function PlayerDetailsScreen() {
                 title: displayName,
                 name: displayName,
                 label: displayName,
-                subtitle: clubName ?? 'Verein unbekannt',
+                subtitle: clubName ?? t('entities.clubUnknown'),
                 description: clubName,
                 clubName,
                 nuid: normalizedCurrentNuid,
@@ -586,12 +588,12 @@ export default function PlayerDetailsScreen() {
         const otherNuid = normalizeMePlayerNuid(nuid);
 
         if (!otherNuid) {
-            setError('Für diesen Spieler fehlt die NUID.');
+            setError(t('player.missingNuid'));
             return;
         }
 
         if (!meNuid) {
-            setError('Lege zuerst über den Person-Button deinen „Ich“-Spieler fest.');
+            setError(t('player.comparisonNeedsMe'));
             return;
         }
 
@@ -608,7 +610,7 @@ export default function PlayerDetailsScreen() {
 
     function handleOpenClubDetails() {
         if (!effectiveClubKey) {
-            setError('Für diesen Spieler konnte kein Vereins-Key gefunden werden.');
+            setError(t('player.missingClubKey'));
             return;
         }
 
@@ -821,7 +823,7 @@ export default function PlayerDetailsScreen() {
                         {displayName}
                     </Text>
                     <Text style={[styles.subtitle, { color: colors.mutedText }]} numberOfLines={1}>
-                        {clubName ?? 'Verein unbekannt'}
+                        {clubName ?? t('entities.clubUnknown')}
                     </Text>
                 </View>
 
@@ -837,12 +839,12 @@ export default function PlayerDetailsScreen() {
                                 </View>
 
                                 <View style={styles.overviewHeaderText}>
-                                    <Text style={[styles.overviewLabel, { color: colors.mutedText }]}>TTR Übersicht</Text>
+                                    <Text style={[styles.overviewLabel, { color: colors.mutedText }]}>{t('player.overview')}</Text>
                                     <Text style={[styles.overviewTitle, { color: colors.text }]}>
                                         {currentTtr !== undefined ? currentTtr : '—'}
                                     </Text>
                                     <Text style={[styles.overviewSubtitle, { color: colors.mutedText }]}>
-                                        Aktueller TTR{history?.ttrDate ? ` · Stand ${formatDate(history.ttrDate)}` : ''}
+                                        {history?.ttrDate ? t('player.currentTtrWithDate', { date: formatDate(history.ttrDate) }) : t('home.currentTtr')}
                                     </Text>
                                 </View>
                             </View>
@@ -874,7 +876,7 @@ export default function PlayerDetailsScreen() {
                                 <View>
                                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Statistik</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                        Aus der TTR-Historie berechnet
+                                        {t('player.ttrHistoryCalculated')}
                                     </Text>
                                 </View>
                             </View>
@@ -884,7 +886,7 @@ export default function PlayerDetailsScreen() {
                                     icon="tennisball-outline"
                                     label="Spiele"
                                     value={String(stats.matchCount)}
-                                    helper="aus TTR-Historie"
+                                    helper={t('player.fromTtrHistory')}
                                 />
 
                                 <StatTile
@@ -962,7 +964,7 @@ export default function PlayerDetailsScreen() {
                                 <TtrLineChart events={chartEvents} highlightedEvent={chartTopEvent} />
                             ) : (
                                 <Text style={[styles.mutedText, { color: colors.mutedText }]}>
-                                    Für diesen Zeitraum sind noch nicht genug TTR-Werte vorhanden.
+                                    {t('player.notEnoughValues')}
                                 </Text>
                             )}
                         </Card>
@@ -978,7 +980,7 @@ export default function PlayerDetailsScreen() {
 
                                 {filtersActive ? (
                                     <Pressable onPress={clearHistoryFilters} hitSlop={8}>
-                                        <Text style={[styles.clearFiltersText, { color: colors.primary }]}>Zurücksetzen</Text>
+                                        <Text style={[styles.clearFiltersText, { color: colors.primary }]}>{t('common.reset')}</Text>
                                     </Pressable>
                                 ) : null}
                             </View>
@@ -989,7 +991,7 @@ export default function PlayerDetailsScreen() {
                                     <TextInput
                                         value={historySearchQuery}
                                         onChangeText={setHistorySearchQuery}
-                                        placeholder="Spieler oder Verein suchen"
+                                        placeholder={t('player.searchPlaceholder')}
                                         placeholderTextColor={colors.mutedText}
                                         style={[styles.searchInput, { color: colors.text }]}
                                         autoCorrect={false}
@@ -1009,7 +1011,7 @@ export default function PlayerDetailsScreen() {
                                     >
                                         <Ionicons name="filter-outline" size={16} color={colors.mutedText} />
                                         <Text style={[styles.leagueSelectText, { color: colors.text }]} numberOfLines={1}>
-                                            {selectedLeague ?? 'Alle Ligen'}
+                                            {selectedLeague ?? t('player.allLeagues')}
                                         </Text>
                                         <Ionicons
                                             name={leagueDropdownOpen ? 'chevron-up' : 'chevron-down'}
@@ -1022,7 +1024,7 @@ export default function PlayerDetailsScreen() {
                                         <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
                                             <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
                                                 <LeagueOption
-                                                    label="Alle Ligen"
+                                                    label={t('player.allLeagues')}
                                                     selected={selectedLeague === null}
                                                     onPress={() => {
                                                         setSelectedLeague(null);
@@ -1090,9 +1092,9 @@ export default function PlayerDetailsScreen() {
                         </Card>
 
                         {allEventsNewestFirst.length === 0 ? (
-                            <EmptyState icon="time-outline" title="Keine Historie gefunden" />
+                            <EmptyState icon="time-outline" title={t('player.noHistory')} />
                         ) : filteredEventsNewestFirst.length === 0 ? (
-                            <EmptyState icon="search-outline" title="Keine Treffer gefunden" />
+                            <EmptyState icon="search-outline" title={t('player.noSearchResults')} />
                         ) : (
                             <View style={styles.stack}>
                                 {pageEvents.map((event) => (
@@ -1144,6 +1146,7 @@ function MarkAsMeButton({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -1152,7 +1155,7 @@ function MarkAsMeButton({
             disabled={loading}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={active ? 'Als eigenes Profil entfernen' : 'Als eigenes Profil markieren'}
+            accessibilityLabel={active ? t('player.removeOwnProfile') : t('player.markOwnProfile')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -1188,6 +1191,7 @@ function FavoritePlayerButton({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -1196,7 +1200,7 @@ function FavoritePlayerButton({
             disabled={loading}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={active ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
+            accessibilityLabel={active ? t('player.removeFavorite') : t('player.addFavorite')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -1228,6 +1232,7 @@ function OpenClubButton({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -1236,7 +1241,7 @@ function OpenClubButton({
             disabled={disabled}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Vereinsdetails öffnen"
+            accessibilityLabel={t('player.openClubDetails')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -1258,6 +1263,7 @@ function OpenClubButton({
 
 function HeadToHeadButton({ onPress }: { onPress: () => void }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -1265,7 +1271,7 @@ function HeadToHeadButton({ onPress }: { onPress: () => void }) {
             onPress={onPress}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Head-to-Head Vergleich öffnen"
+            accessibilityLabel={t('player.openHeadToHead')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -1479,6 +1485,7 @@ function HistoryEventCard({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const delta = event.delta ?? 0;
     const deltaColor = delta > 0 ? '#16a34a' : delta < 0 ? colors.destructive : colors.mutedText;
@@ -1507,7 +1514,7 @@ function HistoryEventCard({
                     <View style={styles.eventMetaRow}>
                         <Ionicons name="calendar-outline" size={13} color={colors.mutedText} />
                         <Text style={[styles.eventDate, { color: colors.mutedText }]}>
-                            {event.date ? formatDate(event.date) : 'Datum unbekannt'}{event.time ? ` · ${event.time}` : ''}
+                            {event.date ? formatDate(event.date) : t('common.dateUnknown')}{event.time ? ` · ${event.time}` : ''}
                         </Text>
                     </View>
                 </View>
@@ -1553,7 +1560,7 @@ function HistoryEventCard({
                         ))
                     ) : (
                         <Text style={[styles.mutedText, { color: colors.mutedText }]}>
-                            Für diesen Historieneintrag liefert das Backend keine einzelnen Matchdetails.
+                            {t('player.noMatchDetails')}
                         </Text>
                     )}
                 </View>
@@ -1564,6 +1571,7 @@ function HistoryEventCard({
 
 function HistoryMatchCard({ match }: { match: NormalizedTtrHistoryMatch }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const result =
         match.ownSets !== undefined && match.otherSets !== undefined
@@ -1575,10 +1583,10 @@ function HistoryMatchCard({ match }: { match: NormalizedTtrHistoryMatch }) {
             <View style={styles.matchDetailTopRow}>
                 <View style={styles.matchPlayers}>
                     <Text style={[styles.matchPlayerName, { color: colors.text }]} numberOfLines={1}>
-                        {match.ownPlayerName ?? 'Eigener Spieler'}
+                        {match.ownPlayerName ?? t('player.ownPlayer')}
                     </Text>
                     <Text style={[styles.matchOpponentName, { color: colors.mutedText }]} numberOfLines={1}>
-                        gegen {match.otherPlayerName ?? 'Unbekannter Gegner'}
+                        {t('player.againstOpponent', { opponent: match.otherPlayerName ?? t('player.unknownOpponent') })}
                         {match.otherTtr !== undefined ? ` · TTR ${match.otherTtr}` : ''}
                     </Text>
                 </View>

@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { FavoriteItem, FavoriteType } from '../types/tttracker';
 
+export type { FavoriteItem, FavoriteType };
+
 const STORAGE_KEY = 'tttracker.favorites';
 
 type FavoriteWithLooseFields = FavoriteItem & {

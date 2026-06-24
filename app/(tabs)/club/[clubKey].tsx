@@ -8,11 +8,12 @@ import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
 import { SegmentedTabs } from '../../../src/components/SegmentedTabs';
+import type { TranslationKey } from '../../../src/i18n';
+import { useI18n } from '../../../src/i18n/I18nProvider';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import type { ClubTeam, ScheduleMatch } from '../../../src/types/tttracker';
 import {
     formatDate,
-    matchStatusLabel,
     normalizeSchedule,
     normalizeTeams,
 } from '../../../src/utils/normalizers';
@@ -125,9 +126,22 @@ const MEETING_DATE_KEYS = [
 
 const CLUB_FAVORITE_TYPE = 'club' as Parameters<typeof isFavorite>[0];
 
+const scheduleStatusLabelKeys = {
+    completed: 'status.completed',
+    live: 'status.live',
+    free: 'status.free',
+    postponed: 'status.postponed',
+    scheduled: 'status.scheduled',
+} as const satisfies Record<ScheduleMatch['status'], TranslationKey>;
+
+function matchStatusLabelKey(status: ScheduleMatch['status']) {
+    return scheduleStatusLabelKeys[status];
+}
+
 export default function ClubDetailsScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const initialSeason = getInitialSeason(params.season);
     const initialDateRange = getDefaultSeasonDateRange(initialSeason);
@@ -158,7 +172,7 @@ export default function ClubDetailsScreen() {
         [params.clubKey],
     );
 
-    const title = emptyToUndefined(params.title) ?? emptyToUndefined(params.clubName) ?? 'Verein';
+    const title = emptyToUndefined(params.title) ?? emptyToUndefined(params.clubName) ?? t('club.defaultTitle');
     const organization = emptyToUndefined(params.organization) ?? parsedClubKey.organization;
     const clubNumber = emptyToUndefined(params.clubNumber) ?? parsedClubKey.clubNumber;
     const clubNameForPlayers = emptyToUndefined(params.clubName) ?? emptyToUndefined(params.title);
@@ -192,7 +206,7 @@ export default function ClubDetailsScreen() {
             if (!organization || !clubNumber) {
                 setLoading(false);
                 setTeamsLoaded(false);
-                setError('Für diesen Verein fehlen Verband oder Vereinsnummer.');
+                setError(t('club.missingClubData'));
                 return;
             }
 
@@ -227,11 +241,11 @@ export default function ClubDetailsScreen() {
                     setPlayersError(
                         playersLoadError instanceof Error
                             ? playersLoadError.message
-                            : 'Spieler konnten nicht geladen werden',
+                            : t('club.playersLoadError'),
                     );
                 }
             } catch (loadError) {
-                setError(loadError instanceof Error ? loadError.message : 'Vereinsdaten konnten nicht geladen werden');
+                setError(loadError instanceof Error ? loadError.message : t('club.clubDataLoadError'));
                 setTeamsLoaded(false);
             } finally {
                 setLoading(false);
@@ -249,7 +263,7 @@ export default function ClubDetailsScreen() {
 
             if (!isValidDateInput(appliedDateStart) || !isValidDateInput(appliedDateEnd)) {
                 setScheduleMatches([]);
-                setScheduleError('Bitte nutze für Start und Ende das Format YYYY-MM-DD.');
+                setScheduleError(t('club.invalidDateRange'));
                 return;
             }
 
@@ -268,7 +282,7 @@ export default function ClubDetailsScreen() {
             } catch (loadError) {
                 setScheduleMatches([]);
                 setScheduleError(
-                    loadError instanceof Error ? loadError.message : 'Spielplan konnte nicht geladen werden',
+                    loadError instanceof Error ? loadError.message : t('club.scheduleLoadError'),
                 );
             } finally {
                 setScheduleLoading(false);
@@ -377,7 +391,7 @@ export default function ClubDetailsScreen() {
                 return;
             }
 
-            const subtitle = [params.state, organization].filter(Boolean).join(' • ') || 'Verein';
+            const subtitle = [params.state, organization].filter(Boolean).join(' • ') || t('club.defaultTitle');
 
             await addFavorite({
                 type: CLUB_FAVORITE_TYPE,
@@ -393,7 +407,7 @@ export default function ClubDetailsScreen() {
                 state: params.state,
                 season: scheduleSeason,
                 clubSlug: params.clubSlug ?? 'x',
-                meta: clubNumber ? `Vereinsnr. ${clubNumber}` : undefined,
+                meta: clubNumber ? t('club.clubNumberShort', { clubNumber }) : undefined,
                 params: {
                     organization,
                     organizationName: params.organizationName ?? '',
@@ -421,7 +435,7 @@ export default function ClubDetailsScreen() {
 
     const applyScheduleFilter = () => {
         if (!isValidDateInput(dateStartDraft) || !isValidDateInput(dateEndDraft)) {
-            setScheduleError('Bitte nutze für Start und Ende das Format YYYY-MM-DD.');
+            setScheduleError(t('club.invalidDateRange'));
             return;
         }
 
@@ -465,7 +479,7 @@ export default function ClubDetailsScreen() {
                     </Text>
 
                     <Text style={[styles.subtitle, { color: colors.mutedText }]} numberOfLines={1}>
-                        {[params.state, organization, "ID " + clubNumber].filter(Boolean).join(' • ') || 'Verein'}
+                        {[params.state, organization, clubNumber ? t('club.idLabel', { clubNumber }) : undefined].filter(Boolean).join(' • ') || t('club.defaultTitle')}
                     </Text>
                 </View>
 
@@ -473,9 +487,9 @@ export default function ClubDetailsScreen() {
                     value={activeTab}
                     onChange={setActiveTab}
                     options={[
-                        { value: 'teams', label: 'Mannschaften', icon: 'people-outline' },
-                        { value: 'players', label: 'Spieler', icon: 'person-outline' },
-                        { value: 'schedule', label: 'Spielplan', icon: 'calendar-outline' },
+                        { value: 'teams', label: t('club.teamsTab'), icon: 'people-outline' },
+                        { value: 'players', label: t('club.playersTab'), icon: 'person-outline' },
+                        { value: 'schedule', label: t('club.scheduleTab'), icon: 'calendar-outline' },
                     ]}
                 />
 
@@ -486,14 +500,14 @@ export default function ClubDetailsScreen() {
                     <View style={styles.stack}>
                         <View style={styles.sectionHeader}>
                             <View>
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Mannschaften</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('club.teamsTab')}</Text>
                             </View>
 
                             <Badge tone="secondary">{teams.length}</Badge>
                         </View>
 
                         {teams.length === 0 ? (
-                            <EmptyState icon="people-outline" title="Keine Mannschaften gefunden" />
+                            <EmptyState icon="people-outline" title={t('club.noTeams')} />
                         ) : null}
 
                         <View style={styles.stack}>
@@ -508,7 +522,7 @@ export default function ClubDetailsScreen() {
                     <View style={styles.stack}>
                         <View style={styles.sectionHeader}>
                             <View>
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Spieler</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('club.playersTab')}</Text>
                             </View>
 
                             <Badge tone="secondary">{players.length}</Badge>
@@ -521,8 +535,8 @@ export default function ClubDetailsScreen() {
                         {!playersError && players.length === 0 ? (
                             <EmptyState
                                 icon="person-outline"
-                                title="Keine Spieler gefunden"
-                                subtitle="Für diesen Verein wurden über die andro-Rangliste keine Spieler gefunden."
+                                title={t('club.noPlayers')}
+                                subtitle={t('club.noPlayersSubtitle')}
                             />
                         ) : null}
 
@@ -538,7 +552,7 @@ export default function ClubDetailsScreen() {
                     <View style={styles.stack}>
                         <View style={styles.sectionHeader}>
                             <View>
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Spielplan</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('club.scheduleTab')}</Text>
                             </View>
 
                             <Badge tone="secondary">{scheduleMatches.length}</Badge>
@@ -562,7 +576,7 @@ export default function ClubDetailsScreen() {
                         {scheduleLoading ? <ActivityIndicator color={colors.primary} style={styles.inlineLoader} /> : null}
 
                         {!scheduleLoading && !scheduleError && scheduleGroups.length === 0 ? (
-                            <EmptyState icon="calendar-outline" title="Keine Begegnungen gefunden" />
+                            <EmptyState icon="calendar-outline" title={t('club.noMatches')} />
                         ) : null}
 
                         <View style={styles.stack}>
@@ -586,8 +600,7 @@ export default function ClubDetailsScreen() {
                                                 {group.dateLabel}
                                             </Text>
                                             <Text style={[styles.scheduleDaySubtitle, { color: colors.mutedText }]}>
-                                                {group.matches.length} Begegnung
-                                                {group.matches.length === 1 ? '' : 'en'}
+                                                {t(group.matches.length === 1 ? 'club.matchesCount_one' : 'club.matchesCount_other', { count: group.matches.length })}
                                             </Text>
                                         </View>
                                     </View>
@@ -630,6 +643,7 @@ function ScheduleFilterCard({
     onReset: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const [openPicker, setOpenPicker] = useState<'start' | 'end' | null>(null);
 
     const startInvalid = !isValidDateInput(dateStart);
@@ -640,16 +654,16 @@ function ScheduleFilterCard({
         <Card style={styles.filterCard}>
             <View style={styles.filterHeader}>
                 <View>
-                    <Text style={[styles.filterTitle, { color: colors.text }]}>Zeitraum</Text>
-                    <Text style={[styles.filterSubtitle, { color: colors.mutedText }]}>Saison {season}</Text>
+                    <Text style={[styles.filterTitle, { color: colors.text }]}>{t('club.period')}</Text>
+                    <Text style={[styles.filterSubtitle, { color: colors.mutedText }]}>{t('favorites.seasonValue', { season })}</Text>
                 </View>
 
-                <Badge tone="outline">Kalender</Badge>
+                <Badge tone="outline">{t('club.calendar')}</Badge>
             </View>
 
             <View style={styles.filterRow}>
                 <DateFilterButton
-                    label="Start"
+                    label={t('common.start')}
                     value={dateStart}
                     invalid={startInvalid}
                     disabled={loading}
@@ -657,7 +671,7 @@ function ScheduleFilterCard({
                 />
 
                 <DateFilterButton
-                    label="Ende"
+                    label={t('common.end')}
                     value={dateEnd}
                     invalid={endInvalid}
                     disabled={loading}
@@ -678,7 +692,7 @@ function ScheduleFilterCard({
                         },
                     ]}
                 >
-                    <Text style={[styles.resetButtonText, { color: colors.text }]}>Zurücksetzen</Text>
+                    <Text style={[styles.resetButtonText, { color: colors.text }]}>{t('common.reset')}</Text>
                 </Pressable>
 
                 <Pressable
@@ -692,13 +706,13 @@ function ScheduleFilterCard({
                         },
                     ]}
                 >
-                    <Text style={styles.applyButtonText}>Anwenden</Text>
+                    <Text style={styles.applyButtonText}>{t('common.apply')}</Text>
                 </Pressable>
             </View>
 
             <CalendarPickerModal
                 visible={openPicker === 'start'}
-                title="Startdatum auswählen"
+                title={t('club.chooseStartDate')}
                 value={dateStart}
                 onSelect={onChangeDateStart}
                 onClose={() => setOpenPicker(null)}
@@ -706,7 +720,7 @@ function ScheduleFilterCard({
 
             <CalendarPickerModal
                 visible={openPicker === 'end'}
-                title="Enddatum auswählen"
+                title={t('club.chooseEndDate')}
                 value={dateEnd}
                 onSelect={onChangeDateEnd}
                 onClose={() => setOpenPicker(null)}
@@ -729,6 +743,7 @@ function DateFilterButton({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     return (
         <View style={styles.dateInputBlock}>
@@ -753,7 +768,7 @@ function DateFilterButton({
                     ]}
                     numberOfLines={1}
                 >
-                    {value || 'Datum wählen'}
+                    {value || t('club.chooseDate')}
                 </Text>
 
                 <Ionicons name="calendar-outline" size={17} color={colors.mutedText} />
@@ -776,6 +791,7 @@ function CalendarPickerModal({
     onClose: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const [visibleMonth, setVisibleMonth] = useState(() => parseDateInput(value) ?? new Date());
 
     useEffect(() => {
@@ -952,7 +968,7 @@ function CalendarPickerModal({
                             ]}
                         >
                             <Text style={[styles.calendarClearButtonText, { color: colors.text }]}>
-                                Leeren
+                                {t('club.clear')}
                             </Text>
                         </Pressable>
 
@@ -968,7 +984,7 @@ function CalendarPickerModal({
                                 },
                             ]}
                         >
-                            <Text style={styles.calendarTodayButtonText}>Heute</Text>
+                            <Text style={styles.calendarTodayButtonText}>{t('club.today')}</Text>
                         </Pressable>
                     </View>
                 </Pressable>
@@ -979,6 +995,7 @@ function CalendarPickerModal({
 
 function BackButton() {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -1009,6 +1026,7 @@ function MarkAsMyClubButton({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -1017,7 +1035,7 @@ function MarkAsMyClubButton({
             disabled={loading}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={active ? 'Als mein Verein entfernen' : 'Als mein Verein markieren'}
+            accessibilityLabel={active ? t('club.removeMyClub') : t('club.markMyClub')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -1053,6 +1071,7 @@ function FavoriteClubButton({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
 
     return (
@@ -1061,7 +1080,7 @@ function FavoriteClubButton({
             disabled={loading}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={active ? 'Verein aus Favoriten entfernen' : 'Verein zu Favoriten hinzufügen'}
+            accessibilityLabel={active ? t('club.removeFavorite') : t('club.addFavorite')}
             style={({ pressed }) => [
                 styles.headerActionButton,
                 noWebOutline,
@@ -1242,6 +1261,7 @@ function PlayerCard({ player, index }: { player: ClubPlayer; index: number }) {
 
 function ClubMatchCard({ match }: { match: ClubScheduleMatch }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const canOpen = Boolean(match.id) && match.status !== 'free';
 
     return (
@@ -1266,7 +1286,7 @@ function ClubMatchCard({ match }: { match: ClubScheduleMatch }) {
                 <View style={styles.metaLine}>
                     <Ionicons name="time-outline" size={13} color={colors.mutedText} />
                     <Text style={[styles.metaText, { color: colors.mutedText }]}>
-                        {match.time || 'Uhrzeit offen'}
+                        {match.time || t('club.timeOpen')}
                         {match.endTime ? `–${match.endTime}` : ''}
                     </Text>
                 </View>
@@ -1280,7 +1300,7 @@ function ClubMatchCard({ match }: { match: ClubScheduleMatch }) {
                                 : 'outline'
                     }
                 >
-                    {matchStatusLabel(match.status)}
+                    {t(matchStatusLabelKey(match.status))}
                 </Badge>
             </View>
 
@@ -1302,7 +1322,7 @@ function ClubMatchCard({ match }: { match: ClubScheduleMatch }) {
                 ) : (
                     <View style={[styles.vsBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         <Text style={[styles.vsText, { color: colors.mutedText }]}>
-                            {match.status === 'free' ? 'FREI' : 'VS'}
+                            {match.status === 'free' ? t('club.freeShort') : t('club.vs')}
                         </Text>
                     </View>
                 )}
@@ -1326,7 +1346,7 @@ function ClubMatchCard({ match }: { match: ClubScheduleMatch }) {
                     <View style={styles.metaLine}>
                         <Ionicons name="flag-outline" size={13} color={colors.mutedText} />
                         <Text style={[styles.metaText, { color: colors.mutedText }]} numberOfLines={1}>
-                            {[match.roundName, match.meetingNumber ? `Spiel ${match.meetingNumber}` : undefined]
+                            {[match.roundName, match.meetingNumber ? t('home.matchNumber', { number: match.meetingNumber }) : undefined]
                                 .filter(Boolean)
                                 .join(' • ')}
                         </Text>

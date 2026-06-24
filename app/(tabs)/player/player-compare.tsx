@@ -15,6 +15,7 @@ import { Badge } from '../../../src/components/Badge';
 import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
+import { useI18n } from '../../../src/i18n/I18nProvider';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import { formatDate } from '../../../src/utils/normalizers';
 
@@ -336,6 +337,7 @@ function getLeaderForNuid(data: PlayerComparisonData, nuid?: string | null): Sid
 export default function PlayerCompareScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const leftNuid = params.leftNuid ?? params.left;
     const rightNuid = params.rightNuid ?? params.right;
@@ -409,7 +411,7 @@ export default function PlayerCompareScreen() {
                 </View>
 
                 <View style={styles.titleBlock}>
-                    <Text style={[styles.title, { color: colors.text }]}>Spielervergleich</Text>
+                    <Text style={[styles.title, { color: colors.text }]}>{t('compare.title')}</Text>
                     <Text style={[styles.subtitle, { color: colors.mutedText }]}>
                         TTR, Form, Quote und direkter Vergleich
                     </Text>
@@ -443,7 +445,7 @@ export default function PlayerCompareScreen() {
                         {comparison.comparison?.sameClub ? (
                             <View style={styles.centerRow}>
                                 <Badge tone="secondary" icon="business-outline">
-                                    Gleicher Verein
+                                    {t('compare.sameClub')}
                                 </Badge>
                             </View>
                         ) : null}
@@ -452,9 +454,9 @@ export default function PlayerCompareScreen() {
                             <View style={styles.sectionHeader}>
                                 <Ionicons name="flash-outline" size={19} color={colors.primary} />
                                 <View>
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Favorit nach TTR</Text>
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('compare.favoriteByTtr')}</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                        Aus aktuellem TTR-Unterschied berechnet
+                                        {t('compare.favoriteByTtrHint')}
                                     </Text>
                                 </View>
                             </View>
@@ -516,7 +518,7 @@ export default function PlayerCompareScreen() {
                                 </>
                             ) : (
                                 <Text style={[styles.mutedText, { color: colors.mutedText }]}>
-                                    Für diese Spieler konnte keine TTR-Quote berechnet werden.
+                                    {t('compare.noQuote')}
                                 </Text>
                             )}
                         </Card>
@@ -535,7 +537,7 @@ export default function PlayerCompareScreen() {
                             <View style={styles.metricStack}>
                                 <MetricComparisonRow
                                     icon="speedometer-outline"
-                                    label="Aktueller TTR"
+                                    label={t('compare.currentTtr')}
                                     helper="momentaner Leistungswert"
                                     leftValue={comparison.comparison?.ratings?.currentTtr?.left}
                                     rightValue={comparison.comparison?.ratings?.currentTtr?.right}
@@ -556,7 +558,7 @@ export default function PlayerCompareScreen() {
                                 <MetricComparisonRow
                                     icon="trophy-outline"
                                     label="Peak"
-                                    helper="bester bekannter TTR"
+                                    helper={t('compare.bestKnownTtr')}
                                     leftValue={comparison.comparison?.ratings?.maxTtr?.left}
                                     rightValue={comparison.comparison?.ratings?.maxTtr?.right}
                                     difference={comparison.comparison?.ratings?.maxTtr?.difference}
@@ -566,7 +568,7 @@ export default function PlayerCompareScreen() {
                                 <MetricComparisonRow
                                     icon="pulse-outline"
                                     label="Letzte 5"
-                                    helper="TTR-Änderung aus recentEvents"
+                                    helper={t('compare.recentDelta')}
                                     leftValue={leftStats?.recentDelta5}
                                     rightValue={rightStats?.recentDelta5}
                                     difference={
@@ -745,7 +747,7 @@ export default function PlayerCompareScreen() {
                                 <View>
                                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Letzte Events</Text>
                                     <Text style={[styles.sectionSubtitle, { color: colors.mutedText }]}>
-                                        Neueste Einträge beider Spieler
+                                        {t('compare.latestEntriesBoth')}
                                     </Text>
                                 </View>
                             </View>
@@ -800,6 +802,7 @@ function PlayerHeroCard({
     onPress: () => void;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     return (
         <Card pressable onPress={onPress} style={styles.playerHeroCard}>
@@ -1067,6 +1070,7 @@ function RecentEventColumn({
     player: PlayerCompareSide;
 }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const events = sortEventsNewestFirst(getEvents(player)).slice(0, 5);
 
     return (
@@ -1084,7 +1088,7 @@ function RecentEventColumn({
                 events.map((event) => <RecentEventCard key={`${side}-${event.event_id}`} event={event} />)
             ) : (
                 <Text style={[styles.mutedText, { color: colors.mutedText }]}>
-                    Keine Events vorhanden.
+                    {t('compare.noEvents')}
                 </Text>
             )}
         </View>
@@ -1093,6 +1097,7 @@ function RecentEventColumn({
 
 function RecentEventCard({ event }: { event: RecentEvent }) {
     const { colors } = useTheme();
+    const { t } = useI18n();
 
     const delta = numberFromUnknown(event.ttr_delta);
     const deltaColor =
@@ -1108,7 +1113,7 @@ function RecentEventCard({ event }: { event: RecentEvent }) {
         <View style={[styles.recentEventCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
             <View style={styles.recentEventTop}>
                 <Text style={[styles.recentEventName, { color: colors.text }]} numberOfLines={2}>
-                    {event.event_name ?? 'Unbekanntes Event'}
+                    {event.event_name ?? t('compare.unknownEvent')}
                 </Text>
 
                 <View style={styles.recentEventScore}>
@@ -1124,7 +1129,7 @@ function RecentEventCard({ event }: { event: RecentEvent }) {
             <View style={styles.recentEventMeta}>
                 <Ionicons name="calendar-outline" size={13} color={colors.mutedText} />
                 <Text style={[styles.recentEventDate, { color: colors.mutedText }]} numberOfLines={1}>
-                    {event.event_date_time ? formatDate(event.event_date_time) : 'Datum unbekannt'}
+                    {event.event_date_time ? formatDate(event.event_date_time) : t('common.dateUnknown')}
                 </Text>
             </View>
 
