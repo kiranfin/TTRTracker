@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ttApi } from '../../../src/api/tttracker';
 import { Badge } from '../../../src/components/Badge';
 import { Button, IconButton } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Screen } from '../../../src/components/Screen';
+import { useI18n } from '../../../src/i18n/I18nProvider';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '../../../src/storage/favorites';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import type { LeagueClassReference, LeagueRegion } from '../../../src/types/tttracker';
@@ -23,9 +24,10 @@ export default function RegionLeaguesScreen() {
   }>();
 
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const association = String(params.region ?? '').trim();
-  const associationTitle = String(params.title ?? params.region ?? 'Verband');
+  const associationTitle = String(params.title ?? params.region ?? t('entities.association'));
   const shortName = String(params.shortName ?? association);
 
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(new Set());
@@ -39,10 +41,6 @@ export default function RegionLeaguesScreen() {
   const loading = loadingRegions || loadingClasses;
 
   const pageTitle = selectedRegion ? selectedRegion.name : associationTitle;
-
-  const pageSubtitle = selectedRegion
-      ? `Spielklassen in ${selectedRegion.name}`
-      : `Kreise und Bezirke im Verband ${shortName}`;
 
   const sortedRegions = useMemo(
       () =>
@@ -58,7 +56,7 @@ export default function RegionLeaguesScreen() {
     const groups = new Map<string, LeagueClassReference[]>();
 
     for (const leagueClass of classes) {
-      const key = leagueClass.contest?.trim() || 'Spielklassen';
+      const key = leagueClass.contest?.trim() || t('region.classes');
       const current = groups.get(key) ?? [];
       current.push(leagueClass);
       groups.set(key, current);
@@ -81,7 +79,7 @@ export default function RegionLeaguesScreen() {
   const loadRegions = useCallback(async () => {
     if (!association) {
       setLoadingRegions(false);
-      setError('Für diesen Verband fehlt der association-Code.');
+      setError(t('region.associationCodeMissing'));
       return;
     }
 
@@ -93,7 +91,7 @@ export default function RegionLeaguesScreen() {
       setRegions(result);
     } catch (loadError) {
       setRegions([]);
-      setError(loadError instanceof Error ? loadError.message : 'Kreise/Bezirke konnten nicht geladen werden');
+      setError(loadError instanceof Error ? loadError.message : t('region.loadRegionsError'));
     } finally {
       setLoadingRegions(false);
     }
@@ -119,7 +117,7 @@ export default function RegionLeaguesScreen() {
       setClasses(result);
     } catch (loadError) {
       setClasses([]);
-      setError(loadError instanceof Error ? loadError.message : 'Spielklassen konnten nicht geladen werden');
+      setError(loadError instanceof Error ? loadError.message : t('region.loadClassesError'));
     } finally {
       setLoadingClasses(false);
     }
@@ -159,7 +157,7 @@ export default function RegionLeaguesScreen() {
       id: league.id,
       type: 'league',
       title: league.name,
-      subtitle: `${league.association} • Saison ${formatSeasonLabel(league.season)}`,
+      subtitle: `${league.association} • ${t('favorites.seasonValue', { season: formatSeasonLabel(league.season) })}`,
       params: {
         association: league.association,
         groupId: league.groupId,
@@ -190,30 +188,20 @@ export default function RegionLeaguesScreen() {
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
-            <Button
-                variant="ghost"
-                icon="arrow-back"
-                onPress={selectedRegion ? backToRegions : () => router.push('/leagues')}
-            >
-              {' '}
-            </Button>
+            <BackButton onPress={selectedRegion ? backToRegions : () => router.push('/leagues')} />
 
             <View style={styles.headerText}>
               <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
                 {pageTitle}
               </Text>
 
-              <Text style={[styles.subtitle, { color: colors.mutedText }]}>
-                {pageSubtitle}
-              </Text>
-
               <View style={styles.metaRow}>
                 <Badge tone="outline">{shortName}</Badge>
-                <Badge tone="secondary">Saison {formatSeasonLabel(DEFAULT_SEASON)}</Badge>
+                <Badge tone="secondary">{t('favorites.seasonValue', { season: formatSeasonLabel(DEFAULT_SEASON) })}</Badge>
               </View>
             </View>
 
-            <IconButton icon="refresh-outline" onPress={refresh} accessibilityLabel="Neu laden" />
+            <IconButton icon="refresh-outline" onPress={refresh} accessibilityLabel={t('mytt.reload')} />
           </View>
 
           {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
@@ -223,7 +211,7 @@ export default function RegionLeaguesScreen() {
                 <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
 
                 <Button variant="secondary" icon="refresh-outline" onPress={refresh}>
-                  Erneut versuchen
+                  {t('common.retry')}
                 </Button>
               </Card>
           ) : null}
@@ -233,8 +221,8 @@ export default function RegionLeaguesScreen() {
                 {sortedRegions.length === 0 ? (
                     <EmptyState
                         icon="map-outline"
-                        title="Keine Kreise oder Bezirke gefunden"
-                        subtitle="Prüfe, ob dein Backend /api/leagues/:association/regions liefert."
+                        title={t('region.noRegions')}
+                        subtitle={t('region.noRegionsSubtitle')}
                     />
                 ) : (
                     <View style={styles.stack}>
@@ -267,7 +255,7 @@ export default function RegionLeaguesScreen() {
                               </Text>
 
                               <Text style={[styles.cardSubtitle, { color: colors.mutedText }]} numberOfLines={1}>
-                                {region.type === 'association' ? 'Verbandsspielklassen' : 'Kreis/Bezirk'}
+                                {region.type === 'association' ? t('region.associationClasses') : t('region.district')}
                               </Text>
                             </View>
 
@@ -284,8 +272,8 @@ export default function RegionLeaguesScreen() {
                 {classes.length === 0 ? (
                     <EmptyState
                         icon="podium-outline"
-                        title="Keine Spielklassen gefunden"
-                        subtitle="Für diesen Kreis/Bezirk wurden keine Gruppen gefunden."
+                        title={t('region.noClasses')}
+                        subtitle={t('region.noClassesSubtitle')}
                     />
                 ) : (
                     <View style={styles.stack}>
@@ -332,7 +320,7 @@ export default function RegionLeaguesScreen() {
                                           <View style={styles.metaLine}>
                                             <Ionicons name="calendar-outline" size={13} color={colors.mutedText} />
                                             <Text style={[styles.metaText, { color: colors.mutedText }]}>
-                                              Saison {formatSeasonLabel(league.season)}
+                                              {t('favorites.seasonValue', { season: formatSeasonLabel(league.season) })}
                                             </Text>
                                           </View>
                                         </View>
@@ -347,12 +335,12 @@ export default function RegionLeaguesScreen() {
                                       <View style={styles.badgeRow}>
                                         <Badge tone={levelTone(league.name)}>{league.name}</Badge>
                                         <Badge tone="outline">{league.association}</Badge>
-                                        <Badge tone="secondary">Gruppe {league.groupId}</Badge>
+                                        <Badge tone="secondary">{t('region.groupValue', { groupId: league.groupId })}</Badge>
                                       </View>
 
                                       {!canOpen ? (
                                           <Text style={[styles.warning, { color: colors.destructive }]}>
-                                            Diese Spielklasse hat keine association/groupId und kann nicht geöffnet werden.
+                                            {t('region.cannotOpenClass')}
                                           </Text>
                                       ) : null}
                                     </Card>
@@ -367,6 +355,28 @@ export default function RegionLeaguesScreen() {
           ) : null}
         </ScrollView>
       </Screen>
+  );
+}
+
+function BackButton({ onPress }: { onPress: () => void }) {
+  const { colors } = useTheme();
+  const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
+
+  return (
+      <Pressable
+          onPress={onPress}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.backButton,
+            noWebOutline,
+            {
+              backgroundColor: pressed ? colors.primarySoft : 'transparent',
+              borderColor: pressed ? colors.primarySoftBorder : colors.border,
+            },
+          ]}
+      >
+        <Ionicons name="arrow-back" size={23} color={colors.text} />
+      </Pressable>
   );
 }
 
@@ -385,12 +395,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
   },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerText: {
     flex: 1,
     gap: 5,
   },
   title: {
-    fontSize: 25,
+    fontSize: 24,
     lineHeight: 32,
     fontWeight: '900',
   },

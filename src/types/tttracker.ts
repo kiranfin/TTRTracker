@@ -253,6 +253,8 @@ export type LeagueReference = {
   leagueSlug?: string;
 };
 
+export type PromotionState = 'promotion' | 'relegation' | 'none';
+
 export type TableRow = {
   id: string;
   position: string;
@@ -266,6 +268,17 @@ export type TableRow = {
   points?: string;
   pointsWon?: string;
   pointsLost?: string;
+
+
+  ratio?: string;
+  matchesWon?: string;
+  matchesLost?: string;
+  matchesRelation?: string;
+
+  tendency?: string;
+  riseFallState?: string;
+  promotionState?: PromotionState;
+  isExcluded?: boolean;
 };
 
 export type ScheduleMatchStatus = 'scheduled' | 'completed' | 'postponed' | 'free' | 'live';

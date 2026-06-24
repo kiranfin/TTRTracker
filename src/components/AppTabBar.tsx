@@ -2,19 +2,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { TranslationKey } from '../i18n';
+import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
 
 const items = [
-  { label: 'Home', href: '/', icon: 'home-outline', activeIcon: 'home', match: (path: string) => path === '/' },
-  { label: 'Suche', href: '/search', icon: 'search-outline', activeIcon: 'search', match: (path: string) => path.startsWith('/search') || path.startsWith('/player') || path.startsWith('/club') },
-  { label: 'Ligen', href: '/leagues', icon: 'podium-outline', activeIcon: 'podium', match: (path: string) => path.startsWith('/leagues') || path.startsWith('/region') || path.startsWith('/league') || path.startsWith('/match') },
-  { label: 'Favoriten', href: '/favorites', icon: 'star-outline', activeIcon: 'star', match: (path: string) => path.startsWith('/favorites') },
-  { label: 'Settings', href: '/settings', icon: 'settings-outline', activeIcon: 'settings', match: (path: string) => path.startsWith('/settings') },
+  { labelKey: 'tabs.home', href: '/', icon: 'home-outline', activeIcon: 'home', match: (path: string) => path === '/' },
+  { labelKey: 'tabs.search', href: '/search', icon: 'search-outline', activeIcon: 'search', match: (path: string) => path.startsWith('/search') || path.startsWith('/player') || path.startsWith('/club') },
+  { labelKey: 'tabs.leagues', href: '/leagues', icon: 'podium-outline', activeIcon: 'podium', match: (path: string) => path.startsWith('/leagues') || path.startsWith('/region') || path.startsWith('/league') || path.startsWith('/match') },
+  { labelKey: 'tabs.favorites', href: '/favorites', icon: 'star-outline', activeIcon: 'star', match: (path: string) => path.startsWith('/favorites') },
+  { labelKey: 'tabs.settings', href: '/settings', icon: 'settings-outline', activeIcon: 'settings', match: (path: string) => path.startsWith('/settings') },
 ] as const;
 
 export function AppTabBar() {
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { t } = useI18n();
   const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
 
   return (
@@ -41,7 +44,9 @@ export function AppTabBar() {
                       size={20}
                       color={color}
                   />
-                  <Text style={[styles.label, { color }]} numberOfLines={1}>{item.label}</Text>
+                  <Text style={[styles.label, { color }]} numberOfLines={1}>
+                    {t(item.labelKey as TranslationKey)}
+                  </Text>
                 </Pressable>
             );
           })}

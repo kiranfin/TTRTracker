@@ -17,6 +17,7 @@ import { saveMyttCookie } from '../src/api/mytt';
 import { Button } from '../src/components/Button';
 import { Card } from '../src/components/Card';
 import { Screen } from '../src/components/Screen';
+import { useI18n } from '../src/i18n/I18nProvider';
 import { useTheme } from '../src/theme/ThemeProvider';
 
 const MYTT_BASE_URL = 'https://www.mytischtennis.de';
@@ -35,6 +36,7 @@ function cookiesToHeader(cookies: Record<string, CookieValue>) {
 
 export default function MyttConnectScreen() {
     const { colors } = useTheme();
+    const { t } = useI18n();
     const webViewRef = useRef<WebViewType | null>(null);
 
     const [currentUrl, setCurrentUrl] = useState(MYTT_BASE_URL);
@@ -53,19 +55,19 @@ export default function MyttConnectScreen() {
             const cookieHeader = cookiesToHeader(cookies as Record<string, CookieValue>);
 
             if (!cookieHeader || cookieHeader.length < 5) {
-                setMessage('Keine myTischtennis-Cookies gefunden. Bitte erst einloggen.');
+                setMessage(t('mytt.noCookies'));
                 return;
             }
 
             await saveMyttCookie(cookieHeader);
 
-            setMessage('myTischtennis-Verbindung gespeichert.');
+            setMessage(t('mytt.savedMessage'));
             Alert.alert(
-                'Gespeichert',
-                'Deine myTischtennis-Verbindung wurde gespeichert.',
+                t('mytt.savedTitle'),
+                t('mytt.savedAlert'),
                 [
                     {
-                        text: 'OK',
+                        text: t('common.ok'),
                         onPress: () => router.back(),
                     },
                 ]
@@ -74,7 +76,7 @@ export default function MyttConnectScreen() {
             setMessage(
                 error instanceof Error
                     ? error.message
-                    : 'myTischtennis-Verbindung konnte nicht gespeichert werden.'
+                    : t('mytt.saveError')
             );
         } finally {
             setSaving(false);
@@ -92,13 +94,12 @@ export default function MyttConnectScreen() {
                     <View style={styles.titleRow}>
                         <Ionicons name="key-outline" size={22} color={colors.text} />
                         <Text style={[styles.title, { color: colors.text }]}>
-                            myTischtennis verbinden
+                            {t('mytt.title')}
                         </Text>
                     </View>
 
                     <Text style={[styles.description, { color: colors.mutedText }]}>
-                        Logge dich unten direkt bei myTischtennis ein. Danach auf „Verbindung speichern“
-                        tippen. Dein Cookie wird nur an dein eigenes Backend gesendet und dort verschlüsselt gespeichert.
+                        {t('mytt.description')}
                     </Text>
 
                     <Text style={[styles.urlText, { color: colors.mutedText }]} numberOfLines={1}>
@@ -110,7 +111,7 @@ export default function MyttConnectScreen() {
                             style={[
                                 styles.message,
                                 {
-                                    color: message.includes('gespeichert')
+                                    color: message.includes('gespeichert') || message.includes('saved')
                                         ? '#16a34a'
                                         : colors.destructive,
                                 },
@@ -127,7 +128,7 @@ export default function MyttConnectScreen() {
                             onPress={() => router.back()}
                             style={styles.actionButton}
                         >
-                            Zurück
+                            {t('common.back')}
                         </Button>
 
                         <Button
@@ -136,7 +137,7 @@ export default function MyttConnectScreen() {
                             onPress={handleReload}
                             style={styles.actionButton}
                         >
-                            Neu laden
+                            {t('mytt.reload')}
                         </Button>
 
                         <Button
@@ -146,7 +147,7 @@ export default function MyttConnectScreen() {
                             onPress={handleSaveConnection}
                             style={styles.actionButton}
                         >
-                            Speichern
+                            {t('mytt.saving')}
                         </Button>
                     </View>
                 </Card>
@@ -156,7 +157,7 @@ export default function MyttConnectScreen() {
                         <View style={styles.loadingOverlay}>
                             <ActivityIndicator />
                             <Text style={[styles.loadingText, { color: colors.mutedText }]}>
-                                myTischtennis lädt...
+                                {t('mytt.loading')}
                             </Text>
                         </View>
                     ) : null}

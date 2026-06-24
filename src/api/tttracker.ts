@@ -80,6 +80,14 @@ export const ttApi = {
     );
   },
 
+  comparePlayers(leftNuid: string, rightNuid: string) {
+    return apiGet<unknown>(
+        `/api/players/${segment(leftNuid)}/compare/${segment(rightNuid)}`,
+        undefined,
+        { authenticated: true }
+    );
+  },
+
   async getLeaguesByRegion(region: string, season = '25/26') {
     const response = await apiGet<unknown>('/api/leagues', {
       region,
@@ -97,9 +105,71 @@ export const ttApi = {
     );
   },
 
-  getLeagueTable(association: string, groupId: string) {
+  getClubPlayers(
+      organization: string,
+      clubNumber: string,
+      clubName?: string,
+      androClubNr?: string
+  ) {
+    const query: Record<string, string> = {};
+
+    if (clubName?.trim()) {
+      query.clubName = clubName.trim();
+    }
+
+    if (androClubNr?.trim()) {
+      query.androClubNr = androClubNr.trim();
+    }
+
     return apiGet<unknown>(
-        `/api/leagues/${segment(association)}/${segment(groupId)}/table`
+        `/api/clubs/${segment(organization)}/${segment(clubNumber)}/players`,
+        Object.keys(query).length > 0 ? query : undefined
+    );
+  },
+
+  getClubSchedule(
+      organization: string,
+      clubNumber: string,
+      season = '25--26',
+      dateStart?: string,
+      dateEnd?: string,
+      clubSlug = 'x'
+  ) {
+    const query: Record<string, string> = {
+      season,
+    };
+
+    if (dateStart?.trim()) {
+      query.dateStart = dateStart.trim();
+    }
+
+    if (dateEnd?.trim()) {
+      query.dateEnd = dateEnd.trim();
+    }
+
+    if (clubSlug?.trim() && clubSlug.trim() !== 'x') {
+      query.clubSlug = clubSlug.trim();
+    }
+
+    return apiGet<unknown>(
+        `/api/clubs/${segment(organization)}/${segment(clubNumber)}/schedule`,
+        query
+    );
+  },
+
+  getLeagueTable(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+  ) {
+    return apiGet<unknown>(
+        `/api/leagues/${segment(association)}/${segment(season)}/${segment(groupId)}/table`,
+        {
+          leagueSlug,
+          filter,
+        }
     );
   },
 
@@ -153,5 +223,64 @@ export const ttApi = {
     );
 
     return normalizeList<LeagueClassReference>(response);
+  },
+
+  getTeamPlayers(teamId: string) {
+    return apiGet<unknown>(`/api/teams/${segment(teamId)}/players`);
+  },
+
+  getTeamInfos(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      teamId: string,
+      teamNameSlug = 'x'
+  ) {
+    return apiGet<unknown>(
+        `/api/teams/${segment(association)}/${segment(season)}/${segment(groupId)}/${segment(teamId)}/infos`,
+        {
+          leagueSlug,
+          teamNameSlug,
+        }
+    );
+  },
+
+  getTeamSchedule(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      teamId: string,
+      teamNameSlug = 'x',
+      filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+  ) {
+    return apiGet<unknown>(
+        `/api/teams/${segment(association)}/${segment(season)}/${segment(groupId)}/${segment(teamId)}/schedule`,
+        {
+          leagueSlug,
+          teamNameSlug,
+          filter,
+        }
+    );
+  },
+
+  getTeamBalances(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      teamId: string,
+      teamNameSlug = 'x',
+      filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+  ) {
+    return apiGet<unknown>(
+        `/api/teams/${segment(association)}/${segment(season)}/${segment(groupId)}/${segment(teamId)}/balances`,
+        {
+          leagueSlug,
+          teamNameSlug,
+          filter,
+        }
+    );
   },
 };
