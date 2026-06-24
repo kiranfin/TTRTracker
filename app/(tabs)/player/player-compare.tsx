@@ -414,9 +414,6 @@ export default function PlayerCompareScreen() {
 
                 <View style={styles.titleBlock}>
                     <Text style={[styles.title, { color: colors.text }]}>{t('compare.title')}</Text>
-                    <Text style={[styles.subtitle, { color: colors.mutedText }]}>
-                        {t('compare.subtitle')}
-                    </Text>
                 </View>
 
                 {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}

@@ -258,7 +258,6 @@ export const de = {
   },
   compare: {
     title: 'Spielervergleich',
-    subtitle: 'TTR, Form, Quote und direkter Vergleich',
     missingNuids: 'Für den Vergleich fehlen zwei NUIDs.',
     parseError: 'Die Vergleichsdaten konnten nicht gelesen werden.',
     loadError: 'Vergleich konnte nicht geladen werden',
