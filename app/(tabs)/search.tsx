@@ -1,295 +1,48 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ttApi } from '../../src/api/tttracker';
-import { Badge } from '../../src/components/Badge';
-import { BottomSheet } from '../../src/components/BottomSheet';
-import { Button, IconButton } from '../../src/components/Button';
-import { Card } from '../../src/components/Card';
-import { EmptyState } from '../../src/components/EmptyState';
-import { Screen } from '../../src/components/Screen';
-import { SearchInput } from '../../src/components/SearchInput';
-import { SegmentedTabs } from '../../src/components/SegmentedTabs';
-import { useI18n } from '../../src/i18n/I18nProvider';
-import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '../../src/storage/favorites';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import type { ClubTeam, NormalizedClub, NormalizedPlayer, SearchCategory } from '../../src/types/tttracker';
-import { normalizeClub, normalizePlayer, normalizeTeams, ttrTone } from '../../src/utils/normalizers';
-
-function uniqueById<T extends { id: string }>(items: T[]) {
-  const seen = new Set<string>();
-
-  return items.filter((item) => {
-    const key = item.id;
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { Badge } from '@/src/components/Badge';
+import { BottomSheet } from '@/src/components/BottomSheet';
+import { Button, IconButton } from '@/src/components/Button';
+import { EmptyState } from '@/src/components/EmptyState';
+import { Screen } from '@/src/components/Screen';
+import { SearchInput } from '@/src/components/SearchInput';
+import { SegmentedTabs } from '@/src/components/SegmentedTabs';
+import { useI18n } from '@/src/i18n/I18nProvider';
+import { favoriteKey } from '@/src/storage/favorites';
+import { useTheme } from '@/src/theme/ThemeProvider';
+import { PlayerCard, ClubCard, DetailRow } from '../../src/features/search/components';
+import { styles } from '../../src/features/search/styles';
+import { useSearch } from '../../src/features/search/hooks/useSearch';
 
 export default function SearchScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
-  const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<SearchCategory>('players');
-  const [players, setPlayers] = useState<NormalizedPlayer[]>([]);
-  const [clubs, setClubs] = useState<NormalizedClub[]>([]);
-  const [favoriteSet, setFavoriteSet] = useState<Set<string>>(new Set());
-  const [selectedPlayer, setSelectedPlayer] = useState<NormalizedPlayer | null>(null);
-  const [selectedClub, setSelectedClub] = useState<NormalizedClub | null>(null);
-  const [clubTeams, setClubTeams] = useState<ClubTeam[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingTeams, setLoadingTeams] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadFavorites = useCallback(async () => {
-    const favorites = await getFavorites();
-    setFavoriteSet(new Set(favorites.map((item) => favoriteKey(item.type, item.id))));
-  }, []);
-
-  useFocusEffect(useCallback(() => {
-    loadFavorites().catch(() => undefined);
-  }, [loadFavorites]));
-
-  const resetSearchResults = useCallback(() => {
-    setSubmittedQuery('');
-    setPlayers([]);
-    setClubs([]);
-  }, []);
-
-  function handleQueryChange(value: string) {
-    setQuery(value);
-    setError(null);
-
-    if (!value.trim()) {
-      resetSearchResults();
-      return;
-    }
-
-    if (submittedQuery && value.trim() !== submittedQuery) {
-      setPlayers([]);
-      setClubs([]);
-    }
-  }
-
-  async function enrichPlayersWithTtr(items: NormalizedPlayer[]) {
-    const safeItems = Array.isArray(items) ? items : [];
-
-    const enriched = await Promise.all(
-        safeItems.map(async (player) => {
-          if (!player.internalId) return player;
-
-          try {
-            const response = await ttApi.getPlayerTtr(player.internalId);
-            return {
-              ...player,
-              ttr: response.data.ttr ?? player.ttr,
-            };
-          } catch {
-            return player;
-          }
-        })
-    );
-
-    return enriched;
-  }
-
-  const runSearch = useCallback(async () => {
-    const text = query.trim();
-    setError(null);
-
-    if (text.length < 2) {
-      resetSearchResults();
-      setError(t('search.minCharacters'));
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const [playerRows, clubRows] = await Promise.all([
-        ttApi.searchPlayers(text),
-        ttApi.searchClubs(text),
-      ]);
-
-      const normalizedPlayers = uniqueById(
-          Array.isArray(playerRows)
-              ? playerRows.map((row) => normalizePlayer(row))
-              : []
-      );
-
-      const normalizedClubs = uniqueById(
-          Array.isArray(clubRows)
-              ? clubRows.map((row) => normalizeClub(row))
-              : []
-      );
-
-      setSubmittedQuery(text);
-      setClubs(normalizedClubs);
-      setPlayers(normalizedPlayers);
-
-      const playersWithTtr = await enrichPlayersWithTtr(normalizedPlayers);
-      setPlayers(playersWithTtr);
-    } catch (searchError) {
-      setSubmittedQuery(text);
-      setPlayers([]);
-      setClubs([]);
-      setError(searchError instanceof Error ? searchError.message : t('search.failed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [query, resetSearchResults]);
-
-  function findClubForPlayer(player: NormalizedPlayer) {
-    const playerClubName = player.clubName.trim().toLowerCase();
-
-    if (!playerClubName) return undefined;
-
-    return clubs.find((club) => {
-      return club.name.trim().toLowerCase() === playerClubName;
-    });
-  }
-
-  async function togglePlayerFavorite(player: NormalizedPlayer) {
-    const key = favoriteKey('player', player.id);
-
-    if (favoriteSet.has(key)) {
-      await removeFavorite('player', player.id);
-      setFavoriteSet((previous) => {
-        const next = new Set(previous);
-        next.delete(key);
-        return next;
-      });
-      return;
-    }
-
-    const playerClub = findClubForPlayer(player);
-
-    await addFavorite({
-      id: player.id,
-      type: 'player',
-      title: player.fullName,
-      subtitle: player.clubName,
-      params: {
-        clubName: player.clubName,
-        clubKey: playerClub?.id ?? '',
-        organization: playerClub?.organization ?? '',
-        organizationName: playerClub?.organizationName ?? '',
-        clubNumber: playerClub?.clubNumber ?? '',
-        externalId: playerClub?.externalId ?? '',
-        personId: player.personId ?? '',
-        internalId: player.internalId ?? '',
-        state: player.state ?? '',
-        ttr: player.ttr ? String(player.ttr) : '',
-      },
-    });
-
-    setFavoriteSet((previous) => new Set(previous).add(key));
-  }
-
-  async function toggleClubFavorite(club: NormalizedClub) {
-    const key = favoriteKey('club', club.id);
-
-    if (favoriteSet.has(key)) {
-      await removeFavorite('club', club.id);
-      setFavoriteSet((previous) => {
-        const next = new Set(previous);
-        next.delete(key);
-        return next;
-      });
-      return;
-    }
-
-    await addFavorite({
-      id: club.id,
-      type: 'club',
-      title: club.name,
-      subtitle: [club.clubNumber, club.state ?? club.organization].filter(Boolean).join(' • '),
-      params: {
-        clubKey: club.id,
-        organization: club.organization ?? '',
-        organizationName: club.organizationName ?? '',
-        clubNumber: club.clubNumber ?? '',
-        state: club.state ?? '',
-        externalId: club.externalId ?? '',
-      },
-    });
-
-    setFavoriteSet((previous) => new Set(previous).add(key));
-  }
-
-  async function openClub(club: NormalizedClub) {
-    setSelectedClub(club);
-    setClubTeams([]);
-
-    if (!club.organization || !club.clubNumber) return;
-
-    setLoadingTeams(true);
-
-    try {
-      const response = await ttApi.getClubTeams(club.organization, club.clubNumber);
-      setClubTeams(normalizeTeams(response));
-    } catch {
-      setClubTeams([]);
-    } finally {
-      setLoadingTeams(false);
-    }
-  }
-
-  function openPlayerDetails(player: NormalizedPlayer) {
-    if (!player.internalId) return;
-
-    const playerClub = findClubForPlayer(player);
-
-    setSelectedPlayer(null);
-
-    router.push({
-      pathname: '/player/[nuid]',
-      params: {
-        nuid: player.internalId,
-        title: player.fullName,
-        clubName: player.clubName,
-        clubKey: playerClub?.id ?? '',
-        organization: playerClub?.organization ?? '',
-        organizationName: playerClub?.organizationName ?? '',
-        clubNumber: playerClub?.clubNumber ?? '',
-        state: player.state ?? playerClub?.state ?? '',
-        externalId: playerClub?.externalId ?? '',
-        ttr: player.ttr ? String(player.ttr) : '',
-      },
-    });
-  }
-
-  function openClubDetails(club: NormalizedClub) {
-    setSelectedClub(null);
-
-    router.push({
-      pathname: '/club/[clubKey]',
-      params: {
-        clubKey: club.id,
-        title: club.name,
-        organization: club.organization ?? '',
-        organizationName: club.organizationName ?? '',
-        clubNumber: club.clubNumber ?? '',
-        state: club.state ?? '',
-        externalId: club.externalId ?? '',
-      },
-    });
-  }
-
-  const tabOptions = useMemo(() => [
-    { value: 'players' as const, label: players.length > 0 ? t('search.playersTabCount', { count: players.length }) : t('search.playersTab'), icon: 'person-outline' as const },
-    { value: 'clubs' as const, label: clubs.length > 0 ? t('search.clubsTabCount', { count: clubs.length }) : t('search.clubsTab'), icon: "tennisball-outline" as const },
-  ], [clubs.length, players.length, t]);
-
-  const hasSubmitted = submittedQuery.length > 0;
-  const queryChanged = query.trim().length > 0 && query.trim() !== submittedQuery;
+  const {
+    query,
+    submittedQuery,
+    activeTab,
+    setActiveTab,
+    players,
+    clubs,
+    favoriteSet,
+    selectedPlayer,
+    setSelectedPlayer,
+    selectedClub,
+    setSelectedClub,
+    clubTeams,
+    loading,
+    loadingTeams,
+    error,
+    handleQueryChange,
+    runSearch,
+    togglePlayerFavorite,
+    toggleClubFavorite,
+    openClub,
+    openPlayerDetails,
+    openClubDetails,
+    tabOptions,
+    hasSubmitted,
+    queryChanged,
+  } = useSearch();
 
   return (
       <Screen>
@@ -428,184 +181,3 @@ export default function SearchScreen() {
       </Screen>
   );
 }
-
-function PlayerCard({
-                      player,
-                      favorite,
-                      onPress,
-                      onToggleFavorite,
-                    }: {
-  player: NormalizedPlayer;
-  favorite: boolean;
-  onPress: () => void;
-  onToggleFavorite: () => void;
-}) {
-  const { colors } = useTheme();
-
-  return (
-      <Card pressable onPress={onPress} style={styles.resultCard}>
-        <View style={styles.cardTopRow}>
-          <View style={styles.cardText}>
-            <Text style={[styles.resultTitle, { color: colors.text }]}>{player.fullName}</Text>
-            <Text style={[styles.resultSubtitle, { color: colors.mutedText }]}>{player.clubName}</Text>
-          </View>
-          <IconButton icon={favorite ? 'star' : 'star-outline'} active={favorite} onPress={onToggleFavorite} />
-        </View>
-
-        <View style={styles.badgeRow}>
-          <Badge tone={ttrTone(player.ttr)} icon="trophy-outline">TTR: {player.ttr ?? '-'}</Badge>
-          {player.state ? <Badge tone="outline">{player.state}</Badge> : null}
-        </View>
-      </Card>
-  );
-}
-
-function ClubCard({
-                    club,
-                    favorite,
-                    onPress,
-                    onToggleFavorite,
-                  }: {
-  club: NormalizedClub;
-  favorite: boolean;
-  onPress: () => void;
-  onToggleFavorite: () => void;
-}) {
-  const { colors } = useTheme();
-  const { t } = useI18n();
-
-  return (
-      <Card pressable onPress={onPress} style={styles.resultCard}>
-        <View style={styles.cardTopRow}>
-          <View style={styles.cardText}>
-            <Text style={[styles.resultTitle, { color: colors.text }]}>{club.name}</Text>
-            <Text style={[styles.resultSubtitle, { color: colors.mutedText }]}>
-              {[club.organizationName, club.organization].filter(Boolean).join(' • ') || t('search.associationUnknown')}
-            </Text>
-          </View>
-          <IconButton icon={favorite ? 'star' : 'star-outline'} active={favorite} onPress={onToggleFavorite} />
-        </View>
-
-        <View style={styles.badgeRow}>
-          {club.clubNumber ? <Badge tone="secondary" icon="people-outline">#{club.clubNumber}</Badge> : null}
-          {club.state ? <Badge tone="outline">{club.state}</Badge> : null}
-        </View>
-      </Card>
-  );
-}
-
-function DetailRow({ label, value, monospace }: { label: string; value: string; monospace?: boolean }) {
-  const { colors } = useTheme();
-
-  return (
-      <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.detailLabel, { color: colors.mutedText }]}>{label}</Text>
-        <Text style={[styles.detailValue, monospace && styles.monospace, { color: colors.text }]} numberOfLines={3}>{value}</Text>
-      </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  content: {
-    padding: 16,
-    paddingBottom: 112,
-    gap: 16,
-  },
-  titleBlock: {
-    gap: 4,
-  },
-  title: {
-    fontSize: 25,
-    lineHeight: 32,
-    fontWeight: '800',
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  searchBlock: {
-    gap: 10,
-  },
-  searchButton: {
-    minHeight: 48,
-    borderRadius: 16,
-  },
-  loader: {
-    paddingVertical: 16,
-  },
-  error: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  hint: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  stack: {
-    gap: 12,
-  },
-  resultCard: {
-    padding: 16,
-    gap: 10,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  cardText: {
-    flex: 1,
-    gap: 2,
-  },
-  resultTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-  },
-  resultSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  badgeRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  sheetStack: {
-    gap: 12,
-    paddingBottom: 8,
-  },
-  detailRow: {
-    minHeight: 45,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  detailLabel: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  detailValue: {
-    flex: 1,
-    textAlign: 'right',
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  monospace: {
-    fontVariant: ['tabular-nums'],
-  },
-  sheetMuted: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  sheetStatRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-});
