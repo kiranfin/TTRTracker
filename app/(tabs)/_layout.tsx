@@ -22,6 +22,8 @@ export default function TabsLayout() {
             <Tabs.Screen name="region/[region]" options={{ href: null }} />
             <Tabs.Screen name="match/[meetingId]" options={{ href: null }} />
             <Tabs.Screen name="team/[teamId]" options={{ href: null }} />
+            <Tabs.Screen name="events" options={{ href: null }} />
+            <Tabs.Screen name="event/[id]" options={{ href: null }} />
         </Tabs>
     );
 }

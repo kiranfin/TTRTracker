@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { Screen } from '@/src/components/Screen';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { ShortcutCard, MeQuickStatsCard, ClubQuickStatsCard } from '../../src/features/home/components';
+import { ShortcutCard, MeQuickStatsCard, ClubQuickStatsCard, HomeEventsCard } from '../../src/features/home/components';
 import { useHome } from '../../src/features/home/hooks/useHome';
 import { styles } from '../../src/features/home/styles';
 
@@ -26,8 +26,14 @@ export default function HomeScreen() {
     clubCompletedMatches,
     clubLoading,
     clubError,
+    eventsWidgetEnabled,
+    upcomingEvents,
+    eventsLoading,
+    eventsError,
     openMeProfile,
     openMyClub,
+    openAllEvents,
+    openEvent,
   } = useHome();
 
   return (
@@ -66,6 +72,16 @@ export default function HomeScreen() {
               />
             </View>
           </View>
+
+          {eventsWidgetEnabled ? (
+              <HomeEventsCard
+                  events={upcomingEvents}
+                  loading={eventsLoading}
+                  error={eventsError}
+                  onOpenAll={openAllEvents}
+                  onOpenEvent={openEvent}
+              />
+          ) : null}
 
           <MeQuickStatsCard
               meNuid={meNuid}

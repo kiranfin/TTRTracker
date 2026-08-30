@@ -6,6 +6,7 @@ import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant } from '
 import { ttApi } from '@/src/api/tttracker';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { getEventsWidgetEnabled, setEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { clearMeClub, getMeClub, setMeClub as saveMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import { clearMePlayerNuid, getMePlayerNuid, setMePlayerNuid } from '@/src/storage/mePlayer';
@@ -61,6 +62,8 @@ export function useSettings() {
 
   const [backgroundMessage, setBackgroundMessage] = useState<string | null>(null);
   const [backgroundLoading, setBackgroundLoading] = useState<'pick' | 'clear' | null>(null);
+
+  const [eventsWidgetEnabled, setEventsWidgetEnabledState] = useState(false);
 
   const [draftAccent, setDraftAccent] = useState(() => normalizeHexColor(accent));
 
@@ -158,9 +161,10 @@ export function useSettings() {
 
         async function loadLocalProfileSettings() {
           try {
-            const [storedNuid, storedClub] = await Promise.all([
+            const [storedNuid, storedClub, storedEventsWidget] = await Promise.all([
               getMePlayerNuid(),
               getMeClub(),
+              getEventsWidgetEnabled(),
             ]);
 
             if (!active) return;
@@ -171,6 +175,8 @@ export function useSettings() {
             setSavedMeClub(storedClub);
             setClubIdInput(formatClubId(storedClub));
             setClubNameInput(getClubDisplayName(storedClub));
+
+            setEventsWidgetEnabledState(storedEventsWidget);
           } catch {
             if (!active) return;
 
@@ -186,6 +192,16 @@ export function useSettings() {
         };
       }, []),
   );
+
+  async function handleToggleEventsWidget(next: boolean) {
+    setEventsWidgetEnabledState(next);
+
+    try {
+      await setEventsWidgetEnabled(next);
+    } catch {
+      setEventsWidgetEnabledState(!next);
+    }
+  }
 
   async function checkHealth() {
     setChecking(true);
@@ -477,6 +493,8 @@ export function useSettings() {
     meClubLoading,
     backgroundMessage,
     backgroundLoading,
+    eventsWidgetEnabled,
+    handleToggleEventsWidget,
     draftAccent,
     handlePreviewAccent,
     handleApplyAccent,
