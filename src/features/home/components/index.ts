@@ -4,3 +4,4 @@ export { ClubQuickStatsCard } from './ClubQuickStatsCard';
 export { MiniStat } from './MiniStat';
 export { RecentHistoryRow } from './RecentHistoryRow';
 export { ClubCompletedMatchRow } from './ClubCompletedMatchRow';
+export { HomeEventsCard } from './HomeEventsCard';

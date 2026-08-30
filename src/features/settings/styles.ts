@@ -291,4 +291,16 @@ export const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '700',
   },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  switchLabel: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
 });

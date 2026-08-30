@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ImageBackground, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ImageBackground, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import ColorPicker, { HueCircular, Panel1, Preview } from 'reanimated-color-picker';
 
 import { getApiBaseUrl } from '@/src/api/client';
@@ -69,6 +69,8 @@ export default function SettingsScreen() {
     meClubLoading,
     backgroundMessage,
     backgroundLoading,
+    eventsWidgetEnabled,
+    handleToggleEventsWidget,
     draftAccent,
     handlePreviewAccent,
     handleApplyAccent,
@@ -389,6 +391,32 @@ export default function SettingsScreen() {
                           {meClubMessage}
                         </Text>
                     ) : null}
+                  </View>
+                </Card>
+
+                <Card style={styles.card}>
+                  <View style={styles.cardTitleRow}>
+                    <Ionicons name="calendar-outline" size={21} color={colors.text} />
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>
+                      {t('settings.eventsWidget')}
+                    </Text>
+                  </View>
+
+                  <Text style={[styles.backendText, { color: colors.mutedText }]}>
+                    {t('settings.eventsWidgetDescription')}
+                  </Text>
+
+                  <View style={styles.switchRow}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>
+                      {t('settings.eventsWidgetLabel')}
+                    </Text>
+
+                    <Switch
+                        value={eventsWidgetEnabled}
+                        onValueChange={handleToggleEventsWidget}
+                        trackColor={{ false: colors.border, true: colors.primary }}
+                        thumbColor="#ffffff"
+                    />
                   </View>
                 </Card>
               </>
