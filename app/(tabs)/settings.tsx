@@ -39,6 +39,11 @@ export default function SettingsScreen() {
     setUsername,
     password,
     setPassword,
+    email,
+    setEmailField,
+    emailInput,
+    setEmailInput,
+    emailMessage,
     authMessage,
     authLoading,
     myttStatus,
@@ -73,6 +78,9 @@ export default function SettingsScreen() {
     checkHealth,
     handleLogin,
     handleRegister,
+    handleSaveEmail,
+    openForgotPassword,
+    openEnterResetCode,
     handleLogout,
     handleCheckMyttStatus,
     handleLoadGrants,
@@ -655,6 +663,23 @@ export default function SettingsScreen() {
                             ]}
                         />
 
+                        <TextInput
+                            value={email}
+                            onChangeText={setEmailField}
+                            placeholder={t('settings.emailPlaceholderOptional')}
+                            placeholderTextColor={colors.mutedText}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={[
+                              styles.input,
+                              {
+                                color: colors.text,
+                                borderColor: colors.border,
+                              },
+                            ]}
+                        />
+
                         <View style={styles.twoGrid}>
                           <Button
                               variant="primary"
@@ -682,16 +707,88 @@ export default function SettingsScreen() {
                               {t('settings.authHint')}
                             </Text>
                         ) : null}
+
+                        <Button
+                            variant="ghost"
+                            icon="help-circle-outline"
+                            onPress={openForgotPassword}
+                        >
+                          {t('settings.forgotPassword')}
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            icon="key-outline"
+                            onPress={openEnterResetCode}
+                        >
+                          {t('resetPassword.haveCode')}
+                        </Button>
                       </>
                   ) : (
-                      <Button
-                          variant="outline"
-                          icon="log-out-outline"
-                          loading={authLoading === 'logout'}
-                          onPress={handleLogout}
-                      >
-                        {t('settings.logout')}
-                      </Button>
+                      <>
+                        <View style={[styles.profileDivider, { backgroundColor: colors.border }]} />
+
+                        <Text style={[styles.label, { color: colors.text }]}>
+                          {t('settings.email')}
+                        </Text>
+
+                        <Text style={[styles.backendText, { color: colors.mutedText }]}>
+                          {t('settings.emailDescription')}
+                        </Text>
+
+                        <TextInput
+                            value={emailInput}
+                            onChangeText={setEmailInput}
+                            placeholder={t('settings.emailPlaceholder')}
+                            placeholderTextColor={colors.mutedText}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={[
+                              styles.input,
+                              {
+                                color: colors.text,
+                                borderColor: colors.border,
+                              },
+                            ]}
+                        />
+
+                        <Button
+                            variant="primary"
+                            icon="save-outline"
+                            loading={authLoading === 'setEmail'}
+                            onPress={handleSaveEmail}
+                        >
+                          {t('settings.saveEmail')}
+                        </Button>
+
+                        {emailMessage ? (
+                            <Text
+                                style={[
+                                  styles.backendText,
+                                  {
+                                    color:
+                                        emailMessage === t('settings.emailSaved')
+                                            ? '#16a34a'
+                                            : colors.destructive,
+                                  },
+                                ]}
+                            >
+                              {emailMessage}
+                            </Text>
+                        ) : null}
+
+                        <View style={[styles.profileDivider, { backgroundColor: colors.border }]} />
+
+                        <Button
+                            variant="outline"
+                            icon="log-out-outline"
+                            loading={authLoading === 'logout'}
+                            onPress={handleLogout}
+                        >
+                          {t('settings.logout')}
+                        </Button>
+                      </>
                   )}
 
                   {authMessage ? (

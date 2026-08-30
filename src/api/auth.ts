@@ -4,6 +4,7 @@ import { clearAccessToken, saveAccessToken } from '../storage/authToken';
 export type AppUser = {
     id: string;
     username: string;
+    email?: string;
 };
 
 type AuthResponse = {
@@ -22,6 +23,7 @@ type MeResponse = {
 export async function registerAppUser(params: {
     username: string;
     password: string;
+    email?: string;
 }) {
     const response = await apiPost<AuthResponse>('/api/auth/register', params);
 
@@ -53,4 +55,22 @@ export async function getCurrentAppUser() {
 
 export async function logoutAppUser() {
     await clearAccessToken();
+}
+
+export async function requestPasswordReset(params: { email: string }) {
+    await apiPost('/api/auth/request-password-reset', params);
+}
+
+export async function resetPassword(params: { token: string; password: string }) {
+    await apiPost('/api/auth/reset-password', params);
+}
+
+export async function setUserEmail(params: { email: string }) {
+    const response = await apiPost<MeResponse>(
+        '/api/auth/email',
+        params,
+        { authenticated: true }
+    );
+
+    return response.data.user;
 }
