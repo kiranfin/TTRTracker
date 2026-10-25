@@ -7,75 +7,6 @@ export const styles = StyleSheet.create({
         paddingBottom: 112,
         gap: 16,
     },
-    headerRow: {
-        minHeight: 42,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 10,
-    },
-    backButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        borderWidth: StyleSheet.hairlineWidth,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerActionButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        borderWidth: StyleSheet.hairlineWidth,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    teamTitleBlock: {
-        gap: 8,
-    },
-    headerText: {
-        flex: 1,
-        gap: 8,
-    },
-    title: {
-        fontSize: 24,
-        lineHeight: 31,
-        fontWeight: '900',
-    },
-    leagueTitle: {
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
-    },
-    headerMetaRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    summaryGrid: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    summaryTile: {
-        flex: 1,
-        minHeight: 82,
-        borderWidth: 1,
-        borderRadius: 18,
-        padding: 10,
-        justifyContent: 'center',
-        gap: 4,
-    },
-    summaryValue: {
-        fontSize: 18,
-        lineHeight: 22,
-        fontWeight: '900',
-    },
-    summaryLabel: {
-        fontSize: 10,
-        lineHeight: 13,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-    },
     loader: {
         paddingVertical: 22,
     },
@@ -119,10 +50,6 @@ export const styles = StyleSheet.create({
         padding: 16,
         gap: 12,
     },
-    filterCard: {
-        padding: 16,
-        gap: 12,
-    },
     sectionHeader: {
         paddingHorizontal: 16,
         marginBottom: 12,
@@ -160,22 +87,6 @@ export const styles = StyleSheet.create({
     sectionTitleCompact: {
         fontSize: 17,
         lineHeight: 23,
-        fontWeight: '900',
-    },
-    filterChipRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    filterChip: {
-        borderWidth: 1,
-        borderRadius: 999,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-    },
-    filterChipText: {
-        fontSize: 12,
-        lineHeight: 16,
         fontWeight: '900',
     },
     infoList: {
@@ -298,11 +209,6 @@ export const styles = StyleSheet.create({
         lineHeight: 18,
         fontWeight: '900',
     },
-    splitRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-    },
     miniStatRow: {
         flexDirection: 'row',
         gap: 8,
@@ -400,5 +306,19 @@ export const styles = StyleSheet.create({
         flexShrink: 1,
         fontSize: 13,
         lineHeight: 18,
+    },
+    teamHead: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+    },
+    teamHeadText: {
+        flex: 1,
+        minWidth: 0,
+        gap: 2,
+    },
+    actionRow: {
+        flexDirection: 'row',
+        gap: 10,
     },
 });

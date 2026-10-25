@@ -1,11 +1,8 @@
-export { LeagueDetailsButton } from './LeagueDetailsButton';
 export { InfosTab } from './InfosTab';
 export { LineupTab } from './LineupTab';
 export { ScheduleTab } from './ScheduleTab';
 export { BalancesTab } from './BalancesTab';
-export { SummaryTile } from './SummaryTile';
 export { MiniStat } from './MiniStat';
-export { FilterChip } from './FilterChip';
 export { PlayerCard } from './PlayerCard';
 export { BalanceCard } from './BalanceCard';
 export { BalanceStat } from './BalanceStat';

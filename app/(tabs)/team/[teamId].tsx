@@ -1,16 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { ttApi } from '@/src/api/tttracker';
-import { BackButton } from '../../../src/components/ScreenHeader';
-import { Badge } from '@/src/components/Badge';
+import { ActionButton } from '@/src/components/ActionButton';
+import { Avatar } from '@/src/components/Avatar';
 import { Card } from '@/src/components/Card';
+import { Chip, ChipRow } from '@/src/components/Chip';
 import { Screen } from '@/src/components/Screen';
+import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { SegmentedTabs } from '@/src/components/SegmentedTabs';
+import { StatStrip } from '@/src/components/StatStrip';
+import { typography } from '@/src/theme/typography';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { LeagueDetailsButton, SummaryTile, FilterChip, InfosTab, LineupTab, ScheduleTab, BalancesTab } from '../../../src/features/team-details/components';
+import { InfosTab, LineupTab, ScheduleTab, BalancesTab } from '../../../src/features/team-details/components';
 import { styles } from '../../../src/features/team-details/styles';
 import { slugifyMyttPathSegment, normalizeSeasonForApi, normalizeLineup, enrichLineupWithTtr, normalizeTeamInfo, normalizeTeamSchedule, normalizeBalances, filterScheduleByRound, buildScheduleSummary, buildBalanceSummary } from '../../../src/features/team-details/utils';
 import type { DetailTab, RoundFilter, TeamInfo, TeamPlayer, TeamScheduleMatch, TeamBalance, TeamContext, TeamApiClient } from '../../../src/features/team-details/types';
@@ -309,76 +313,71 @@ export default function TeamDetailsScreen() {
     return (
         <Screen>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.headerRow}>
-                    <BackButton />
+                <ScreenHeader />
 
-                    <LeagueDetailsButton team={team} />
-                </View>
+                <View style={styles.teamHead}>
+                    <Avatar icon="people" shape="square" size={56} />
 
-                <View style={styles.teamTitleBlock}>
-                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-                        {team.teamName}
-                    </Text>
+                    <View style={styles.teamHeadText}>
+                        <Text style={[typography.title, { color: colors.text }]} numberOfLines={2}>
+                            {team.teamName}
+                        </Text>
 
-                    <View style={styles.headerMetaRow}>
-                        <Badge tone="outline" icon="calendar-outline">
-                            {t('favorites.seasonValue', { season: team.season })}
-                        </Badge>
-
-                        {team.association ? <Badge tone="secondary">{team.association}</Badge> : null}
-                        {team.groupId ? <Badge tone="outline">{t('team.groupValue', { groupId: team.groupId })}</Badge> : null}
+                        <Text style={[typography.meta, { color: colors.mutedText }]} numberOfLines={1}>
+                            {[
+                                team.leagueTitle,
+                                t('favorites.seasonValue', { season: team.season }),
+                                team.groupId ? t('team.groupValue', { groupId: team.groupId }) : undefined,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                        </Text>
                     </View>
                 </View>
 
-                <View style={styles.summaryGrid}>
-                    <SummaryTile
-                        icon="people-outline"
-                        label={t('team.players')}
-                        value={String(lineup.length)}
-                        tone="primary"
-                    />
-                    <SummaryTile
-                        icon="checkmark-circle-outline"
-                        label={t('team.games')}
-                        value={String(scheduleSummary.played)}
-                        tone="green"
-                    />
-                    <SummaryTile
-                        icon="time-outline"
-                        label={t('team.open')}
-                        value={String(scheduleSummary.open)}
-                        tone="orange"
-                    />
-                    <SummaryTile
-                        icon="stats-chart-outline"
-                        label={t('team.record')}
-                        value={`${balanceSummary.pointsWon}:${balanceSummary.pointsLost}`}
-                        tone="purple"
+                <View style={styles.actionRow}>
+                    <ActionButton
+                        icon="podium-outline"
+                        label={t('team.openLeagueDetails')}
+                        disabled={!team.association || !team.groupId}
+                        onPress={() =>
+                            router.push({
+                                pathname: '/league/[leagueKey]',
+                                params: {
+                                    leagueKey: team.groupId!,
+                                    association: team.association!,
+                                    groupId: team.groupId!,
+                                    season: team.season,
+                                    leagueSlug: team.leagueSlug,
+                                    title: team.leagueTitle ?? t('team.leagueDetailsTitle'),
+                                },
+                            })
+                        }
                     />
                 </View>
+
+                <StatStrip
+                    items={[
+                        { label: t('team.players'), value: String(lineup.length) },
+                        { label: t('team.games'), value: String(scheduleSummary.played) },
+                        { label: t('team.open'), value: String(scheduleSummary.open) },
+                        { label: t('team.record'), value: `${balanceSummary.pointsWon}:${balanceSummary.pointsLost}` },
+                    ]}
+                />
 
                 <SegmentedTabs value={activeTab} onChange={setActiveTab} options={localizedTabOptions} />
 
                 {activeTab === 'schedule' || activeTab === 'balances' ? (
-                    <Card style={styles.filterCard}>
-                        <View style={styles.sectionHeaderCompact}>
-                            <Ionicons name="filter-outline" size={18} color={colors.primary} />
-                            <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                                {t('team.period')}
-                            </Text>
-                        </View>
-
-                        <View style={styles.filterChipRow}>
-                            {localizedRoundOptions.map((option) => (
-                                <FilterChip
-                                    key={option.value}
-                                    label={option.label}
-                                    active={roundFilter === option.value}
-                                    onPress={() => setRoundFilter(option.value)}
-                                />
-                            ))}
-                        </View>
-                    </Card>
+                    <ChipRow>
+                        {localizedRoundOptions.map((option) => (
+                            <Chip
+                                key={option.value}
+                                label={option.label}
+                                active={roundFilter === option.value}
+                                onPress={() => setRoundFilter(option.value)}
+                            />
+                        ))}
+                    </ChipRow>
                 ) : null}
 
                 {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}

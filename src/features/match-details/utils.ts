@@ -1,5 +1,5 @@
 import { useI18n } from '@/src/i18n/I18nProvider';
-import type { MeetingDetails, MatchRow, RawMeetingMatch, RawPlayer } from './types';
+import type { MeetingDetails, MatchRow, MatchRowWithScore, RawMeetingMatch, RawPlayer } from './types';
 
 export function normalizeMeetingRows(meeting: MeetingDetails | null, t: ReturnType<typeof useI18n>['t']): MatchRow[] {
   const matches = Array.isArray(meeting?.match) ? meeting.match : [];
@@ -197,4 +197,16 @@ export function formatStatus(meeting: MeetingDetails | null, t: ReturnType<typeo
   }
 
   return t('status.scheduled');
+}
+
+export function addRunningScore(rows: MatchRow[]): MatchRowWithScore[] {
+  let home = 0;
+  let guest = 0;
+
+  return rows.map((row) => {
+    if (row.winner === 'home') home += 1;
+    if (row.winner === 'guest') guest += 1;
+
+    return { ...row, runningScore: `${home}:${guest}` };
+  });
 }

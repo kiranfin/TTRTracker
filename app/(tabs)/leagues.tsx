@@ -1,213 +1,96 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ttApi } from '../../src/api/tttracker';
-import { Button, IconButton } from '../../src/components/Button';
-import { Card } from '../../src/components/Card';
-import { EmptyState } from '../../src/components/EmptyState';
-import { Screen } from '../../src/components/Screen';
-import { useI18n } from '../../src/i18n/I18nProvider';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import type { LeagueAssociation } from '../../src/types/tttracker';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { Button } from '@/src/components/Button';
+import { Card } from '@/src/components/Card';
+import { EmptyState } from '@/src/components/EmptyState';
+import { ListGroup } from '@/src/components/ListGroup';
+import { ListRow } from '@/src/components/ListRow';
+import { Screen } from '@/src/components/Screen';
+import { SectionHeader } from '@/src/components/SectionHeader';
+import { useI18n } from '@/src/i18n/I18nProvider';
+import { useTheme } from '@/src/theme/ThemeProvider';
+import { typography } from '@/src/theme/typography';
+import { useLeagues } from '../../src/features/leagues/hooks/useLeagues';
+import { styles } from '../../src/features/leagues/styles';
 
 export default function LeaguesScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
-
-  const [associations, setAssociations] = useState<LeagueAssociation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function loadAssociations() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await ttApi.getLeagueAssociations();
-      setAssociations(result);
-    } catch (loadError) {
-      setAssociations([]);
-      setError(loadError instanceof Error ? loadError.message : t('leagues.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadAssociations().catch(() => undefined);
-  }, []);
-
-  function openAssociation(association: LeagueAssociation) {
-    router.push({
-      pathname: '/region/[region]',
-      params: {
-        region: association.association,
-        title: association.name,
-        shortName: association.shortName,
-      },
-    });
-  }
+  const { associations, myLeagues, loading, error, loadAssociations, openAssociation, openMyLeague } = useLeagues();
 
   return (
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.headerRow}>
-            <View style={styles.titleBlock}>
-              <Text style={[styles.title, { color: colors.text }]}>{t('leagues.title')}</Text>
-            </View>
-          </View>
+          <Text style={[typography.titleLarge, { color: colors.text }]}>{t('leagues.pageTitle')}</Text>
 
-          {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+          {myLeagues.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader title={t('leagues.myLeagues')} />
 
-          {error ? (
-              <Card style={styles.errorCard}>
-                <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
-                <Button variant="secondary" icon="refresh-outline" onPress={loadAssociations}>
-                  {t('common.retry')}
-                </Button>
-              </Card>
-          ) : null}
-
-          {!loading && !error && associations.length === 0 ? (
-              <EmptyState
-                  icon="map-outline"
-                  title={t('leagues.emptyTitle')}
-                  subtitle={t('leagues.emptySubtitle')}
-              />
-          ) : null}
-
-          {!loading && !error && associations.length > 0 ? (
-              <View style={styles.grid}>
-                {associations.map((association) => (
-                    <Card
-                        key={association.id}
-                        pressable
-                        style={styles.associationCard}
-                        onPress={() => openAssociation(association)}
-                    >
-                      <View
-                          style={[
-                            styles.logoBubble,
-                            {
-                              backgroundColor: colors.primarySoft,
-                              borderColor: colors.primarySoftBorder,
-                            },
-                          ]}
-                      >
-                        <Text style={[styles.logoText, { color: colors.primary }]}>
-                          {association.shortName.slice(0, 4)}
-                        </Text>
-                      </View>
-
-                      <View style={styles.associationTextBlock}>
-                        <Text style={[styles.associationTitle, { color: colors.text }]} numberOfLines={2}>
-                          {association.name}
-                        </Text>
-                        <Text style={[styles.associationSubtitle, { color: colors.mutedText }]}>
-                          {association.shortName}
-                        </Text>
-                      </View>
-
-                      <View style={[styles.arrowBubble, { backgroundColor: colors.primary }]}>
-                        <Ionicons name="arrow-forward" size={18} color="#fff" />
-                      </View>
-                    </Card>
-                ))}
+                <ListGroup>
+                  {myLeagues.map((league) => (
+                      <ListRow
+                          key={`${league.association}:${league.groupId}`}
+                          leading={
+                            <Ionicons
+                                name={league.source === 'favorite' ? 'star' : 'people'}
+                                size={22}
+                                color={league.source === 'favorite' ? colors.warning : colors.primary}
+                            />
+                          }
+                          title={league.title}
+                          subtitle={[
+                            league.association,
+                            league.teamName ?? (league.source === 'favorite' ? t('leagues.favoriteLeague') : undefined),
+                          ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          onPress={() => openMyLeague(league)}
+                      />
+                  ))}
+                </ListGroup>
               </View>
           ) : null}
+
+          <View style={styles.section}>
+            <SectionHeader title={t('leagues.associations')} />
+
+            {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+
+            {error ? (
+                <Card style={styles.errorCard}>
+                  <Text style={[typography.body, { color: colors.destructive }]}>{error}</Text>
+                  <Button variant="secondary" icon="refresh-outline" onPress={loadAssociations}>
+                    {t('common.retry')}
+                  </Button>
+                </Card>
+            ) : null}
+
+            {!loading && !error && associations.length === 0 ? (
+                <EmptyState icon="map-outline" title={t('leagues.emptyTitle')} subtitle={t('leagues.emptySubtitle')} />
+            ) : null}
+
+            {!loading && !error && associations.length > 0 ? (
+                <ListGroup>
+                  {associations.map((association) => (
+                      <ListRow
+                          key={association.id}
+                          leading={
+                            <View style={[styles.associationBadge, { backgroundColor: colors.primarySoft }]}>
+                              <Text style={[styles.associationBadgeText, { color: colors.primary }]} numberOfLines={1}>
+                                {association.shortName.slice(0, 4)}
+                              </Text>
+                            </View>
+                          }
+                          title={association.name}
+                          subtitle={association.shortName}
+                          onPress={() => openAssociation(association)}
+                      />
+                  ))}
+                </ListGroup>
+            ) : null}
+          </View>
         </ScrollView>
       </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    padding: 16,
-    paddingBottom: 112,
-    gap: 20,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  titleBlock: {
-    flex: 1,
-    gap: 4,
-  },
-  kicker: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '900',
-  },
-  title: {
-    fontSize: 25,
-    lineHeight: 32,
-    fontWeight: '900',
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  loader: {
-    paddingVertical: 24,
-  },
-  errorCard: {
-    padding: 16,
-    gap: 12,
-  },
-  error: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  grid: {
-    gap: 12,
-  },
-  associationCard: {
-    minHeight: 88,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  logoBubble: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '900',
-  },
-  associationTextBlock: {
-    flex: 1,
-    gap: 3,
-  },
-  associationTitle: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '900',
-  },
-  associationSubtitle: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  arrowBubble: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

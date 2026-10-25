@@ -86,3 +86,19 @@ export type MatchRow = {
   games: string | null;
   winner: 'home' | 'guest' | null;
 };
+
+// Zeile mit dem Spielstand der Begegnung nach diesem Spiel (Doppel zuerst, dann Einzel)
+export type MatchRowWithScore = MatchRow & {
+  runningScore: string;
+};
+
+// Optionaler Kontext aus der Route, mit dem die Mannschaften verlinkt werden können
+export type TeamLinkContext = {
+  teamId: string;
+  teamName: string;
+  leagueTitle?: string;
+  association: string;
+  groupId: string;
+  season?: string;
+  leagueSlug?: string;
+};

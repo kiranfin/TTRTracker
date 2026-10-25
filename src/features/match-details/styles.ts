@@ -6,75 +6,6 @@ export const styles = StyleSheet.create({
     paddingBottom: 96,
     gap: 16,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    flex: 1,
-    fontSize: 25,
-    lineHeight: 32,
-    fontWeight: '800',
-  },
-  scoreCard: {
-    padding: 22,
-    gap: 12,
-  },
-  teamsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  teamName: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
-    lineHeight: 23,
-    fontWeight: '900',
-  },
-  awayTeam: {
-    textAlign: 'center',
-  },
-  scorePill: {
-    minWidth: 72,
-    borderWidth: 1,
-    borderRadius: 22,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignItems: 'center',
-    gap: 2,
-  },
-  scoreText: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: '900',
-  },
-  scoreLabel: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '700',
-  },
-  scoreSummary: {
-    textAlign: 'center',
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  meetingId: {
-    textAlign: 'center',
-    fontSize: 13,
-    lineHeight: 18,
-  },
   infoPills: {
     gap: 8,
   },
@@ -100,57 +31,64 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  sectionCard: {
-    paddingTop: 16,
-    overflow: 'hidden',
+  heroCard: {
+    padding: 20,
+    gap: 14,
   },
-  sectionTitle: {
-    paddingHorizontal: 16,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  rows: {
-    width: '100%',
-  },
-  matchLine: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    gap: 7,
-  },
-  matchMetaRow: {
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
-  matchName: {
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '800',
+  heroTeamWrap: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  matchType: {
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '700',
+  heroTeam: {
+    textAlign: 'center',
   },
-  playersRow: {
+  heroScore: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  heroPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  section: {
+    gap: 10,
+  },
+  matchLine: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  matchMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  playerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
+    gap: 12,
   },
   playerName: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 19,
-    fontWeight: '800',
   },
-  awayPlayer: {
-    textAlign: 'right',
+  setPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 2,
   },
-  sets: {
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: 'center',
+  setPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
 });

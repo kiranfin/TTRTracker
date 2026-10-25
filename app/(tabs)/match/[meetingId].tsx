@@ -1,11 +1,10 @@
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { BackButton } from '../../../src/components/ScreenHeader';
-import { Card } from '@/src/components/Card';
 import { EmptyState } from '@/src/components/EmptyState';
 import { Screen } from '@/src/components/Screen';
+import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { InfoPill, MatchSection } from '../../../src/features/match-details/components';
+import { InfoPill, MatchHero, MatchSection } from '../../../src/features/match-details/components';
 import { styles } from '../../../src/features/match-details/styles';
 import { useMatchDetails } from '../../../src/features/match-details/hooks/useMatchDetails';
 
@@ -17,13 +16,17 @@ export default function MatchDetailsScreen() {
     meeting,
     loading,
     error,
-    meetingId,
     lines,
     singles,
     doubles,
     homeTeam,
     awayTeam,
     mainScore,
+    homeWon,
+    awayWon,
+    homeTeamLink,
+    awayTeamLink,
+    openTeam,
     summaryParts,
     startText,
     locationText,
@@ -33,36 +36,20 @@ export default function MatchDetailsScreen() {
   return (
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.headerRow}>
-            <BackButton />
+          <ScreenHeader title={t('match.detailsTitle')} />
 
-            <Text style={[styles.title, { color: colors.text }]}>{t('match.detailsTitle')}</Text>
-          </View>
-
-          <Card style={[styles.scoreCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.teamsRow}>
-              <Text style={[styles.teamName, { color: colors.text }]} numberOfLines={3}>
-                {homeTeam}
-              </Text>
-
-              <View style={[styles.scorePill, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoftBorder }]}>
-                <Text style={[styles.scoreText, { color: colors.primary }]}>{mainScore}</Text>
-                <Text style={[styles.scoreLabel, { color: colors.mutedText }]}>{statusText}</Text>
-              </View>
-
-              <Text style={[styles.teamName, styles.awayTeam, { color: colors.text }]} numberOfLines={3}>
-                {awayTeam}
-              </Text>
-            </View>
-
-            {summaryParts.length > 0 ? (
-                <Text style={[styles.scoreSummary, { color: colors.mutedText }]}>{summaryParts.join(' · ')}</Text>
-            ) : null}
-
-            <Text style={[styles.meetingId, { color: colors.mutedText }]}>
-              Meeting #{meeting?.meeting_id ?? meetingId}
-            </Text>
-          </Card>
+          <MatchHero
+              homeTeam={homeTeam}
+              awayTeam={awayTeam}
+              score={mainScore}
+              status={statusText}
+              homeWon={homeWon}
+              awayWon={awayWon}
+              homeLink={homeTeamLink}
+              awayLink={awayTeamLink}
+              onOpenTeam={openTeam}
+              summary={summaryParts}
+          />
 
           {!loading && !error ? (
               <View style={styles.infoPills}>
@@ -77,15 +64,11 @@ export default function MatchDetailsScreen() {
           {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
           {!loading && !error && lines.length === 0 ? (
-              <EmptyState
-                  icon="analytics-outline"
-                  title={t('match.noLines')}
-                  subtitle={t('match.noLinesSubtitle')}
-              />
+              <EmptyState icon="analytics-outline" title={t('match.noLines')} subtitle={t('match.noLinesSubtitle')} />
           ) : null}
 
-          {!loading && !error && singles.length > 0 ? <MatchSection title={t('match.singlesMatches')} rows={singles} /> : null}
           {!loading && !error && doubles.length > 0 ? <MatchSection title={t('match.doublesMatches')} rows={doubles} /> : null}
+          {!loading && !error && singles.length > 0 ? <MatchSection title={t('match.singlesMatches')} rows={singles} /> : null}
         </ScrollView>
       </Screen>
   );
