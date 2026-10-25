@@ -252,3 +252,68 @@ export function historyEventMatchesSearch(event: NormalizedTtrHistoryEvent, quer
 
     return searchableValues.some((value) => normalizeSearchText(value).includes(normalizedQuery));
 }
+
+
+// Summe der TTR-Änderungen der letzten `days` Tage. Ohne Verlauf gibt es keinen Wert.
+export function getTtrDeltaSince(events: NormalizedTtrHistoryEvent[], days: number) {
+    if (events.length === 0) return undefined;
+
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    let sum = 0;
+
+    for (const event of events) {
+        const timestamp = parseDateTimestamp(event.date);
+        if (timestamp === undefined || timestamp < cutoff) continue;
+
+        if (isFiniteNumber(event.delta)) {
+            sum += event.delta;
+        } else if (isFiniteNumber(event.ttrBefore) && isFiniteNumber(event.ttrAfter)) {
+            sum += event.ttrAfter - event.ttrBefore;
+        }
+    }
+
+    return sum;
+}
+
+export type EventMonthGroup = {
+    key: string;
+    // Erster Tag des Monats, nur für die Beschriftung. Fehlt bei Einträgen ohne Datum.
+    month?: Date;
+    events: NormalizedTtrHistoryEvent[];
+};
+
+// Gruppiert die (bereits sortierten) Einträge nach Monat, die Reihenfolge bleibt erhalten.
+export function groupEventsByMonth(events: NormalizedTtrHistoryEvent[]) {
+    const groups: EventMonthGroup[] = [];
+
+    for (const event of events) {
+        const match = event.date?.match(/^(\d{4})-(\d{2})/);
+        const key = match ? `${match[1]}-${match[2]}` : 'unknown';
+        const last = groups[groups.length - 1];
+
+        if (last && last.key === key) {
+            last.events.push(event);
+            continue;
+        }
+
+        groups.push({
+            key,
+            month: match ? new Date(Number(match[1]), Number(match[2]) - 1, 1) : undefined,
+            events: [event],
+        });
+    }
+
+    return groups;
+}
+
+// Die TTR-Historie liefert nicht in jedem Fall eine Begegnungs-ID, der Link erscheint nur wenn sie da ist.
+export function getEventMeetingId(event: NormalizedTtrHistoryEvent) {
+    if (!isRecord(event.raw)) return undefined;
+
+    const value = event.raw.meeting_id ?? event.raw.meetingId;
+
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+
+    return undefined;
+}

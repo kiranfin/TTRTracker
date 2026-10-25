@@ -40,6 +40,11 @@ export function TtrLineChart({
         .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
         .join(' ');
 
+    const baseline = height - paddingY;
+    const areaPath = points.length > 1
+        ? `${path} L ${points[points.length - 1].x} ${baseline} L ${points[0].x} ${baseline} Z`
+        : '';
+
     const highlightedPoint = points.find((point) => point.event.id === highlightedEvent?.id);
 
     return (
@@ -47,6 +52,8 @@ export function TtrLineChart({
             <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
                 <Line x1={paddingX} y1={height - paddingY} x2={width - paddingX} y2={height - paddingY} stroke={colors.border} strokeWidth="1" />
                 <Line x1={paddingX} y1={paddingY} x2={paddingX} y2={height - paddingY} stroke={colors.border} strokeWidth="1" />
+
+                {areaPath ? <Path d={areaPath} fill={colors.primary} fillOpacity={0.12} /> : null}
 
                 <Path d={path} fill="none" stroke={colors.primary} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
 
