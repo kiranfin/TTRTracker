@@ -2,6 +2,8 @@ import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ensureApiTargetLoaded, getApiTarget, setApiTarget, type ApiTarget } from '@/src/api/apiTarget';
+import { getApiBaseUrl } from '@/src/api/client';
 import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant } from '@/src/api/mytt';
 import { ttApi } from '@/src/api/tttracker';
 import { useAuth } from '@/src/auth/AuthProvider';
@@ -30,6 +32,26 @@ export function useSettings() {
 
   const [health, setHealth] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+
+  const [apiTarget, setApiTargetState] = useState<ApiTarget>(() => getApiTarget());
+  const [apiBaseUrl, setApiBaseUrl] = useState(() => getApiBaseUrl());
+
+  useEffect(() => {
+    let active = true;
+
+    ensureApiTargetLoaded()
+        .then((target) => {
+          if (!active) return;
+
+          setApiTargetState(target);
+          setApiBaseUrl(getApiBaseUrl());
+        })
+        .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -199,6 +221,21 @@ export function useSettings() {
     } finally {
       setChecking(false);
     }
+  }
+
+  async function handleChangeApiTarget(target: ApiTarget) {
+    // Status und Freigaben gehören zum jeweiligen Backend
+    setHealth(null);
+    setAuthMessage(null);
+    setMyttStatus(null);
+    setMyttMessage(null);
+    setGrants([]);
+    setGrantMessage(null);
+
+    await setApiTarget(target);
+
+    setApiTargetState(getApiTarget());
+    setApiBaseUrl(getApiBaseUrl());
   }
 
   async function handleLogin() {
@@ -448,6 +485,9 @@ export function useSettings() {
     isAuthenticated,
     health,
     checking,
+    apiTarget,
+    apiBaseUrl,
+    handleChangeApiTarget,
     username,
     setUsername,
     password,

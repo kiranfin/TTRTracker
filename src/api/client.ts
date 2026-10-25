@@ -1,6 +1,5 @@
 import { getAccessToken } from '../storage/authToken';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+import { ensureApiTargetLoaded, getApiBaseUrlForTarget, getApiTarget } from './apiTarget';
 
 export class ApiError extends Error {
   status?: number;
@@ -44,11 +43,17 @@ function extractError(data: unknown, fallback: string) {
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>) {
-  if (!API_BASE_URL) {
-    throw new ApiError('EXPO_PUBLIC_API_BASE_URL fehlt in .env');
+  const apiBaseUrl = getApiBaseUrl();
+
+  if (!apiBaseUrl) {
+    throw new ApiError(
+        getApiTarget() === 'local'
+            ? 'Lokale Backend-Adresse unbekannt, EXPO_PUBLIC_LOCAL_API_BASE_URL in .env setzen'
+            : 'EXPO_PUBLIC_API_BASE_URL fehlt in .env'
+    );
   }
 
-  const base = API_BASE_URL.replace(/\/$/, '');
+  const base = apiBaseUrl.replace(/\/$/, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   const query = new URLSearchParams();
 
@@ -80,6 +85,8 @@ export async function apiRequest<T>(
     path: string,
     options: ApiRequestOptions = {}
 ): Promise<T> {
+  await ensureApiTargetLoaded();
+
   const headers: Record<string, string> = {
     Accept: 'application/json',
   };
@@ -165,5 +172,5 @@ export async function apiDelete<T>(
 }
 
 export function getApiBaseUrl() {
-  return API_BASE_URL ?? '';
+  return getApiBaseUrlForTarget(getApiTarget()) ?? '';
 }

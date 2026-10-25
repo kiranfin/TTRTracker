@@ -95,11 +95,24 @@ EXPO_PUBLIC_API_BASE_URL=https://your-backend-domain.com
 
 ## Local Development Setup
 
-Create a `.env` file in the root of the project when your backend is running on your computer (example):
+Create a `.env` file in the root of the project that points to your deployed backend:
 
 ```env
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+EXPO_PUBLIC_API_BASE_URL=https://your-backend-domain.com
 ```
+
+In a development build (JS served by Metro) the settings screen (System tab) shows a switch between **Server** and **Local (PC)**. Local uses the IP of the machine running Metro and port `4001`, so the phone reaches the backend on your PC over Wi-Fi. Preview and production builds never show the switch and always use `EXPO_PUBLIC_API_BASE_URL`.
+
+Optional overrides for the local backend:
+
+```env
+# Port of the local backend (default 4001)
+EXPO_PUBLIC_LOCAL_API_PORT=4001
+# Full URL, e.g. when using a tunnel or an emulator setup that cannot be detected
+EXPO_PUBLIC_LOCAL_API_BASE_URL=http://192.168.178.20:4001
+```
+
+The local backend must listen on all interfaces (`HOST=0.0.0.0` in the backend `.env`). Login tokens are stored per backend, because the local backend has its own users.
 
 ## Running the App
 

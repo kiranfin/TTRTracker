@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ImageBackground, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import ColorPicker, { HueCircular, Panel1, Preview } from 'reanimated-color-picker';
 
-import { getApiBaseUrl } from '@/src/api/client';
+import { canSwitchApiTarget, type ApiTarget } from '@/src/api/apiTarget';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
 import { Screen } from '@/src/components/Screen';
@@ -35,6 +35,9 @@ export default function SettingsScreen() {
     isAuthenticated,
     health,
     checking,
+    apiTarget,
+    apiBaseUrl,
+    handleChangeApiTarget,
     username,
     setUsername,
     password,
@@ -129,6 +132,22 @@ export default function SettingsScreen() {
       },
     ];
   }, [language]);
+
+  const apiTargetOptions = useMemo<SegmentOption<ApiTarget>[]>(
+      () => [
+        {
+          value: 'server',
+          label: t('settings.apiTargetServer'),
+          icon: 'cloud-outline',
+        },
+        {
+          value: 'local',
+          label: t('settings.apiTargetLocal'),
+          icon: 'desktop-outline',
+        },
+      ],
+      [t],
+  );
 
   return (
       <Screen>
@@ -943,8 +962,27 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
 
+                  {canSwitchApiTarget ? (
+                      <>
+                        <Text style={[styles.backendText, { color: colors.mutedText }]}>
+                          {t('settings.apiTargetDescription')}
+                        </Text>
+
+                        <SegmentedTabs
+                            value={apiTarget}
+                            onChange={(target) => {
+                              handleChangeApiTarget(target).catch(() => undefined);
+                            }}
+                            options={apiTargetOptions}
+                        />
+                      </>
+                  ) : null}
+
                   <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                    {getApiBaseUrl() || t('settings.apiBaseMissing')}
+                    {apiBaseUrl ||
+                        (apiTarget === 'local'
+                            ? t('settings.apiTargetLocalMissing')
+                            : t('settings.apiBaseMissing'))}
                   </Text>
 
                   <Button variant="outline" icon="pulse-outline" loading={checking} onPress={checkHealth}>

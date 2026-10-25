@@ -14,6 +14,15 @@ import {
     registerAppUser,
     type AppUser,
 } from '../api/auth';
+import { subscribeApiTarget } from '../api/apiTarget';
+import { ApiError } from '../api/client';
+
+// Nur ein abgelehnter Token wird gelöscht, nicht schon bei Netzwerkfehlern
+async function clearTokenIfRejected(error: unknown) {
+    if (error instanceof ApiError && error.status === 401) {
+        await logoutAppUser();
+    }
+}
 
 type AuthContextValue = {
     user: AppUser | null;
@@ -36,12 +45,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const currentUser = await getCurrentAppUser();
             setUser(currentUser);
             return currentUser;
-        } catch {
+        } catch (error) {
             setUser(null);
-            await logoutAppUser();
+            await clearTokenIfRejected(error);
             return null;
         }
     }, []);
+
+    useEffect(() => {
+        return subscribeApiTarget(() => {
+            setUser(null);
+            refreshUser().catch(() => undefined);
+        });
+    }, [refreshUser]);
 
     useEffect(() => {
         let mounted = true;
@@ -53,12 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (mounted) {
                     setUser(currentUser);
                 }
-            } catch {
+            } catch (error) {
                 if (mounted) {
                     setUser(null);
                 }
 
-                await logoutAppUser();
+                await clearTokenIfRejected(error);
             } finally {
                 if (mounted) {
                     setIsLoading(false);
