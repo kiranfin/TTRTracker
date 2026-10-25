@@ -20,6 +20,7 @@ import {
   matchesRoundFilter,
   parseMatchDate,
 } from '../utils';
+import { getCurrentSeason } from '@/src/utils/dates';
 
 export function useLeagueDetails() {
   const params = useLocalSearchParams<Record<string, string>>();
@@ -43,7 +44,7 @@ export function useLeagueDetails() {
       title: params.title ?? t('league.defaultTitle'),
       association: params.association,
       groupId,
-      season: params.season ?? '25/26',
+      season: params.season || getCurrentSeason(),
       leagueSlug: params.leagueSlug ?? 'x',
       favoriteId: getLeagueFavoriteId({
         favoriteId: params.favoriteId ?? params.id ?? params.leagueId,

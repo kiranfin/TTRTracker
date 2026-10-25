@@ -47,7 +47,7 @@ export default function ClubDetailsScreen() {
 
     const subtitle = [params.state, organization, clubNumber ? t('club.idLabel', { clubNumber }) : undefined]
         .filter(Boolean)
-        .join(' • ');
+        .join(' · ');
 
     return (
         <Screen>
@@ -58,7 +58,8 @@ export default function ClubDetailsScreen() {
 
                 <View style={styles.actionRow}>
                     <ActionButton
-                        icon={isMyClub ? 'checkmark-circle' : 'home-outline'}
+                        layout="inline"
+                        icon={isMyClub ? 'checkmark-circle' : 'checkmark'}
                         label={t('settings.myClub')}
                         variant={isMyClub ? 'primary' : 'secondary'}
                         loading={meClubLoading}
@@ -66,9 +67,10 @@ export default function ClubDetailsScreen() {
                     />
 
                     <ActionButton
+                        layout="inline"
                         icon={isFavoriteClub ? 'star' : 'star-outline'}
                         label={t('club.favoriteAction')}
-                        variant={isFavoriteClub ? 'primary' : 'secondary'}
+                        variant={isFavoriteClub ? 'active' : 'secondary'}
                         loading={favoriteClubLoading}
                         onPress={() => { toggleFavoriteClub().catch(() => undefined); }}
                     />

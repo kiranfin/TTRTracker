@@ -9,3 +9,10 @@ export type MyLeague = {
   source: 'favorite' | 'club';
   teamName?: string;
 };
+
+// Platz und Punkte der eigenen Mannschaft in "Deine Ligen", size = Anzahl Mannschaften
+export type LeagueStanding = {
+  size: number;
+  rank?: string;
+  points?: string;
+};

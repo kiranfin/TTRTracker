@@ -51,8 +51,8 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
 
             {scheduleGroups.map((group) => (
                 <View key={group.dateKey} style={styles.dayGroup}>
-                    <Text style={[typography.label, styles.dayLabel, { color: colors.mutedText }]}>
-                        {(group.dateKey === '9999-99-99' ? t('common.dateUnknown') : group.dateLabel).toUpperCase()}
+                    <Text style={[typography.groupLabel, styles.dayLabel, { color: colors.mutedText }]}>
+                        {(group.dateKey === '9999-99-99' ? t('common.dateUnknown') : group.dateLabel)}
                     </Text>
 
                     <ListGroup>

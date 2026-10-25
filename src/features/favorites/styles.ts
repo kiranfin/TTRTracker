@@ -1,13 +1,15 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 112,
-    gap: 18,
+    gap: 16,
   },
   section: {
-    gap: 10,
+    gap: 8,
   },
   trailing: {
     flexDirection: 'row',
@@ -15,7 +17,7 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   editText: {
-    fontWeight: '700',
+    ...font('600'),
   },
   editButton: {
     minHeight: 44,

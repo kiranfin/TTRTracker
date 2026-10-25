@@ -1,11 +1,12 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
     content: {
-        padding: 16,
-        paddingTop: 20,
+        paddingHorizontal: 16,
+        paddingTop: 4,
         paddingBottom: 112,
-        gap: 16,
+        gap: 18,
     },
     filterRow: {
         flexDirection: 'row',
@@ -18,14 +19,14 @@ export const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 12,
         lineHeight: 16,
-        fontWeight: '800',
+        ...font('800'),
     },
     filterButtonRow: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: 10,
     },
-    error: {
+    error: { ...font('400'),
         fontSize: 14,
         lineHeight: 20,
     },
@@ -46,7 +47,7 @@ export const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         lineHeight: 20,
-        fontWeight: '800',
+        ...font('800'),
     },
     calendarOverlay: {
         flex: 1,
@@ -72,9 +73,9 @@ export const styles = StyleSheet.create({
     calendarTitle: {
         fontSize: 18,
         lineHeight: 24,
-        fontWeight: '900',
+        ...font('900'),
     },
-    calendarSubtitle: {
+    calendarSubtitle: { ...font('400'),
         marginTop: 2,
         fontSize: 13,
         lineHeight: 18,
@@ -106,7 +107,7 @@ export const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 15,
         lineHeight: 21,
-        fontWeight: '900',
+        ...font('900'),
         textTransform: 'capitalize',
     },
     weekdayRow: {
@@ -117,7 +118,7 @@ export const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 12,
         lineHeight: 16,
-        fontWeight: '900',
+        ...font('900'),
     },
     calendarGrid: {
         flexDirection: 'row',
@@ -137,7 +138,7 @@ export const styles = StyleSheet.create({
     calendarDayText: {
         fontSize: 14,
         lineHeight: 19,
-        fontWeight: '900',
+        ...font('900'),
     },
     calendarFooter: {
         flexDirection: 'row',
@@ -155,7 +156,7 @@ export const styles = StyleSheet.create({
     calendarClearButtonText: {
         fontSize: 13,
         lineHeight: 18,
-        fontWeight: '900',
+        ...font('900'),
     },
     calendarTodayButton: {
         minHeight: 40,
@@ -168,7 +169,7 @@ export const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 13,
         lineHeight: 18,
-        fontWeight: '900',
+        ...font('900'),
     },
     clubHead: {
         flexDirection: 'row',
@@ -178,20 +179,21 @@ export const styles = StyleSheet.create({
     clubHeadText: {
         flex: 1,
         minWidth: 0,
-        gap: 2,
+        gap: 4,
+    },
+    clubHeadSubtitle: {
+        fontSize: 14,
     },
     actionRow: {
         flexDirection: 'row',
-        gap: 10,
-    },
-    nextMatchCard: {
-        padding: 16,
-        gap: 6,
-    },
-    nextMatchHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
         gap: 8,
+    },
+    nextMatchEmpty: {
+        padding: 16,
+    },
+    rankBlock: {
+        alignItems: 'flex-end',
+        gap: 1,
     },
     playerTrailing: {
         flexDirection: 'row',

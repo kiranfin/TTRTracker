@@ -1,6 +1,7 @@
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { ScheduleMatch, TableRow } from '@/src/types/tttracker';
 import type { SchedulePeriodFilter, RoundFilter, LeagueInfo, TeamScheduleStats, RichTableRow, PromotionState, ThemeColors, EnrichedScheduleMatch, ScheduleRound } from './types';
+import { getCurrentSeason } from '@/src/utils/dates';
 export const LEAGUE_FAVORITE_TYPE = 'league' as const;
 export function roundFilterLabel(filter: RoundFilter, t: ReturnType<typeof useI18n>['t']) {
     switch (filter) {
@@ -86,7 +87,7 @@ export function normalizeSeasonLabel(value?: string) {
 }
 
 export function formatSeasonLabel(value?: string) {
-    return String(value ?? '25/26').replace(/--/g, '/');
+    return String(value || getCurrentSeason()).replace(/--/g, '/');
 }
 
 export function getTableStats(

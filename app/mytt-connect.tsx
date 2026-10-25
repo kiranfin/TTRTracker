@@ -19,6 +19,7 @@ import { Card } from '../src/components/Card';
 import { Screen } from '../src/components/Screen';
 import { useI18n } from '../src/i18n/I18nProvider';
 import { useTheme } from '../src/theme/ThemeProvider';
+import { font } from '@/src/theme/typography';
 
 const MYTT_BASE_URL = 'https://www.mytischtennis.de';
 
@@ -200,20 +201,20 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 18,
         lineHeight: 24,
-        fontWeight: '800',
+        ...font('800'),
     },
-    description: {
+    description: { ...font('400'),
         fontSize: 13,
         lineHeight: 19,
     },
-    urlText: {
+    urlText: { ...font('400'),
         fontSize: 11,
         lineHeight: 16,
     },
     message: {
         fontSize: 13,
         lineHeight: 19,
-        fontWeight: '700',
+        ...font('700'),
     },
     actions: {
         flexDirection: 'row',
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
         gap: 8,
         padding: 12,
     },
-    loadingText: {
+    loadingText: { ...font('400'),
         fontSize: 13,
         lineHeight: 18,
     },

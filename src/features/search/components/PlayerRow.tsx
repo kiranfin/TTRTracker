@@ -21,15 +21,17 @@ export function PlayerRow({ player, favorite, onPress, onToggleFavorite }: Playe
       <ListRow
           leading={<Avatar name={player.fullName} size={40} />}
           title={player.fullName}
-          subtitle={[player.clubName, player.state].filter(Boolean).join(' · ') || undefined}
+          subtitle={player.clubName || undefined}
           chevron={false}
           onPress={onPress}
           trailing={
             <View style={styles.trailing}>
               {typeof player.ttr === 'number' ? (
-                  <Text style={[numeric.medium, { color: colors.text }]}>{player.ttr}</Text>
+                  <View style={styles.ttrBlock}>
+                    <Text style={[numeric.medium, { color: colors.text }]}>{player.ttr}</Text>
+                    <Text style={[styles.ttrCaption, { color: colors.mutedText }]}>TTR</Text>
+                  </View>
               ) : null}
-
               <StarButton active={favorite} onPress={onToggleFavorite} />
             </View>
           }

@@ -38,7 +38,7 @@ export function HomeHeader({ firstName, displayName, hasProfile }: HomeHeaderPro
             onPress={() => router.push('/settings')}
             style={({ pressed }) => [styles.avatarButton, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <Avatar name={hasProfile ? displayName : undefined} size={44} />
+          <Avatar name={hasProfile ? displayName : undefined} size={44} tone="accent" />
         </Pressable>
       </View>
   );

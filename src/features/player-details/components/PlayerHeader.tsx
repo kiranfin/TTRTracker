@@ -9,66 +9,64 @@ import { formatDate } from '@/src/utils/normalizers';
 import { styles } from '../styles';
 
 type PlayerHeaderProps = {
-    name: string;
-    clubName?: string;
-    ttr?: number;
-    ttrDate?: string;
-    monthlyDelta?: number;
-    loading: boolean;
-    onOpenClub?: () => void;
+  name: string;
+  clubName?: string;
+  ttr?: number;
+  ttrDate?: string;
+  monthlyDelta?: number;
+  loading: boolean;
+  onOpenClub?: () => void;
 };
 
-// Avatar, Name, Vereinslink und der aktuelle TTR mit Änderung der letzten 30 Tage.
+// Avatar, Name und Vereinslink, darunter der TTR groß mit Stand-Datum und Änderung der letzten 30 Tage.
 export function PlayerHeader({ name, clubName, ttr, ttrDate, monthlyDelta, loading, onOpenClub }: PlayerHeaderProps) {
-    const { colors } = useTheme();
-    const { t } = useI18n();
+  const { colors } = useTheme();
+  const { t } = useI18n();
 
-    return (
-        <View style={styles.profileHead}>
-            <View style={styles.profileIdentity}>
-                <Avatar name={name} size={64} />
+  return (
+      <View style={styles.profileHead}>
+        <View style={styles.profileIdentity}>
+          <Avatar name={name} size={60} tone="accent" />
 
-                <View style={styles.profileIdentityText}>
-                    <Text style={[typography.title, { color: colors.text }]} numberOfLines={2}>
-                        {name}
-                    </Text>
+          <View style={styles.profileIdentityText}>
+            <Text style={[typography.heading, { color: colors.text }]} numberOfLines={2}>
+              {name}
+            </Text>
 
-                    <Pressable
-                        accessibilityRole="link"
-                        disabled={!onOpenClub}
-                        onPress={onOpenClub}
-                        hitSlop={{ top: 8, bottom: 8 }}
-                        style={styles.clubLink}
-                    >
-                        <Text
-                            style={[typography.meta, { color: onOpenClub ? colors.primary : colors.mutedText, flexShrink: 1 }]}
-                            numberOfLines={1}
-                        >
-                            {clubName ?? t('entities.clubUnknown')}
-                        </Text>
-
-                        {onOpenClub ? <Ionicons name="chevron-forward" size={14} color={colors.primary} /> : null}
-                    </Pressable>
-                </View>
-            </View>
-
-            {!loading ? (
-                <View style={styles.ttrRow}>
-                    <View>
-                        <Text style={[numeric.hero, { color: colors.text }]}>{ttr !== undefined ? ttr : '—'}</Text>
-                        <Text style={[typography.label, { color: colors.mutedText }]}>
-                            {ttrDate ? t('player.currentTtrWithDate', { date: formatDate(ttrDate) }) : t('home.currentTtr')}
-                        </Text>
-                    </View>
-
-                    {typeof monthlyDelta === 'number' ? (
-                        <View style={styles.ttrDelta}>
-                            <DeltaPill value={monthlyDelta} />
-                            <Text style={[typography.label, { color: colors.mutedText }]}>{t('home.last30Days')}</Text>
-                        </View>
-                    ) : null}
-                </View>
-            ) : null}
+            <Pressable
+                accessibilityRole="link"
+                disabled={!onOpenClub}
+                onPress={onOpenClub}
+                hitSlop={{ top: 8, bottom: 8 }}
+                style={styles.clubLink}
+            >
+              <Text
+                  style={[typography.metaStrong, styles.clubLinkText, { color: onOpenClub ? colors.primary : colors.mutedText }]}
+                  numberOfLines={1}
+              >
+                {clubName ?? t('entities.clubUnknown')}
+              </Text>
+              {onOpenClub ? <Ionicons name="chevron-forward" size={15} color={colors.primary} /> : null}
+            </Pressable>
+          </View>
         </View>
-    );
+
+        {!loading ? (
+            <View style={styles.ttrRow}>
+              <View style={styles.ttrValueBlock}>
+                <Text style={[typography.label, { color: colors.mutedText }]}>
+                  {ttrDate ? t('player.ttrAsOf', { date: formatDate(ttrDate) }) : 'TTR'}
+                </Text>
+                <Text style={[numeric.hero, { color: colors.text }]}>{ttr !== undefined ? ttr : '–'}</Text>
+              </View>
+
+              {typeof monthlyDelta === 'number' ? (
+                  <View style={styles.ttrDelta}>
+                    <DeltaPill value={monthlyDelta} suffix={t('home.in30Days')} />
+                  </View>
+              ) : null}
+            </View>
+        ) : null}
+      </View>
+  );
 }

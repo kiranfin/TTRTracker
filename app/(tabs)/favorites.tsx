@@ -87,7 +87,7 @@ export default function FavoritesScreen() {
 
                 {visibleGroups.map((group) => (
                     <View key={group.type} style={styles.section}>
-                      {activeFilter === 'all' ? <SectionHeader title={group.title} /> : null}
+                      {activeFilter === 'all' ? <SectionHeader variant="label" title={group.title} /> : null}
 
                       <ListGroup>
                         {group.items.map((item) => (

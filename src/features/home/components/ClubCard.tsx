@@ -1,16 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { Avatar } from '@/src/components/Avatar';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
-import { ListGroup } from '@/src/components/ListGroup';
-import { ListRow } from '@/src/components/ListRow';
+import { MatchHighlightCard } from '@/src/components/MatchHighlightCard';
 import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
-import { formatDate } from '@/src/utils/normalizers';
+import { formatShortWeekdayDate } from '@/src/utils/dates';
 import type { HomeClubMatch } from '../types';
 import { styles } from '../styles';
 
@@ -28,6 +25,22 @@ function getOpenMatchHandler(match: HomeClubMatch) {
       });
 }
 
+function normalizeName(value?: string | null) {
+  return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// Heim oder Auswärts über den gespeicherten Vereinsnamen; unklar bleibt undefined.
+function getHomeSide(match: HomeClubMatch, clubName?: string | null) {
+  const club = normalizeName(clubName);
+  if (club.length < 3) return undefined;
+
+  const home = normalizeName(match.homeTeam).includes(club);
+  const away = normalizeName(match.awayTeam).includes(club);
+
+  if (home === away) return undefined;
+  return home;
+}
+
 type ClubCardProps = {
   clubName?: string | null;
   hasSavedClub: boolean;
@@ -39,6 +52,7 @@ type ClubCardProps = {
   onOpenSearch: () => void;
 };
 
+// Vereinsbereich: Überschrift mit Link zum Verein, darunter das nächste Spiel (oder das letzte Ergebnis).
 export function ClubCard({
                            clubName,
                            hasSavedClub,
@@ -50,7 +64,7 @@ export function ClubCard({
                            onOpenSearch,
                          }: ClubCardProps) {
   const { colors } = useTheme();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   if (!hasSavedClub) {
     return (
@@ -67,62 +81,45 @@ export function ClubCard({
     );
   }
 
-  const dateLabel = (match: HomeClubMatch) =>
-      [match.date ? formatDate(match.date) : t('common.dateUnknown'), match.time].filter(Boolean).join(' · ');
+  const match = nextMatch ?? results[0] ?? null;
+  const homeSide = match ? getHomeSide(match, clubName) : undefined;
+  const footer = match
+      ? [match.leagueName, homeSide === undefined ? undefined : homeSide ? t('home.homeMatch') : t('home.awayMatch')]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
 
   return (
       <View style={styles.section}>
-        <SectionHeader title={t('home.myClub')} />
+        <SectionHeader
+            title={clubName ?? t('entities.clubUnknown')}
+            actionLabel={t('home.toClub')}
+            onActionPress={onOpenClub}
+        />
 
-        <ListGroup>
-          <ListRow
-              leading={<Avatar icon="home" shape="square" />}
-              title={clubName ?? t('entities.clubUnknown')}
-              onPress={onOpenClub}
-          />
-
-          {loading ? (
-              <View style={styles.clubMessage}>
-                <ActivityIndicator color={colors.primary} />
-              </View>
-          ) : error ? (
-              <View style={styles.clubMessage}>
-                <Text style={[typography.body, { color: colors.destructive }]}>{error}</Text>
-              </View>
-          ) : (
-              <>
-                {nextMatch ? (
-                    <ListRow
-                        leading={<Ionicons name="calendar-outline" size={22} color={colors.primary} />}
-                        title={`${nextMatch.homeTeam} - ${nextMatch.awayTeam}`}
-                        subtitle={`${t('home.nextMatch')} · ${dateLabel(nextMatch)}`}
-                        onPress={getOpenMatchHandler(nextMatch)}
-                    />
-                ) : (
-                    <ListRow
-                        leading={<Ionicons name="calendar-outline" size={22} color={colors.mutedText} />}
-                        title={t('home.noUpcomingMatch')}
-                    />
-                )}
-
-                {results.map((match, index) => (
-                    <ListRow
-                        key={`${match.id ?? 'match'}-${match.date ?? 'date'}-${index}`}
-                        leading={<Ionicons name="checkmark-circle-outline" size={22} color={colors.mutedText} />}
-                        title={`${match.homeTeam} - ${match.awayTeam}`}
-                        subtitle={[dateLabel(match), match.leagueName].filter(Boolean).join(' · ')}
-                        trailing={
-                          <Text style={[styles.scoreText, { color: colors.text }]}>
-                            {match.homeScore ?? '-'}:{match.awayScore ?? '-'}
-                          </Text>
-                        }
-                        chevron={false}
-                        onPress={getOpenMatchHandler(match)}
-                    />
-                ))}
-              </>
-          )}
-        </ListGroup>
+        {loading ? (
+            <Card style={styles.clubMessage}>
+              <ActivityIndicator color={colors.primary} />
+            </Card>
+        ) : error ? (
+            <Card style={styles.clubMessage}>
+              <Text style={[typography.body, { color: colors.destructive }]}>{error}</Text>
+            </Card>
+        ) : !match ? (
+            <Card style={styles.clubMessage}>
+              <Text style={[typography.body, { color: colors.mutedText }]}>{t('home.noUpcomingMatch')}</Text>
+            </Card>
+        ) : (
+            <MatchHighlightCard
+                badge={nextMatch ? t('home.nextMatch') : t('home.lastResult')}
+                dateLabel={formatShortWeekdayDate(match.date, language, match.time)}
+                homeTeam={match.homeTeam}
+                awayTeam={match.awayTeam}
+                score={nextMatch ? undefined : `${match.homeScore ?? '-'}:${match.awayScore ?? '-'}`}
+                footer={footer || undefined}
+                onPress={getOpenMatchHandler(match) ?? onOpenClub}
+            />
+        )}
       </View>
   );
 }

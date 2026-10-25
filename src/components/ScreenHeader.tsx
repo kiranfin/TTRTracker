@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '../i18n/I18nProvider';
-import { spacing } from '../theme/spacing';
+import { MIN_TOUCH, spacing } from '../theme/spacing';
 import { useTheme } from '../theme/ThemeProvider';
 import { typography } from '../theme/typography';
 
@@ -11,6 +11,7 @@ type BackButtonProps = {
   onPress?: () => void;
 };
 
+// Schlichter Chevron ohne Rahmen, links bündig mit dem Inhalt.
 export function BackButton({ onPress }: BackButtonProps) {
   const { colors } = useTheme();
   const { t } = useI18n();
@@ -21,17 +22,9 @@ export function BackButton({ onPress }: BackButtonProps) {
           accessibilityRole="button"
           accessibilityLabel={t('common.back')}
           onPress={onPress ?? (() => router.back())}
-          hitSlop={6}
-          style={({ pressed }) => [
-            styles.backButton,
-            noWebOutline,
-            {
-              backgroundColor: pressed ? colors.primarySoft : colors.card,
-              borderColor: pressed ? colors.primarySoftBorder : colors.border,
-            },
-          ]}
+          style={({ pressed }) => [styles.backButton, noWebOutline, { opacity: pressed ? 0.5 : 1 }]}
       >
-        <Ionicons name="arrow-back" size={22} color={colors.text} />
+        <Ionicons name="chevron-back" size={26} color={colors.text} />
       </Pressable>
   );
 }
@@ -52,7 +45,7 @@ export function ScreenHeader({ title, onBack, hideBack, right }: ScreenHeaderPro
 
         <View style={styles.titleWrap}>
           {title ? (
-              <Text style={[typography.section, styles.title, { color: colors.text }]} numberOfLines={1}>
+              <Text style={[typography.title, { color: colors.text }]} numberOfLines={1}>
                 {title}
               </Text>
           ) : null}
@@ -63,18 +56,43 @@ export function ScreenHeader({ title, onBack, hideBack, right }: ScreenHeaderPro
   );
 }
 
+type HeaderIconButtonProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  accessibilityLabel: string;
+  onPress: () => void;
+  color?: string;
+};
+
+// Umrandeter 44er Button rechts im Header (z. B. Stern auf Profil und Liga).
+export function HeaderIconButton({ icon, accessibilityLabel, onPress, color }: HeaderIconButtonProps) {
+  const { colors } = useTheme();
+
+  return (
+      <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          onPress={onPress}
+          style={({ pressed }) => [
+            styles.iconButton,
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+          ]}
+      >
+        <Ionicons name={icon} size={20} color={color ?? colors.text} />
+      </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    minHeight: 44,
+    gap: spacing.sm,
+    minHeight: MIN_TOUCH,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    marginLeft: -10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -82,12 +100,17 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  title: {
-    textAlign: 'left',
-  },
   right: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  iconButton: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

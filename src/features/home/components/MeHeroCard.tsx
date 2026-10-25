@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Button } from '@/src/components/Button';
 import { DeltaPill } from '@/src/components/Delta';
@@ -8,11 +9,9 @@ import { numeric, typography } from '@/src/theme/typography';
 import { formatOptionalNumber } from '../utils';
 import { styles } from '../styles';
 
-const LINE_COLOR = 'rgba(255,255,255,0.28)';
+const LINE_COLOR = 'rgba(255,255,255,0.22)';
 
 type MeHeroCardProps = {
-  displayName: string;
-  clubName?: string | null;
   currentTtr?: number;
   qTtr?: number;
   maxTtr?: number;
@@ -25,10 +24,8 @@ type MeHeroCardProps = {
   onRetry: () => void;
 };
 
-// Hero-Karte in Akzentfarbe: TTR groß, Änderung der letzten 30 Tage, Sparkline und Kennzahlen.
+// Hero-Karte in Akzentfarbe: TTR groß, Änderung der letzten 30 Tage, Verlaufslinie und drei Kennzahlen.
 export function MeHeroCard({
-                             displayName,
-                             clubName,
                              currentTtr,
                              qTtr,
                              maxTtr,
@@ -42,33 +39,28 @@ export function MeHeroCard({
                            }: MeHeroCardProps) {
   const { colors } = useTheme();
   const { t } = useI18n();
-
   const foreground = colors.primaryForeground;
-  const subtle = { color: foreground, opacity: 0.74 };
+  const subtle = { color: foreground, opacity: 0.86 };
 
   const stats = [
     { label: t('home.qTtr'), value: formatOptionalNumber(qTtr) },
     { label: t('home.bestValue'), value: formatOptionalNumber(maxTtr) },
-    { label: t('home.winRate'), value: typeof winRate === 'number' ? `${winRate}%` : '—' },
+    { label: t('home.winRate'), value: typeof winRate === 'number' ? `${winRate} %` : '–' },
   ];
 
   return (
       <Pressable
           accessibilityRole="button"
-          accessibilityLabel={displayName}
+          accessibilityLabel={t('home.yourTtr')}
           onPress={onOpenProfile}
           style={({ pressed }) => [styles.heroCard, { backgroundColor: colors.primary, opacity: pressed ? 0.92 : 1 }]}
       >
-        <View>
-          <Text style={[typography.bodyStrong, { color: foreground }]} numberOfLines={1}>
-            {displayName}
-          </Text>
-
-          {clubName ? (
-              <Text style={[typography.meta, subtle]} numberOfLines={1}>
-                {clubName}
-              </Text>
-          ) : null}
+        <View style={styles.heroHeader}>
+          <Text style={[typography.bodyStrong, styles.heroHeaderLabel, subtle]}>{t('home.yourTtr')}</Text>
+          <View style={styles.heroProfileLink}>
+            <Text style={[typography.metaStrong, subtle]}>{t('home.profileLink')}</Text>
+            <Ionicons name="chevron-forward" size={15} color={foreground} />
+          </View>
         </View>
 
         {loading ? (
@@ -79,7 +71,6 @@ export function MeHeroCard({
         ) : error ? (
             <View style={styles.heroError}>
               <Text style={[typography.body, { color: foreground }]}>{error}</Text>
-
               <Button variant="outline" icon="refresh-outline" onPress={onRetry}>
                 {t('common.retry')}
               </Button>
@@ -87,30 +78,21 @@ export function MeHeroCard({
         ) : (
             <>
               <View style={styles.heroTopRow}>
-                <View>
-                  <Text style={[typography.label, subtle]}>{t('home.currentTtr')}</Text>
-                  <Text style={[numeric.hero, { color: foreground }]}>{formatOptionalNumber(currentTtr)}</Text>
-                </View>
-
+                <Text style={[numeric.display, { color: foreground }]}>{formatOptionalNumber(currentTtr)}</Text>
                 {typeof delta30 === 'number' ? (
-                    <View style={styles.heroDeltaBlock}>
-                      <DeltaPill value={delta30} onPrimary />
-                      <Text style={[typography.label, subtle]}>{t('home.last30Days')}</Text>
+                    <View style={styles.heroDelta}>
+                      <DeltaPill value={delta30} suffix={t('home.in30Days')} onPrimary />
                     </View>
                 ) : null}
               </View>
 
-              <Sparkline values={series} color={foreground} />
+              <Sparkline values={series} color={foreground} endDot />
 
               <View style={[styles.heroStats, { borderTopColor: LINE_COLOR }]}>
-                {stats.map((stat, index) => (
-                    <View key={stat.label} style={styles.heroStatCell}>
-                      {index > 0 ? <View style={[styles.heroStatDivider, { backgroundColor: LINE_COLOR }]} /> : null}
-
-                      <View style={styles.heroStat}>
-                        <Text style={[numeric.medium, { color: foreground }]}>{stat.value}</Text>
-                        <Text style={[typography.label, subtle]}>{stat.label}</Text>
-                      </View>
+                {stats.map((stat) => (
+                    <View key={stat.label} style={styles.heroStat}>
+                      <Text style={[typography.label, subtle]}>{stat.label}</Text>
+                      <Text style={[numeric.medium, { color: foreground }]}>{stat.value}</Text>
                     </View>
                 ))}
               </View>

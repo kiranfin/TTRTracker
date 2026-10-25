@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { FavoriteItem, getFavorites, removeFavorite } from '@/src/storage/favorites';
 import { addRecentViewed } from '@/src/storage/recentViewed';
+import { getCurrentSeason } from '@/src/utils/dates';
 
 export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -82,7 +83,7 @@ export function useFavorites() {
           leagueKey: item.params?.groupId ?? item.id,
           association: item.params?.association ?? '',
           groupId: item.params?.groupId ?? item.id,
-          season: item.params?.season ?? '25/26',
+          season: item.params?.season || getCurrentSeason(),
           leagueSlug: item.params?.leagueSlug ?? 'x',
           title: item.params?.title ?? item.title,
         },

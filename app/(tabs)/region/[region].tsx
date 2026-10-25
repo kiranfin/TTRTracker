@@ -1,21 +1,21 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
 import { Breadcrumb } from '@/src/components/Breadcrumb';
-import { Button, IconButton } from '@/src/components/Button';
+import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
 import { ListRow } from '@/src/components/ListRow';
 import { Screen } from '@/src/components/Screen';
-import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { SectionHeader } from '@/src/components/SectionHeader';
 import { StarButton } from '@/src/components/StarButton';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { favoriteKey } from '@/src/storage/favorites';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
+import { formatSeasonLong } from '@/src/utils/dates';
 import { formatSeasonLabel, useRegionLeagues } from '../../../src/features/leagues/hooks/useRegionLeagues';
 import { styles } from '../../../src/features/leagues/styles';
 import { SkeletonList } from '@/src/components/SkeletonRow';
@@ -27,6 +27,7 @@ export default function RegionLeaguesScreen() {
   const {
     associationTitle,
     shortName,
+    season,
     favoriteSet,
     sortedRegions,
     groupedClasses,
@@ -57,13 +58,16 @@ export default function RegionLeaguesScreen() {
           <View style={styles.headerBlock}>
             <ScreenHeader
                 onBack={selectedRegion ? backToRegions : () => router.push('/leagues')}
-                right={<IconButton icon="refresh-outline" onPress={refresh} accessibilityLabel={t('mytt.reload')} />}
+                right={<HeaderIconButton icon="refresh-outline" onPress={refresh} accessibilityLabel={t('mytt.reload')} />}
             />
 
             <Breadcrumb items={breadcrumb} />
 
-            <Text style={[typography.title, { color: colors.text }]} numberOfLines={2}>
+            <Text style={[typography.heading, { color: colors.text }]} numberOfLines={2}>
               {pageTitle}
+            </Text>
+            <Text style={[typography.meta, { color: colors.mutedText }]}>
+              {t('leagues.seasonLabel', { season: formatSeasonLong(season) })}
             </Text>
           </View>
 
@@ -91,7 +95,7 @@ export default function RegionLeaguesScreen() {
                     {sortedRegions.map((region) => (
                         <ListRow
                             key={region.id}
-                            leading={<Avatar icon={region.type === 'association' ? 'trophy' : 'map'} shape="square" size={40} />}
+                            leading={<Avatar icon={region.type === 'association' ? 'trophy-outline' : 'map-outline'} shape="square" size={40} tone="neutral" />}
                             title={region.name}
                             subtitle={region.type === 'association' ? t('region.associationClasses') : t('region.district')}
                             onPress={() => {
@@ -114,7 +118,7 @@ export default function RegionLeaguesScreen() {
                   <>
                     {groupedClasses.map(([groupTitle, groupClasses]) => (
                         <View key={groupTitle} style={styles.section}>
-                          <SectionHeader title={groupTitle} />
+                          <SectionHeader variant="label" title={groupTitle} />
 
                           <ListGroup>
                             {groupClasses.map((league) => {
@@ -123,7 +127,7 @@ export default function RegionLeaguesScreen() {
                               return (
                                   <ListRow
                                       key={league.id}
-                                      leading={<Ionicons name="podium-outline" size={24} color={colors.primary} />}
+                                      leading={<Avatar icon="trophy-outline" shape="square" size={40} tone="neutral" />}
                                       title={league.name}
                                       subtitle={
                                         canOpen

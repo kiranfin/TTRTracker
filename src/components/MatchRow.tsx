@@ -1,8 +1,8 @@
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '../i18n/I18nProvider';
-import { MIN_TOUCH, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { useTheme } from '../theme/ThemeProvider';
-import { numeric, typography } from '../theme/typography';
+import { font, numeric, typography } from '../theme/typography';
 import type { ScheduleMatchStatus } from '../types/tttracker';
 
 type MatchRowProps = {
@@ -32,7 +32,7 @@ function toNumber(value?: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-// Kompakte Begegnungszeile für Spielpläne: Heim und Gast untereinander, Ergebnis oder Uhrzeit rechts.
+// Begegnungszeile für Spielpläne: Heim links, Ergebnis oder Uhrzeit als Pill in der Mitte, Gast rechts.
 export function MatchRow({
                            homeTeam,
                            awayTeam,
@@ -54,51 +54,49 @@ export function MatchRow({
   const homeWins = showScore && home !== undefined && away !== undefined && home > away;
   const awayWins = showScore && home !== undefined && away !== undefined && away > home;
 
+  const isOwn = (team: string) => Boolean(highlightTeam) && team.trim() === highlightTeam!.trim();
+
   const nameStyle = (strong: boolean, own: boolean) => [
     typography.body,
-    {
-      color: colors.text,
-      fontWeight: strong || own ? ('800' as const) : ('500' as const),
-    },
-    own && { color: colors.primary },
+    styles.team,
+    { color: own ? colors.primary : colors.text, ...font(strong || own ? '700' : '500') },
   ];
 
-  const isOwn = (team: string) => Boolean(highlightTeam) && team.trim() === highlightTeam!.trim();
+  const centerLabel = showScore
+      ? `${homeScore ?? '-'}:${awayScore ?? '-'}`
+      : status === 'scheduled'
+          ? time || t('club.timeOpen')
+          : t(statusKeys[status]);
 
   const content = (
       <>
-        <View style={styles.teams}>
-          <Text style={nameStyle(homeWins, isOwn(homeTeam))} numberOfLines={1}>
+        <View style={styles.line}>
+          <Text style={nameStyle(homeWins, isOwn(homeTeam))} numberOfLines={2}>
             {homeTeam}
           </Text>
 
-          <Text style={nameStyle(awayWins, isOwn(awayTeam))} numberOfLines={1}>
+          <View style={[styles.pill, { backgroundColor: status === 'live' ? colors.primarySoft : colors.soft }]}>
+            <Text
+                style={[
+                  showScore ? numeric.row : numeric.small,
+                  { color: status === 'live' ? colors.primary : showScore || status === 'scheduled' ? colors.text : colors.mutedText },
+                ]}
+                numberOfLines={1}
+            >
+              {centerLabel}
+            </Text>
+          </View>
+
+          <Text style={[nameStyle(awayWins, isOwn(awayTeam)), styles.away]} numberOfLines={2}>
             {awayTeam}
           </Text>
-
-          {meta ? (
-              <Text style={[typography.label, { color: colors.mutedText }]} numberOfLines={1}>
-                {meta}
-              </Text>
-          ) : null}
         </View>
 
-        {showScore ? (
-            <View style={styles.scores}>
-              <Text style={[numeric.medium, { color: colors.text, fontWeight: homeWins ? '900' : '500' }]}>
-                {homeScore ?? '-'}
-              </Text>
-              <Text style={[numeric.medium, { color: colors.text, fontWeight: awayWins ? '900' : '500' }]}>
-                {awayScore ?? '-'}
-              </Text>
-            </View>
-        ) : (
-            <View style={styles.scores}>
-              <Text style={[numeric.small, { color: status === 'scheduled' ? colors.text : colors.mutedText }]}>
-                {status === 'scheduled' ? time || t('club.timeOpen') : t(statusKeys[status])}
-              </Text>
-            </View>
-        )}
+        {meta ? (
+            <Text style={[typography.label, styles.meta, { color: colors.mutedText }]} numberOfLines={1}>
+              {meta}
+            </Text>
+        ) : null}
       </>
   );
 
@@ -118,22 +116,34 @@ export function MatchRow({
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: MIN_TOUCH + 12,
+    minHeight: 56,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  line: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 8,
   },
-  teams: {
+  team: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    fontSize: 14,
+    lineHeight: 19,
   },
-  scores: {
-    minWidth: 44,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 2,
+  away: {
+    textAlign: 'right',
+  },
+  pill: {
+    minWidth: 64,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  meta: {
+    textAlign: 'center',
   },
 });

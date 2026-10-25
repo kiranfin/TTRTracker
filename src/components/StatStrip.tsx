@@ -12,21 +12,20 @@ export type StatItem = {
   helper?: string;
 };
 
-function StatCell({ item, align }: { item: StatItem; align: 'center' | 'flex-start' }) {
+// Label oben, Wert darunter, optional eine kleine Zusatzzeile.
+function StatCell({ item }: { item: StatItem }) {
   const { colors } = useTheme();
 
   return (
-      <View style={[styles.cell, { alignItems: align }]}>
-        <Text style={[numeric.medium, { color: item.color ?? colors.text }]} numberOfLines={1}>
-          {item.value}
-        </Text>
-
+      <View style={styles.cell}>
         <Text style={[typography.label, { color: colors.mutedText }]} numberOfLines={1}>
           {item.label}
         </Text>
-
+        <Text style={[numeric.stat, { color: item.color ?? colors.text }]} numberOfLines={1}>
+          {item.value}
+        </Text>
         {item.helper ? (
-            <Text style={[typography.label, { color: colors.mutedText }]} numberOfLines={1}>
+            <Text style={[typography.caption, styles.helper, { color: colors.mutedText }]} numberOfLines={1}>
               {item.helper}
             </Text>
         ) : null}
@@ -34,7 +33,7 @@ function StatCell({ item, align }: { item: StatItem; align: 'center' | 'flex-sta
   );
 }
 
-// Drei (oder zwei) Werte nebeneinander, getrennt durch dünne Linien.
+// Zwei bis vier Werte nebeneinander in einer Karte, getrennt durch dünne Linien.
 export function StatStrip({ items }: { items: StatItem[] }) {
   const { colors } = useTheme();
 
@@ -43,14 +42,14 @@ export function StatStrip({ items }: { items: StatItem[] }) {
         {items.map((item, index) => (
             <View key={`${item.label}-${index}`} style={styles.stripItem}>
               {index > 0 ? <View style={[styles.separator, { backgroundColor: colors.border }]} /> : null}
-              <StatCell item={item} align="center" />
+              <StatCell item={item} />
             </View>
         ))}
       </View>
   );
 }
 
-// 2x2 Raster für Kennzahlen mit Label oben.
+// 2x2 Raster kompakter Kennzahlen, Label oben.
 export function StatGrid({ items, footer }: { items: StatItem[]; footer?: ReactNode }) {
   const { colors } = useTheme();
 
@@ -65,20 +64,17 @@ export function StatGrid({ items, footer }: { items: StatItem[]; footer?: ReactN
                 <Text style={[typography.label, { color: colors.mutedText }]} numberOfLines={1}>
                   {item.label}
                 </Text>
-
-                <Text style={[numeric.large, { color: item.color ?? colors.text }]} numberOfLines={1}>
+                <Text style={[numeric.stat, { color: item.color ?? colors.text }]} numberOfLines={1}>
                   {item.value}
                 </Text>
-
                 {item.helper ? (
-                    <Text style={[typography.label, { color: colors.mutedText }]} numberOfLines={1}>
+                    <Text style={[typography.caption, styles.helper, { color: colors.mutedText }]} numberOfLines={1}>
                       {item.helper}
                     </Text>
                 ) : null}
               </View>
           ))}
         </View>
-
         {footer}
       </View>
   );
@@ -89,7 +85,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 20,
     borderWidth: 1,
-    paddingVertical: spacing.lg,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xs,
   },
   stripItem: {
     flex: 1,
@@ -101,20 +98,24 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
+    alignItems: 'center',
     gap: 2,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  helper: {
+    fontSize: 11,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   gridItem: {
-    flexBasis: '47%',
+    flexBasis: '48%',
     flexGrow: 1,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: spacing.lg,
-    gap: 4,
+    padding: 14,
+    gap: 2,
   },
 });

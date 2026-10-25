@@ -44,9 +44,9 @@ export function FavoriteRow({ item, editing, onPress, onRemove }: FavoriteRowPro
       item.type === 'player' ? (
           <Avatar name={item.title} size={40} />
       ) : item.type === 'club' ? (
-          <Avatar icon="home" shape="square" size={40} />
+          <Avatar icon="business-outline" shape="square" size={40} />
       ) : (
-          <Avatar icon="podium" shape="square" size={40} />
+          <Avatar icon="trophy-outline" shape="square" size={40} tone="neutral" />
       );
 
   return (

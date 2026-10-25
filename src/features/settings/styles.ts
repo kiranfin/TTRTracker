@@ -1,12 +1,14 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 112,
-    gap: 22,
+    gap: 18,
   },
-  input: {
+  input: { ...font('400'),
     minHeight: 46,
     borderWidth: 1,
     borderRadius: 14,
@@ -51,10 +53,10 @@ export const styles = StyleSheet.create({
   backgroundPreviewTitle: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '900',
+    ...font('900'),
     textAlign: 'center',
   },
-  backgroundPreviewMeta: {
+  backgroundPreviewMeta: { ...font('400'),
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'center',
@@ -99,7 +101,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backendText: {
+  backendText: { ...font('400'),
     fontSize: 13,
     lineHeight: 19,
   },
@@ -117,7 +119,7 @@ export const styles = StyleSheet.create({
   statusTitle: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '800',
+    ...font('800'),
   },
   grantList: {
     gap: 10,
@@ -134,16 +136,16 @@ export const styles = StyleSheet.create({
   grantTitle: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '800',
+    ...font('800'),
   },
-  grantSubtitle: {
+  grantSubtitle: { ...font('400'),
     fontSize: 12,
     lineHeight: 18,
   },
   versionText: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '700',
+    ...font('700'),
   },
   savedBox: {
     borderWidth: 1,
@@ -161,20 +163,20 @@ export const styles = StyleSheet.create({
   savedBoxTitle: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '900',
+    ...font('900'),
   },
   savedBoxMeta: {
     marginTop: 1,
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '700',
+    ...font('700'),
   },
   sheetBody: {
     gap: 14,
     paddingBottom: 12,
   },
   group: {
-    gap: 10,
+    gap: 8,
   },
   groupLabel: {
     paddingHorizontal: 4,
@@ -183,8 +185,81 @@ export const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
   },
-  versionBox: {
+
+  profileCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    gap: 14,
+  },
+  profileText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  changePill: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    justifyContent: 'center',
+  },
+  iconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowValue: {
+    fontSize: 14,
+  },
+  statusValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  inlineRow: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  inlineTitle: {
+    flex: 1,
+  },
+  inlineSegment: {
+    width: 186,
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  swatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 0,
+  },
+  swatchCustom: {
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutButton: {
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

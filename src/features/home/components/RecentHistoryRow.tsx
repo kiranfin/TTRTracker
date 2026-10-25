@@ -1,38 +1,48 @@
-import { Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { DateBlock } from '@/src/components/DateBlock';
 import { DeltaText } from '@/src/components/Delta';
 import { ListRow } from '@/src/components/ListRow';
 import { useI18n } from '@/src/i18n/I18nProvider';
-import { useTheme } from '@/src/theme/ThemeProvider';
-import { numeric } from '@/src/theme/typography';
 import type { NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
-import { formatDate } from '@/src/utils/normalizers';
-import { getEventTtr } from '../utils';
-import { styles } from '../styles';
+import { getEventMeetingId, getEventWinLoss } from '../../player-details/utils';
 
+// Ein Eintrag der letzten Spiele: Datum links, Gegner und Bilanz in der Mitte, TTR-Änderung rechts.
+// Mit Spielbericht öffnet die Zeile diesen, sonst das eigene Profil.
 export function RecentHistoryRow({
                                    event,
-                                   onPress,
+                                   onOpenProfile,
                                  }: {
   event: NormalizedTtrHistoryEvent;
-  onPress?: () => void;
+  onOpenProfile: () => void;
 }) {
-  const { colors } = useTheme();
   const { t } = useI18n();
+  const meetingId = getEventMeetingId(event);
+  const winLoss = getEventWinLoss(event);
+  const hasRecord = winLoss.won + winLoss.lost > 0;
 
-  const date = event.date ? formatDate(event.date) : t('common.dateUnknown');
+  const subtitle = [
+    event.leagueName,
+    hasRecord ? t('home.singlesRecord', { won: winLoss.won, lost: winLoss.lost }) : undefined,
+  ]
+      .filter(Boolean)
+      .join(' · ');
 
   return (
       <ListRow
+          leading={<DateBlock date={event.date} />}
           title={event.meetingLabel ?? event.title ?? t('home.historyEntry')}
-          subtitle={event.leagueName ? `${date} · ${event.leagueName}` : date}
-          onPress={onPress}
+          subtitle={subtitle || undefined}
           chevron={false}
-          trailing={
-            <View style={styles.rowTrailing}>
-              <Text style={[numeric.medium, { color: colors.text }]}>{getEventTtr(event) ?? '—'}</Text>
-              <DeltaText value={event.delta} size={12} />
-            </View>
+          onPress={
+            meetingId
+                ? () =>
+                    router.push({
+                      pathname: '/match/[meetingId]',
+                      params: { meetingId, homeTeam: '', awayTeam: '' },
+                    })
+                : onOpenProfile
           }
+          trailing={<DeltaText value={event.delta} />}
       />
   );
 }

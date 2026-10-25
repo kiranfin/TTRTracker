@@ -32,6 +32,8 @@ export type AppColors = {
   negative: string;
   warning: string;
   soft: string;
+  // Zweite Kontrastfarbe (Relegation, rechter Spieler im Vergleich)
+  orange: string;
   shadow: string;
 };
 
@@ -163,6 +165,7 @@ function createColors(isDark: boolean, accent: AccentColor): AppColors {
       negative: '#F87171',
       warning: '#FBBF24',
       soft: '#1C2330',
+      orange: '#FB923C',
       shadow: '#000000',
     };
   }
@@ -172,7 +175,7 @@ function createColors(isDark: boolean, accent: AccentColor): AppColors {
     text: '#0B1220',
     card: '#ffffff',
     border: '#E4E7EC',
-    muted: '#EEF0F3',
+    muted: '#EEF1F5',
     mutedText: '#5B6474',
     input: '#F1F3F6',
     primary,
@@ -182,10 +185,11 @@ function createColors(isDark: boolean, accent: AccentColor): AppColors {
     secondary: '#EEF0F3',
     secondaryText: '#0B1220',
     destructive: '#d4183d',
-    positive: '#16A34A',
-    negative: '#DC2626',
+    positive: '#15803D',
+    negative: '#C81E1E',
     warning: '#D97706',
-    soft: '#EEF0F3',
+    soft: '#EEF1F5',
+    orange: '#C2410C',
     shadow: '#000000',
   };
 }

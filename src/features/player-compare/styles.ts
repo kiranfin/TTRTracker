@@ -1,85 +1,101 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 112,
-    gap: 16,
+    gap: 18,
   },
-  playersRow: {
+  section: {
+    gap: 8,
+  },
+
+  playersCard: {
+    borderRadius: 20,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 10,
   },
-  sideCard: {
+  half: {
     flex: 1,
     minWidth: 0,
-    padding: 14,
+    alignItems: 'center',
     gap: 8,
-    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
   },
-  sideCardTop: {
-    width: '100%',
+  halfIdentity: {
     alignItems: 'center',
+    gap: 4,
   },
-  sideOpenProfile: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 44,
-    height: 44,
+  halfAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 2,
   },
-  sideName: {
+  halfText: {
     textAlign: 'center',
   },
-  swapButton: {
-    alignSelf: 'center',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  changePill: {
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 999,
     borderWidth: 1,
+    justifyContent: 'center',
+  },
+  changePillText: {
+    ...font('600'),
+  },
+  vsWrap: {
+    justifyContent: 'center',
+  },
+  vsBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  vsText: {
+    ...font('800'),
+  },
+
   card: {
     padding: 16,
-    gap: 14,
+    gap: 10,
   },
-  chanceRow: {
+  cardHeader: {
     flexDirection: 'row',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
     gap: 12,
-  },
-  chanceSide: {
-    flex: 1,
-    gap: 2,
-  },
-  chanceSideRight: {
-    alignItems: 'flex-end',
   },
   chanceTrack: {
     height: 12,
-    borderRadius: 6,
     flexDirection: 'row',
-    overflow: 'hidden',
+    gap: 3,
   },
-  metricRow: {
-    minHeight: 48,
+  chanceSegment: {
+    borderRadius: 6,
+  },
+  chanceLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  h2hHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
-  metricValue: {
+  h2hTitle: {
     flex: 1,
-    textAlign: 'center',
-  },
-  metricLabel: {
-    flex: 1.2,
-    textAlign: 'center',
   },
   h2hRow: {
     flexDirection: 'row',
@@ -89,17 +105,41 @@ export const styles = StyleSheet.create({
   },
   h2hSide: {
     flex: 1,
-    alignItems: 'center',
     gap: 2,
   },
-  h2hCenter: {
-    alignItems: 'center',
-    gap: 2,
+  h2hSideRight: {
+    alignItems: 'flex-end',
   },
   message: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+
+  metricRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  metricValueWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metricValueWrapRight: {
+    justifyContent: 'flex-end',
+  },
+  metricLabel: {
+    flex: 1.2,
+    textAlign: 'center',
+  },
+  leadDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   eventTrailing: {
     alignItems: 'flex-end',

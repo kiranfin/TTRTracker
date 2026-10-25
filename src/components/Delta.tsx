@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { useTheme, type AppColors } from '../theme/ThemeProvider';
-import { tabularNums } from '../theme/typography';
+import { font, tabularNums } from '../theme/typography';
 
 type DeltaValue = number | null | undefined;
 
@@ -19,13 +19,16 @@ function isValid(value: DeltaValue): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+// Echtes Minuszeichen statt Bindestrich, damit Vorzeichen gleich breit sind.
 export function formatDelta(value: DeltaValue, decimals = 0) {
-  if (!isValid(value)) return '—';
+  if (!isValid(value)) return '–';
 
   const rounded = decimals > 0 ? Number(value.toFixed(decimals)) : Math.round(value);
-  const text = decimals > 0 ? rounded.toFixed(decimals).replace('.', ',') : String(rounded);
+  const text = (decimals > 0 ? Math.abs(rounded).toFixed(decimals).replace('.', ',') : String(Math.abs(rounded)));
 
-  return rounded > 0 ? `+${text}` : text;
+  if (rounded > 0) return `+${text}`;
+  if (rounded < 0) return `−${text}`;
+  return '±0';
 }
 
 export function getDeltaColor(value: DeltaValue, colors: AppColors) {
@@ -33,7 +36,7 @@ export function getDeltaColor(value: DeltaValue, colors: AppColors) {
   return value > 0 ? colors.positive : colors.negative;
 }
 
-export function DeltaText({ value, fallback, decimals = 0, arrow, size = 13, style }: DeltaTextProps) {
+export function DeltaText({ value, fallback, decimals = 0, arrow, size = 15, style }: DeltaTextProps) {
   const { colors } = useTheme();
   const color = getDeltaColor(value, colors);
   const valid = isValid(value);
@@ -45,7 +48,7 @@ export function DeltaText({ value, fallback, decimals = 0, arrow, size = 13, sty
         ) : null}
 
         <Text style={[styles.text, tabularNums, { color, fontSize: size, lineHeight: size + 5 }, style]}>
-          {valid ? formatDelta(value, decimals) : fallback ?? '—'}
+          {valid ? formatDelta(value, decimals) : fallback ?? '–'}
         </Text>
       </View>
   );
@@ -54,8 +57,9 @@ export function DeltaText({ value, fallback, decimals = 0, arrow, size = 13, sty
 type DeltaPillProps = {
   value: DeltaValue;
   decimals?: number;
+  // Text hinter der Zahl, z. B. "in 30 Tagen"
   suffix?: string;
-  // Auf farbigem Grund (z. B. Hero-Karte) statt der Vorzeichenfarbe weiß auf transparentem Weiß
+  // Auf farbigem Grund (Hero-Karte): weiß auf halbtransparentem Weiß
   onPrimary?: boolean;
 };
 
@@ -69,17 +73,20 @@ export function DeltaPill({ value, decimals = 0, suffix, onPrimary }: DeltaPillP
       : !valid || value === 0
           ? colors.soft
           : value > 0
-              ? `${colors.positive}1F`
-              : `${colors.negative}1F`;
+              ? `${colors.positive}21`
+              : `${colors.negative}21`;
+
+  // Mit Pfeil steht nur der Betrag da, das Vorzeichen zeigt der Pfeil.
+  const label = valid && value !== 0 ? String(Math.abs(Math.round(value))) : formatDelta(value, decimals);
 
   return (
       <View style={[styles.pill, { backgroundColor }]}>
         {valid && value !== 0 ? (
-            <Ionicons name={value > 0 ? 'arrow-up' : 'arrow-down'} size={12} color={color} />
+            <Ionicons name={value > 0 ? 'arrow-up' : 'arrow-down'} size={14} color={color} />
         ) : null}
 
         <Text style={[styles.pillText, tabularNums, { color }]}>
-          {formatDelta(value, decimals)}
+          {label}
           {suffix ? ` ${suffix}` : ''}
         </Text>
       </View>
@@ -93,20 +100,20 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   text: {
-    fontWeight: '700',
+    ...font('700'),
   },
   pill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
     borderRadius: 999,
   },
   pillText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '700',
+    fontSize: 13,
+    lineHeight: 18,
+    ...font('700'),
   },
 });

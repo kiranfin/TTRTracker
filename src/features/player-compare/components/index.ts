@@ -1,4 +1,4 @@
-export { PlayerSideCard } from './PlayerSideCard';
+export { PlayersCard } from './PlayerSideCard';
 export { WinChanceCard } from './WinChanceCard';
 export { MetricsTable } from './MetricsTable';
 export { HeadToHeadSection } from './HeadToHeadSection';

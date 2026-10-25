@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '@/src/theme/typography';
 
 type BottomSheetProps = {
   visible: boolean;
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 21,
     lineHeight: 27,
-    fontWeight: '900',
+    ...font('900'),
   },
   headerActions: {
     flexDirection: 'row',

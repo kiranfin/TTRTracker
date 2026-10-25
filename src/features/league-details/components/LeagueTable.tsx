@@ -4,7 +4,7 @@ import { EmptyState } from '@/src/components/EmptyState';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { MeClub } from '@/src/storage/meClub';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { numeric, typography } from '@/src/theme/typography';
+import { font, numeric, typography } from '@/src/theme/typography';
 import type { TableRow } from '@/src/types/tttracker';
 import type { LeagueInfo, TeamScheduleStats } from '../types';
 import {
@@ -55,12 +55,12 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
         return <EmptyState icon="list-outline" title={t('league.noTable')} />;
     }
 
-    const headerStyle = [typography.label, { color: colors.mutedText }];
+    const headerStyle = [typography.caption, styles.headerLabel, { color: colors.mutedText }];
 
     return (
         <View style={{ gap: 10 }}>
             <View style={[styles.tableCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={[styles.tableRow, styles.tableHeader, { backgroundColor: colors.soft }]}>
+                <View style={[styles.tableRow, styles.tableHeader]}>
                     <Text style={[headerStyle, styles.colRank]}>{t('league.rankShort')}</Text>
                     <Text style={[headerStyle, styles.colTeam]}>{t('league.teamShort')}</Text>
                     <Text style={[headerStyle, styles.colGames]}>{t('league.gamesShort')}</Text>
@@ -103,13 +103,13 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                         >
                             <View style={[styles.rankBar, { backgroundColor: barColor }]} />
 
-                            <Text style={[numeric.small, styles.colRank, { color: colors.text, fontWeight: '800' }]}>
+                            <Text style={[numeric.small, styles.colRank, { color: own ? colors.primary : colors.text, ...font('700') }]}>
                                 {stats.position}
                             </Text>
 
                             <Text
-                                style={[typography.body, styles.colTeam, { color: own ? colors.primary : colors.text, fontWeight: own ? '800' : '600' }]}
-                                numberOfLines={2}
+                                style={[typography.body, styles.colTeam, { color: colors.text, ...font(own ? '800' : '600') }]}
+                                numberOfLines={1}
                             >
                                 {stats.teamName}
                             </Text>
@@ -120,13 +120,13 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                                 style={[
                                     numeric.small,
                                     styles.colDiff,
-                                    { color: diff === undefined || diff === 0 ? colors.mutedText : diff > 0 ? colors.positive : colors.negative },
+                                    { color: colors.mutedText },
                                 ]}
                             >
-                                {diff === undefined ? '-' : diff > 0 ? `+${diff}` : String(diff)}
+                                {diff === undefined ? '-' : diff > 0 ? `+${diff}` : diff < 0 ? `−${Math.abs(diff)}` : '0'}
                             </Text>
 
-                            <Text style={[numeric.small, styles.colPoints, { color: colors.text, fontWeight: '800' }]}>
+                            <Text style={[numeric.small, styles.colPoints, { color: colors.text, ...font('800') }]}>
                                 {formatTablePoints(stats.points)}
                             </Text>
                         </Pressable>

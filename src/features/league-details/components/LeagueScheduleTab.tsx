@@ -126,14 +126,14 @@ export function LeagueScheduleTab({ league }: { league: LeagueDetailsController 
 
             {upcoming.length > 0 ? (
                 <View style={styles.stack}>
-                    <SectionHeader title={`${t('league.openGames')} (${upcoming.length})`} />
+                    <SectionHeader variant="label" title={`${t('league.openGames')} (${upcoming.length})`} />
                     <LeagueMatchGroup matches={upcoming} league={league.league} ownClubName={ownClubName} />
                 </View>
             ) : null}
 
             {completed.length > 0 ? (
                 <View style={styles.stack}>
-                    <SectionHeader title={`${t('league.completedGames')} (${completed.length})`} />
+                    <SectionHeader variant="label" title={`${t('league.completedGames')} (${completed.length})`} />
                     <LeagueMatchGroup matches={completed} league={league.league} ownClubName={ownClubName} />
                 </View>
             ) : null}

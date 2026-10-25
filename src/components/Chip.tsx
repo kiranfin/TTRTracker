@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
-import { MIN_TOUCH, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { useTheme } from '../theme/ThemeProvider';
-import { typography } from '../theme/typography';
+import { font, typography } from '../theme/typography';
 
 type ChipProps = {
   label: string;
@@ -11,12 +11,11 @@ type ChipProps = {
   onPress?: () => void;
 };
 
+// Aktiv: dunkle Füllung in Textfarbe, damit Filter nicht mit Akzent-Buttons konkurrieren.
 export function Chip({ label, active, count, onPress }: ChipProps) {
   const { colors } = useTheme();
   const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
-
-  const textColor = active ? colors.primaryForeground : colors.text;
-  const countColor = active ? colors.primaryForeground : colors.mutedText;
+  const textColor = active ? colors.card : colors.text;
 
   return (
       <Pressable
@@ -28,18 +27,18 @@ export function Chip({ label, active, count, onPress }: ChipProps) {
             styles.chip,
             noWebOutline,
             {
-              backgroundColor: active ? colors.primary : colors.card,
-              borderColor: active ? colors.primary : colors.border,
+              backgroundColor: active ? colors.text : colors.card,
+              borderColor: active ? colors.text : colors.border,
               opacity: pressed ? 0.78 : 1,
             },
           ]}
       >
-        <Text style={[typography.meta, styles.label, { color: textColor }]} numberOfLines={1}>
+        <Text style={[typography.metaStrong, styles.label, { color: textColor }]} numberOfLines={1}>
           {label}
         </Text>
 
         {typeof count === 'number' ? (
-            <Text style={[typography.label, styles.count, { color: countColor }]}>{count}</Text>
+            <Text style={[typography.metaStrong, styles.count, { color: textColor }]}>{count}</Text>
         ) : null}
       </Pressable>
   );
@@ -50,7 +49,7 @@ type ChipRowProps = {
   contentStyle?: StyleProp<ViewStyle>;
 };
 
-// Horizontal scrollbare Filterzeile. Der Scroll-Inhalt reicht bis zum Rand, damit nichts abgeschnitten wirkt.
+// Horizontal scrollbare Filterzeile.
 export function ChipRow({ children, contentStyle }: ChipRowProps) {
   return (
       <ScrollView
@@ -66,19 +65,21 @@ export function ChipRow({ children, contentStyle }: ChipRowProps) {
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: MIN_TOUCH - 8,
+    height: 36,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   label: {
-    fontWeight: '700',
+    fontSize: 14,
   },
   count: {
-    fontWeight: '700',
+    fontSize: 14,
+    opacity: 0.7,
+    ...font('500'),
     fontVariant: ['tabular-nums'],
   },
   row: {

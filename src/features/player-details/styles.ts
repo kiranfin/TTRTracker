@@ -1,87 +1,21 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
     content: {
-        padding: 16,
-        paddingTop: 20,
+        paddingHorizontal: 16,
+        paddingTop: 4,
         paddingBottom: 112,
-        gap: 16,
+        gap: 18,
     },
     error: {
+        ...font('500'),
         fontSize: 14,
         lineHeight: 20,
     },
-    chartCard: {
-        padding: 16,
-        gap: 14,
-    },
-    lineChartWrap: {
-        gap: 8,
-    },
-    searchInputWrap: {
-        width: '100%',
-        minHeight: 44,
-        borderWidth: 1,
-        borderRadius: 16,
-        paddingHorizontal: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    searchInput: {
-        flex: 1,
-        minWidth: 0,
-        paddingVertical: 0,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
-    },
-    eventBottomRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    matchDetailCard: {
-        borderWidth: 1,
-        borderRadius: 16,
-        padding: 12,
-        gap: 10,
-    },
-    matchDetailTopRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    matchPlayers: {
-        flex: 1,
-    },
-    matchPlayerName: {
-        fontSize: 14,
-        lineHeight: 19,
-        fontWeight: '900',
-    },
-    matchOpponentName: {
-        marginTop: 2,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
-    },
-    matchResultBox: {
-        minWidth: 54,
-        minHeight: 34,
-        borderRadius: 13,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 8,
-    },
-    matchResultText: {
-        fontSize: 17,
-        lineHeight: 22,
-        fontWeight: '900',
-    },
+
     profileHead: {
-        gap: 16,
+        gap: 18,
     },
     profileIdentity: {
         flexDirection: 'row',
@@ -91,7 +25,7 @@ export const styles = StyleSheet.create({
     profileIdentityText: {
         flex: 1,
         minWidth: 0,
-        gap: 2,
+        gap: 4,
     },
     clubLink: {
         flexDirection: 'row',
@@ -99,28 +33,57 @@ export const styles = StyleSheet.create({
         gap: 2,
         alignSelf: 'flex-start',
     },
+    clubLinkText: {
+        fontSize: 14,
+        flexShrink: 1,
+    },
     ttrRow: {
         flexDirection: 'row',
         alignItems: 'flex-end',
         justifyContent: 'space-between',
         gap: 12,
     },
+    ttrValueBlock: {
+        gap: 2,
+    },
     ttrDelta: {
-        alignItems: 'flex-end',
-        gap: 4,
-        paddingBottom: 6,
+        paddingBottom: 8,
+    },
+    actionRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+
+    chartCard: {
+        padding: 16,
+        gap: 14,
+    },
+    chartHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
     },
     chartEmpty: {
         minHeight: 96,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    actionRow: {
-        flexDirection: 'row',
-        gap: 10,
+    lineChartWrap: {
+        gap: 2,
     },
+    axisRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    axisLabel: {
+        fontSize: 11,
+        lineHeight: 14,
+        ...font('600'),
+    },
+
     historySection: {
-        gap: 12,
+        gap: 10,
     },
     historyHeader: {
         flexDirection: 'row',
@@ -134,11 +97,30 @@ export const styles = StyleSheet.create({
     historyIconButton: {
         minWidth: 44,
         minHeight: 44,
+        marginRight: -10,
         alignItems: 'center',
         justifyContent: 'center',
     },
+    searchInputWrap: {
+        width: '100%',
+        minHeight: 44,
+        borderWidth: 1,
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    searchInput: {
+        flex: 1,
+        minWidth: 0,
+        paddingVertical: 0,
+        fontSize: 15,
+        ...font('500'),
+    },
     monthGroup: {
         gap: 8,
+        marginTop: 4,
     },
     monthLabel: {
         paddingHorizontal: 4,
@@ -157,13 +139,35 @@ export const styles = StyleSheet.create({
         gap: 2,
     },
     historyRowScore: {
+        minWidth: 44,
         alignItems: 'flex-end',
-        gap: 2,
+        gap: 1,
     },
     historyExpanded: {
-        borderTopWidth: StyleSheet.hairlineWidth,
+        paddingLeft: 64,
+        paddingRight: 16,
+        paddingBottom: 14,
+        gap: 8,
+    },
+    matchDetailCard: {
+        borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 12,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 10,
+    },
+    matchDetailMain: {
+        flex: 1,
+        minWidth: 0,
+        gap: 2,
+    },
+    matchDetailName: {
+        fontSize: 14,
+        lineHeight: 19,
+    },
+    reportLink: {
+        alignSelf: 'flex-start',
+        paddingVertical: 4,
     },
 });

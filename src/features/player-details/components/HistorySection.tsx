@@ -7,7 +7,7 @@ import { ListGroup } from '@/src/components/ListGroup';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { MIN_TOUCH } from '@/src/theme/spacing';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { typography } from '@/src/theme/typography';
+import { font, typography } from '@/src/theme/typography';
 import type { PlayerDetailsController } from '../hooks/usePlayerDetails';
 import { styles } from '../styles';
 import { HistoryEventRow } from './HistoryEventRow';
@@ -42,15 +42,12 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
         <View style={styles.historySection}>
             <View style={styles.historyHeader}>
                 <View style={styles.historyHeaderText}>
-                    <Text style={[typography.section, { color: colors.text }]}>{t('player.history')}</Text>
-                    <Text style={[typography.meta, { color: colors.mutedText }]}>
-                        {t('player.historyCount', { filtered: filteredEventCount, total: totalEventCount })}
-                    </Text>
+                    <Text style={[typography.section, { color: colors.text }]}>{t('player.allEntries')}</Text>
                 </View>
 
                 {filtersActive ? (
                     <Pressable onPress={clearHistoryFilters} hitSlop={8} style={styles.historyIconButton}>
-                        <Text style={[typography.meta, { color: colors.primary, fontWeight: '700' }]}>
+                        <Text style={[typography.meta, { color: colors.primary, ...font('700') }]}>
                             {t('common.reset')}
                         </Text>
                     </Pressable>
@@ -62,7 +59,7 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
                     onPress={() => setSearchOpen(!searchOpen)}
                     style={styles.historyIconButton}
                 >
-                    <Ionicons name="search-outline" size={22} color={searchOpen ? colors.primary : colors.mutedText} />
+                    <Ionicons name="search-outline" size={22} color={searchOpen ? colors.primary : colors.text} />
                 </Pressable>
             </View>
 
@@ -96,7 +93,7 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
 
             {leagueOptions.length > 1 ? (
                 <ChipRow>
-                    <Chip label={t('player.allLeagues')} active={selectedLeague === null} onPress={() => setSelectedLeague(null)} />
+                    <Chip label={t('common.all')} count={totalEventCount} active={selectedLeague === null} onPress={() => setSelectedLeague(null)} />
 
                     {leagueOptions.map((league) => (
                         <Chip
@@ -117,10 +114,10 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
                 <>
                     {monthGroups.map((group) => (
                         <View key={group.key} style={styles.monthGroup}>
-                            <Text style={[typography.label, styles.monthLabel, { color: colors.mutedText }]}>
+                            <Text style={[typography.groupLabel, styles.monthLabel, { color: colors.mutedText }]}>
                                 {group.month
-                                    ? group.month.toLocaleDateString(locale, { month: 'long', year: 'numeric' }).toUpperCase()
-                                    : t('common.dateUnknown').toUpperCase()}
+                                    ? group.month.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+                                    : t('common.dateUnknown')}
                             </Text>
 
                             <ListGroup>
@@ -137,7 +134,7 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
                     ))}
 
                     {hasMoreEvents ? (
-                        <Button variant="outline" icon="chevron-down" onPress={loadMoreEvents}>
+                        <Button variant="outline" onPress={loadMoreEvents}>
                             {t('player.moreEvents')}
                         </Button>
                     ) : null}

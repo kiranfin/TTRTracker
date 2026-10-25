@@ -6,27 +6,26 @@ import { typography } from '@/src/theme/typography';
 import { styles } from '../styles';
 
 type ClubHeaderProps = {
-    title: string;
-    subtitle: string;
+  title: string;
+  subtitle: string;
 };
 
 export function ClubHeader({ title, subtitle }: ClubHeaderProps) {
-    const { colors } = useTheme();
-    const { t } = useI18n();
+  const { colors } = useTheme();
+  const { t } = useI18n();
 
-    return (
-        <View style={styles.clubHead}>
-            <Avatar icon="home" shape="square" size={64} />
+  return (
+      <View style={styles.clubHead}>
+        <Avatar icon="business-outline" shape="square" size={60} tone="accent" />
 
-            <View style={styles.clubHeadText}>
-                <Text style={[typography.title, { color: colors.text }]} numberOfLines={2}>
-                    {title}
-                </Text>
-
-                <Text style={[typography.meta, { color: colors.mutedText }]} numberOfLines={1}>
-                    {subtitle || t('club.defaultTitle')}
-                </Text>
-            </View>
+        <View style={styles.clubHeadText}>
+          <Text style={[typography.heading, { color: colors.text }]} numberOfLines={2}>
+            {title}
+          </Text>
+          <Text style={[typography.meta, styles.clubHeadSubtitle, { color: colors.mutedText }]} numberOfLines={1}>
+            {subtitle || t('club.defaultTitle')}
+          </Text>
         </View>
-    );
+      </View>
+  );
 }

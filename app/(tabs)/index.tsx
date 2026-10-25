@@ -50,8 +50,6 @@ export default function HomeScreen() {
           {meNuid ? (
               <>
                 <MeHeroCard
-                    displayName={displayName}
-                    clubName={clubName}
                     currentTtr={currentTtr}
                     qTtr={qTtr}
                     maxTtr={maxTtr}
@@ -75,7 +73,7 @@ export default function HomeScreen() {
                       {recentEvents.length > 0 ? (
                           <ListGroup>
                             {recentEvents.map((event) => (
-                                <RecentHistoryRow key={event.id} event={event} onPress={openMeProfile} />
+                                <RecentHistoryRow key={event.id} event={event} onOpenProfile={openMeProfile} />
                             ))}
                           </ListGroup>
                       ) : (

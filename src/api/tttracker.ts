@@ -9,6 +9,7 @@ import type {
   PlayerTtrHistoryResponse,
   PlayerTtrResponse,
 } from '../types/tttracker';
+import { getCurrentSeason } from '../utils/dates';
 
 function findFirstArray(value: unknown, depth = 0): unknown[] | null {
   if (depth > 6) return null;
@@ -88,7 +89,7 @@ export const ttApi = {
     );
   },
 
-  async getLeaguesByRegion(region: string, season = '25/26') {
+  async getLeaguesByRegion(region: string, season = getCurrentSeason()) {
     const response = await apiGet<unknown>('/api/leagues', {
       region,
       season,
@@ -130,7 +131,7 @@ export const ttApi = {
   getClubSchedule(
       organization: string,
       clubNumber: string,
-      season = '25--26',
+      season = getCurrentSeason().replace('/', '--'),
       dateStart?: string,
       dateEnd?: string,
       clubSlug = 'x'
@@ -198,7 +199,7 @@ export const ttApi = {
     return normalizeList<LeagueAssociation>(response);
   },
 
-  async getLeagueRegions(association: string, season = '25/26') {
+  async getLeagueRegions(association: string, season = getCurrentSeason()) {
     const response = await apiGet<unknown>(
         `/api/leagues/${segment(association)}/regions`,
         { season }
@@ -210,7 +211,7 @@ export const ttApi = {
   async getLeagueClasses(
       association: string,
       championship: string,
-      season = '25/26',
+      season = getCurrentSeason(),
       type: 'ligen' | 'pokalspiele' = 'ligen'
   ) {
     const response = await apiGet<unknown>(

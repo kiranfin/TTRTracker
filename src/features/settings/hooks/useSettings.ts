@@ -10,7 +10,7 @@ import { useAuth } from '@/src/auth/AuthProvider';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { clearMeClub, getMeClub, setMeClub as saveMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
-import { clearMePlayerNuid, getMePlayerNuid, setMePlayerNuid } from '@/src/storage/mePlayer';
+import { clearMePlayerNuid, getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import type { MyttGrant, MyttStatusView } from '../types';
 import { DEFAULT_ACCENT, formatClubId, getClubDisplayName, normalizeGrants, normalizeHexColor, normalizeMyttStatus, parseClubIdInput } from '../utils';
@@ -31,6 +31,7 @@ export function useSettings() {
   const { user, isAuthenticated, login, register, logout } = useAuth();
 
   const [health, setHealth] = useState<string | null>(null);
+  const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(false);
 
   const [apiTarget, setApiTargetState] = useState<ApiTarget>(() => getApiTarget());
@@ -71,6 +72,7 @@ export function useSettings() {
   const [deletingGrantId, setDeletingGrantId] = useState<string | null>(null);
 
   const [savedMeNuid, setSavedMeNuid] = useState<string | null>(null);
+  const [savedMeName, setSavedMeName] = useState<string | null>(null);
 
   const [clubIdInput, setClubIdInput] = useState('');
   const [clubNameInput, setClubNameInput] = useState('');
@@ -177,14 +179,16 @@ export function useSettings() {
 
         async function loadLocalProfileSettings() {
           try {
-            const [storedNuid, storedClub] = await Promise.all([
+            const [storedNuid, storedClub, storedName] = await Promise.all([
               getMePlayerNuid(),
               getMeClub(),
+              getMePlayerName(),
             ]);
 
             if (!active) return;
 
             setSavedMeNuid(storedNuid);
+            setSavedMeName(storedNuid ? storedName : null);
 
             setSavedMeClub(storedClub);
             setClubIdInput(formatClubId(storedClub));
@@ -208,12 +212,15 @@ export function useSettings() {
   async function checkHealth() {
     setChecking(true);
     setHealth(null);
+    setHealthOk(null);
 
     try {
       const response = await ttApi.health();
       setHealth(response.ok ? t('settings.backendReachable') : t('settings.backendOkFalse'));
+      setHealthOk(Boolean(response.ok));
     } catch (error) {
       setHealth(error instanceof Error ? error.message : t('settings.backendUnreachable'));
+      setHealthOk(false);
     } finally {
       setChecking(false);
     }
@@ -222,6 +229,7 @@ export function useSettings() {
   async function handleChangeApiTarget(target: ApiTarget) {
     // Status und Freigaben gehören zum jeweiligen Backend
     setHealth(null);
+    setHealthOk(null);
     setAuthMessage(null);
     setMyttStatus(null);
     setMyttMessage(null);
@@ -357,15 +365,39 @@ export function useSettings() {
     }
   }
 
-  async function handleSelectMePlayer(nuid: string) {
+  async function handleSelectMePlayer(nuid: string, name?: string) {
     const saved = await setMePlayerNuid(nuid);
+    await setMePlayerName(name);
     setSavedMeNuid(saved);
+    setSavedMeName(name?.trim() || null);
   }
 
   async function handleClearMeNuid() {
     await clearMePlayerNuid();
     setSavedMeNuid(null);
+    setSavedMeName(null);
   }
+
+  // Status und Freigaben direkt laden, damit die Zeilen in den Einstellungen sie anzeigen können.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setMyttStatus(null);
+      setGrants([]);
+      return;
+    }
+
+    handleCheckMyttStatus().catch(() => undefined);
+    handleLoadGrants().catch(() => undefined);
+    // Nur beim An- und Abmelden neu laden
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // Serverstatus für die Zeile "Server" einmal pro Backend prüfen
+  useEffect(() => {
+    if (!apiBaseUrl) return;
+    checkHealth().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBaseUrl]);
 
   async function handleSaveMeClub() {
     setMeClubLoading('save');
@@ -458,6 +490,7 @@ export function useSettings() {
     user,
     isAuthenticated,
     health,
+    healthOk,
     checking,
     apiTarget,
     apiBaseUrl,
@@ -478,6 +511,7 @@ export function useSettings() {
     grantLoading,
     deletingGrantId,
     savedMeNuid,
+    savedMeName,
     clubIdInput,
     setClubIdInput,
     clubNameInput,

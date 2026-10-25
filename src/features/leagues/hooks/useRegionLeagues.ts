@@ -5,8 +5,10 @@ import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '@/src/storage/favorites';
 import type { LeagueClassReference, LeagueRegion } from '@/src/types/tttracker';
+import { getCurrentSeason } from '@/src/utils/dates';
 
-export const DEFAULT_SEASON = '25/26';
+// Aktuelle Saison (Juli bis Juni), z. B. "26/27".
+export const DEFAULT_SEASON = getCurrentSeason();
 
 export function formatSeasonLabel(value?: string) {
   return String(value ?? DEFAULT_SEASON).replace(/--/g, '/');
@@ -17,6 +19,7 @@ export function useRegionLeagues() {
     region?: string;
     title?: string;
     shortName?: string;
+    season?: string;
   }>();
 
   const { t } = useI18n();
@@ -24,6 +27,7 @@ export function useRegionLeagues() {
   const association = String(params.region ?? '').trim();
   const associationTitle = String(params.title ?? params.region ?? t('entities.association'));
   const shortName = String(params.shortName ?? association);
+  const season = String(params.season || DEFAULT_SEASON);
 
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(new Set());
   const [regions, setRegions] = useState<LeagueRegion[]>([]);
@@ -81,7 +85,7 @@ export function useRegionLeagues() {
     setError(null);
 
     try {
-      setRegions(await ttApi.getLeagueRegions(association, DEFAULT_SEASON));
+      setRegions(await ttApi.getLeagueRegions(association, season));
     } catch (loadError) {
       setRegions([]);
       setError(loadError instanceof Error ? loadError.message : t('region.loadRegionsError'));
@@ -89,7 +93,7 @@ export function useRegionLeagues() {
       setLoadingRegions(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [association]);
+  }, [association, season]);
 
   useEffect(() => {
     loadRegions().catch(() => undefined);
@@ -106,7 +110,7 @@ export function useRegionLeagues() {
           await ttApi.getLeagueClasses(
               region.association || association,
               region.championshipSlug,
-              region.season || DEFAULT_SEASON,
+              region.season || season,
           ),
       );
     } catch (loadError) {
@@ -181,6 +185,7 @@ export function useRegionLeagues() {
   return {
     associationTitle,
     shortName,
+    season,
     favoriteSet,
     sortedRegions,
     groupedClasses,

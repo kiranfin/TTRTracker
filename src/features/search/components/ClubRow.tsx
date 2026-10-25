@@ -15,13 +15,13 @@ export function ClubRow({ club, favorite, onPress, onToggleFavorite }: ClubRowPr
   const { t } = useI18n();
 
   const subtitle =
-      [club.organizationName ?? club.organization, club.state, club.clubNumber ? `#${club.clubNumber}` : undefined]
+      [club.state, club.organizationName ?? club.organization]
           .filter(Boolean)
           .join(' · ') || t('search.associationUnknown');
 
   return (
       <ListRow
-          leading={<Avatar icon="home" shape="square" size={40} />}
+          leading={<Avatar icon="business-outline" shape="square" size={40} />}
           title={club.name}
           subtitle={subtitle}
           chevron={false}

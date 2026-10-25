@@ -5,6 +5,7 @@ import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { MeetingDetails, TeamLinkContext } from '../types';
 import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getParam, normalizeMeetingRows, toNumber, unwrapMeetingResponse } from '../utils';
+import { getCurrentSeason } from '@/src/utils/dates';
 
 export function useMatchDetails() {
   const { t } = useI18n();
@@ -123,7 +124,7 @@ export function useMatchDetails() {
         leagueTitle: link.leagueTitle ?? '',
         association: link.association,
         groupId: link.groupId,
-        season: link.season ?? '25/26',
+        season: link.season || getCurrentSeason(),
         leagueSlug: link.leagueSlug ?? 'x',
       },
     });

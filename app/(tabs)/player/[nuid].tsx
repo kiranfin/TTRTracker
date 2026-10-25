@@ -2,11 +2,11 @@ import { ScrollView, Text, View } from 'react-native';
 import { ActionButton } from '@/src/components/ActionButton';
 import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
-import { ScreenHeader } from '@/src/components/ScreenHeader';
-import { StarButton } from '@/src/components/StarButton';
+import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { StatGrid, StatStrip } from '@/src/components/StatStrip';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
+import { parseDateValue } from '@/src/utils/dates';
 import { HistorySection, PlayerHeader, TtrChartCard } from '../../../src/features/player-details/components';
 import { usePlayerDetails } from '../../../src/features/player-details/hooks/usePlayerDetails';
 import { styles } from '../../../src/features/player-details/styles';
@@ -20,7 +20,7 @@ import {
 
 export default function PlayerDetailsScreen() {
     const { colors } = useTheme();
-    const { t } = useI18n();
+    const { t, language } = useI18n();
     const details = usePlayerDetails();
 
     const {
@@ -43,7 +43,6 @@ export default function PlayerDetailsScreen() {
         chartRange,
         setChartRange,
         chartEvents,
-        chartTopEvent,
         toggleMeProfile,
         toggleFavoritePlayer,
         openCompare,
@@ -54,11 +53,24 @@ export default function PlayerDetailsScreen() {
     const positive = (value?: number) => (isFiniteNumber(value) && value > 0 ? colors.positive : undefined);
     const negative = (value?: number) => (isFiniteNumber(value) && value < 0 ? colors.negative : undefined);
 
+    const peakDate = parseDateValue(history?.maxTtrDate);
+    const peakHelper = peakDate
+        ? peakDate.toLocaleDateString(language === 'de' ? 'de-DE' : 'en-GB', { month: 'short', year: 'numeric' }).replace('.', '')
+        : undefined;
+    const lost = stats.ratedMatchCount - stats.matchesWon;
+
     return (
         <Screen>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <ScreenHeader
-                    right={<StarButton active={isFavoritePlayer} onPress={() => { toggleFavoritePlayer().catch(() => undefined); }} />}
+                    right={
+                        <HeaderIconButton
+                            icon={isFavoritePlayer ? 'star' : 'star-outline'}
+                            color={isFavoritePlayer ? colors.warning : colors.text}
+                            accessibilityLabel={isFavoritePlayer ? t('favorites.removeFavorite') : t('player.addFavorite')}
+                            onPress={() => { toggleFavoritePlayer().catch(() => undefined); }}
+                        />
+                    }
                 />
 
                 <PlayerHeader
@@ -72,18 +84,16 @@ export default function PlayerDetailsScreen() {
                 />
 
                 <View style={styles.actionRow}>
-                    <ActionButton icon="git-compare-outline" label={t('player.compareAction')} variant="primary" onPress={openCompare} />
-
+                    <ActionButton icon="swap-horizontal" label={t('player.compareAction')} variant="primary" onPress={openCompare} />
                     <ActionButton
                         icon="business-outline"
                         label={t('entities.club')}
                         disabled={!effectiveClubKey}
                         onPress={openClubDetails}
                     />
-
                     <ActionButton
-                        icon={isMeProfile ? 'checkmark-circle' : 'person-circle-outline'}
-                        label={t('player.meAction')}
+                        icon={isMeProfile ? 'checkmark-circle' : 'person-outline'}
+                        label={isMeProfile ? t('player.meActive') : t('player.meAction')}
                         loading={mePlayerLoading}
                         onPress={() => { toggleMeProfile().catch(() => undefined); }}
                     />
@@ -97,29 +107,27 @@ export default function PlayerDetailsScreen() {
                         <StatStrip
                             items={[
                                 { label: t('home.qTtr'), value: formatOptionalNumber(qTtr) },
-                                { label: t('player.peak'), value: formatOptionalNumber(maxTtr) },
+                                { label: t('home.bestValue'), value: formatOptionalNumber(maxTtr), helper: peakHelper },
                                 {
                                     label: t('player.record'),
-                                    value: stats.ratedMatchCount > 0 ? `${stats.matchesWon}:${stats.ratedMatchCount - stats.matchesWon}` : '—',
+                                    value: stats.ratedMatchCount > 0 ? `${stats.matchesWon}:${lost}` : '–',
+                                    helper: isFiniteNumber(stats.winRate)
+                                        ? t('player.winsPercent', { value: Math.round(stats.winRate) })
+                                        : undefined,
                                 },
                             ]}
                         />
 
-                        <TtrChartCard
-                            range={chartRange}
-                            onRangeChange={setChartRange}
-                            events={chartEvents}
-                            topEvent={chartTopEvent}
-                        />
+                        <TtrChartCard range={chartRange} onRangeChange={setChartRange} events={chartEvents} />
 
                         <StatGrid
                             items={[
                                 {
-                                    label: t('player.averageChange'),
+                                    label: t('player.averagePerEntry'),
                                     value: formatSignedAverage(stats.averageDelta),
                                     color: positive(stats.averageDelta) ?? negative(stats.averageDelta),
                                 },
-                                { label: t('player.games'), value: String(stats.matchCount) },
+                                { label: t('player.gamesPlayed'), value: String(stats.matchCount) },
                                 {
                                     label: t('player.bestJump'),
                                     value: formatSignedNumber(stats.bestGain),

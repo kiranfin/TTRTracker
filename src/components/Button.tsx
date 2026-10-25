@@ -10,6 +10,7 @@ import {
     ViewStyle,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '@/src/theme/typography';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 
@@ -39,14 +40,16 @@ export function Button({
         variant === 'primary'
             ? colors.primary
             : variant === 'secondary'
-                ? colors.primarySoft
-                : 'transparent';
+                ? colors.soft
+                : variant === 'outline'
+                    ? colors.card
+                    : 'transparent';
 
     const borderColor =
         variant === 'primary'
             ? colors.primary
             : variant === 'secondary'
-                ? colors.primarySoftBorder
+                ? colors.soft
                 : variant === 'outline'
                     ? colors.border
                     : 'transparent';
@@ -55,7 +58,7 @@ export function Button({
         variant === 'primary'
             ? colors.primaryForeground
             : variant === 'secondary'
-                ? colors.primary
+                ? colors.text
                 : variant === 'outline'
                     ? colors.text
                     : colors.primary;
@@ -123,7 +126,7 @@ export function IconButton({ icon, onPress, active, accessibilityLabel }: IconBu
 
 const styles = StyleSheet.create({
     button: {
-        minHeight: 44,
+        minHeight: 48,
         borderRadius: 14,
         borderWidth: 1,
         paddingHorizontal: 16,
@@ -134,9 +137,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     buttonText: {
-        fontSize: 14,
-        lineHeight: 18,
-        fontWeight: '900',
+        fontSize: 15,
+        lineHeight: 20,
+        ...font('600'),
     },
     iconButton: {
         width: 40,

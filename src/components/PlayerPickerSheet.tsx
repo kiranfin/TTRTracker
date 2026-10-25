@@ -4,7 +4,7 @@ import { ttApi } from '../api/tttracker';
 import { useI18n } from '../i18n/I18nProvider';
 import { spacing } from '../theme/spacing';
 import { useTheme } from '../theme/ThemeProvider';
-import { typography } from '../theme/typography';
+import { font, typography } from '../theme/typography';
 import type { NormalizedPlayer } from '../types/tttracker';
 import { normalizePlayer } from '../utils/normalizers';
 import { Avatar } from './Avatar';
@@ -26,13 +26,16 @@ type PlayerPickerSheetProps = {
   onClose: () => void;
   onSelect: (selection: PlayerSelection) => void | Promise<void>;
   title?: string;
+  // Optionaler Button unten, z. B. um das gespeicherte Profil zu entfernen
+  clearLabel?: string;
+  onClear?: () => void | Promise<void>;
 };
 
 const DEBOUNCE_MS = 400;
 const MIN_QUERY_LENGTH = 2;
 
 // Spielersuche im Bottom Sheet. Wird für "Das bin ich", den Vergleich und die Einstellungen genutzt.
-export function PlayerPickerSheet({ visible, onClose, onSelect, title }: PlayerPickerSheetProps) {
+export function PlayerPickerSheet({ visible, onClose, onSelect, title, clearLabel, onClear }: PlayerPickerSheetProps) {
   const { colors } = useTheme();
   const { t } = useI18n();
 
@@ -178,7 +181,7 @@ export function PlayerPickerSheet({ visible, onClose, onSelect, title }: PlayerP
               hitSlop={8}
               style={styles.manualToggle}
           >
-            <Text style={[typography.meta, { color: colors.primary, fontWeight: '700' }]}>
+            <Text style={[typography.meta, { color: colors.primary, ...font('700') }]}>
               {t('picker.manualToggle')}
             </Text>
           </Pressable>
@@ -202,6 +205,17 @@ export function PlayerPickerSheet({ visible, onClose, onSelect, title }: PlayerP
                   {t('picker.manualConfirm')}
                 </Button>
               </View>
+          ) : null}
+          {onClear && clearLabel ? (
+              <Button
+                  variant="outline"
+                  icon="close-circle-outline"
+                  onPress={() => {
+                    Promise.resolve(onClear()).then(onClose).catch(() => undefined);
+                  }}
+              >
+                {clearLabel}
+              </Button>
           ) : null}
         </View>
       </BottomSheet>
@@ -227,7 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  manualInput: {
+  manualInput: { ...font('400'),
     flex: 1,
     minHeight: 44,
     borderWidth: 1,

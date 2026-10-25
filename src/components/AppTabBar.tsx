@@ -5,12 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TranslationKey } from '../i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '../theme/typography';
 
 // Einstellungen sind kein Tab mehr (Zugang über den Avatar auf der Startseite), gehören aber zum Start-Tab.
 const items = [
   { labelKey: 'tabs.home', href: '/', icon: 'home-outline', activeIcon: 'home', match: (path: string) => path === '/' || path.startsWith('/settings') },
   { labelKey: 'tabs.search', href: '/search', icon: 'search-outline', activeIcon: 'search', match: (path: string) => path.startsWith('/search') || path.startsWith('/player') || path.startsWith('/club') },
-  { labelKey: 'tabs.leagues', href: '/leagues', icon: 'podium-outline', activeIcon: 'podium', match: (path: string) => path.startsWith('/leagues') || path.startsWith('/region') || path.startsWith('/league') || path.startsWith('/match') || path.startsWith('/team') },
+  { labelKey: 'tabs.leagues', href: '/leagues', icon: 'trophy-outline', activeIcon: 'trophy', match: (path: string) => path.startsWith('/leagues') || path.startsWith('/region') || path.startsWith('/league') || path.startsWith('/match') || path.startsWith('/team') },
   { labelKey: 'tabs.favorites', href: '/favorites', icon: 'star-outline', activeIcon: 'star', match: (path: string) => path.startsWith('/favorites') },
 ] as const;
 
@@ -29,7 +30,6 @@ export function AppTabBar() {
         <View style={styles.row}>
           {items.map((item) => {
             const active = item.match(pathname);
-            const color = active ? colors.primary : colors.mutedText;
             const label = t(item.labelKey as TranslationKey);
 
             return (
@@ -44,12 +44,12 @@ export function AppTabBar() {
                   <View style={[styles.pill, active && { backgroundColor: colors.primarySoft }]}>
                     <Ionicons
                         name={(active ? item.activeIcon : item.icon) as keyof typeof Ionicons.glyphMap}
-                        size={22}
-                        color={color}
+                        size={21}
+                        color={active ? colors.primary : colors.mutedText}
                     />
                   </View>
 
-                  <Text style={[styles.label, { color }]} numberOfLines={1}>
+                  <Text style={[styles.label, { color: active ? colors.text : colors.mutedText }]} numberOfLines={1}>
                     {label}
                   </Text>
                 </Pressable>
@@ -66,19 +66,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
   },
   row: {
     flexDirection: 'row',
     paddingTop: 8,
     paddingBottom: 6,
+    paddingHorizontal: 8,
   },
   item: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
   },
   pill: {
     width: 56,
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: '700',
+    ...font('600'),
   },
   pressed: {
     opacity: 0.72,

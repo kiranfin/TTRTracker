@@ -74,7 +74,7 @@ export function formatOptionalNumber(value: number | null | undefined) {
 
 export function formatSignedNumber(value: number | null | undefined) {
     if (!isFiniteNumber(value)) return '—';
-    return value > 0 ? `+${value}` : String(value);
+    return value > 0 ? `+${value}` : value < 0 ? `−${Math.abs(value)}` : '±0';
 }
 
 export function formatSignedAverage(value: number | null | undefined) {
@@ -85,7 +85,7 @@ export function formatSignedAverage(value: number | null | undefined) {
         ? String(rounded)
         : rounded.toFixed(1).replace('.', ',');
 
-    return rounded > 0 ? `+${formatted}` : formatted;
+    return rounded > 0 ? `+${formatted}` : rounded < 0 ? `−${formatted.replace('-', '')}` : formatted;
 }
 
 export function formatPercent(value: number | null | undefined) {

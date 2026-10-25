@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 import { Card } from '@/src/components/Card';
-import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { numeric, typography } from '@/src/theme/typography';
@@ -9,6 +8,7 @@ import type { PlayerComparisonData } from '../types';
 import { formatPercent, getPlayerName, isFiniteNumber } from '../utils';
 import { styles } from '../styles';
 
+// Direkte Duelle: Bilanz in den Seitenfarben, darunter die Siegquote je Spieler.
 export function HeadToHeadSection({ comparison }: { comparison: PlayerComparisonData }) {
   const { colors } = useTheme();
   const { t } = useI18n();
@@ -19,12 +19,22 @@ export function HeadToHeadSection({ comparison }: { comparison: PlayerComparison
   const leftWins = headToHead?.stats?.leftWins ?? 0;
   const rightWins = headToHead?.stats?.rightWins ?? 0;
   const draws = headToHead?.stats?.draws ?? 0;
+  const hasDuels = Boolean(headToHead?.available) && parsedItemCount > 0;
 
-  const rate = (value?: number | null) => (isFiniteNumber(value) ? formatPercent(value * 100) : '—');
+  const rate = (value?: number | null) => (isFiniteNumber(value) ? formatPercent(value * 100) : '–');
 
   return (
-      <View style={{ gap: 10 }}>
-        <SectionHeader title={t('compare.headToHead')} />
+      <View style={styles.section}>
+        <View style={styles.h2hHeader}>
+          <Text style={[typography.section, styles.h2hTitle, { color: colors.text }]}>{t('compare.headToHead')}</Text>
+          {hasDuels ? (
+              <Text style={[numeric.row, { color: colors.text }]}>
+                <Text style={{ color: colors.primary }}>{leftWins}</Text>
+                {' : '}
+                <Text style={{ color: colors.orange }}>{rightWins}</Text>
+              </Text>
+          ) : null}
+        </View>
 
         <Card style={styles.card}>
           {!headToHead?.available || (parsedItemCount <= 0 && itemCount <= 0) ? (
@@ -32,49 +42,37 @@ export function HeadToHeadSection({ comparison }: { comparison: PlayerComparison
           ) : parsedItemCount <= 0 ? (
               <View style={styles.message}>
                 <Ionicons name="alert-circle-outline" size={22} color={colors.mutedText} />
-
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.bodyStrong, { color: colors.text }]}>
                     {t('compare.directMeetingsFound', { count: itemCount })}
                   </Text>
-                  <Text style={[typography.meta, { color: colors.mutedText }]}>
-                    {t('compare.directMeetingsParseMissing')}
-                  </Text>
+                  <Text style={[typography.meta, { color: colors.mutedText }]}>{t('compare.directMeetingsParseMissing')}</Text>
                 </View>
               </View>
           ) : (
               <>
                 <View style={styles.h2hRow}>
                   <View style={styles.h2hSide}>
-                    <Text style={[typography.meta, { color: colors.mutedText }]} numberOfLines={1}>
+                    <Text style={[typography.label, { color: colors.mutedText }]} numberOfLines={1}>
                       {getPlayerName(comparison.left, t)}
                     </Text>
-                    <Text style={[numeric.hero, { color: leftWins > rightWins ? colors.primary : colors.text }]}>
-                      {leftWins}
-                    </Text>
-                    <Text style={[typography.label, { color: colors.mutedText }]}>{rate(headToHead.stats?.leftWinRate)}</Text>
+                    <Text style={[numeric.stat, { color: colors.primary }]}>{rate(headToHead?.stats?.leftWinRate)}</Text>
                   </View>
 
-                  <View style={styles.h2hCenter}>
-                    <Text style={[typography.label, { color: colors.mutedText }]}>{t('compare.record')}</Text>
-                    <Text style={[typography.label, { color: colors.mutedText }]}>
-                      {draws > 0 ? `${t('compare.drawsCount', { count: draws })} · ` : ''}
-                      {t('compare.matchesCount', { count: parsedItemCount })}
-                    </Text>
-                  </View>
+                  <Text style={[typography.label, { color: colors.mutedText }]}>
+                    {draws > 0 ? `${t('compare.drawsCount', { count: draws })} · ` : ''}
+                    {t('compare.matchesCount', { count: parsedItemCount })}
+                  </Text>
 
-                  <View style={styles.h2hSide}>
-                    <Text style={[typography.meta, { color: colors.mutedText }]} numberOfLines={1}>
+                  <View style={[styles.h2hSide, styles.h2hSideRight]}>
+                    <Text style={[typography.label, { color: colors.mutedText }]} numberOfLines={1}>
                       {getPlayerName(comparison.right, t)}
                     </Text>
-                    <Text style={[numeric.hero, { color: rightWins > leftWins ? colors.primary : colors.text }]}>
-                      {rightWins}
-                    </Text>
-                    <Text style={[typography.label, { color: colors.mutedText }]}>{rate(headToHead.stats?.rightWinRate)}</Text>
+                    <Text style={[numeric.stat, { color: colors.orange }]}>{rate(headToHead?.stats?.rightWinRate)}</Text>
                   </View>
                 </View>
 
-                {headToHead.perspective?.note ? (
+                {headToHead?.perspective?.note ? (
                     <Text style={[typography.label, { color: colors.mutedText }]}>{headToHead.perspective.note}</Text>
                 ) : null}
               </>
@@ -83,3 +81,4 @@ export function HeadToHeadSection({ comparison }: { comparison: PlayerComparison
       </View>
   );
 }
+

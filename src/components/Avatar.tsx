@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '../theme/typography';
 
 type AvatarProps = {
   name?: string | null;
   icon?: keyof typeof Ionicons.glyphMap;
   size?: number;
   shape?: 'round' | 'square';
-  tone?: 'soft' | 'primary';
+  // neutral: grau (Personen in Listen), accent: Akzent getönt (Vereine, eigenes Profil), primary: voll
+  tone?: 'neutral' | 'accent' | 'primary';
 };
 
 export function getInitials(name?: string | null) {
@@ -22,12 +24,16 @@ export function getInitials(name?: string | null) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-export function Avatar({ name, icon, size = 44, shape = 'round', tone = 'soft' }: AvatarProps) {
+export function Avatar({ name, icon, size = 44, shape = 'round', tone }: AvatarProps) {
   const { colors } = useTheme();
-
-  const backgroundColor = tone === 'primary' ? colors.primary : colors.primarySoft;
-  const foreground = tone === 'primary' ? colors.primaryForeground : colors.primary;
   const initials = getInitials(name);
+  const showIcon = Boolean(icon) || !initials;
+  const resolvedTone = tone ?? (showIcon ? 'accent' : 'neutral');
+
+  const backgroundColor =
+      resolvedTone === 'primary' ? colors.primary : resolvedTone === 'accent' ? colors.primarySoft : colors.soft;
+  const foreground =
+      resolvedTone === 'primary' ? colors.primaryForeground : resolvedTone === 'accent' ? colors.primary : colors.text;
 
   return (
       <View
@@ -41,10 +47,10 @@ export function Avatar({ name, icon, size = 44, shape = 'round', tone = 'soft' }
             },
           ]}
       >
-        {icon || !initials ? (
-            <Ionicons name={icon ?? 'person'} size={Math.round(size * 0.46)} color={foreground} />
+        {showIcon ? (
+            <Ionicons name={icon ?? 'person-outline'} size={Math.round(size * 0.48)} color={foreground} />
         ) : (
-            <Text style={[styles.initials, { color: foreground, fontSize: Math.round(size * 0.38) }]}>
+            <Text style={[styles.initials, { color: foreground, fontSize: Math.round(size * 0.35) }]}>
               {initials}
             </Text>
         )}
@@ -58,6 +64,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   initials: {
-    fontWeight: '800',
+    ...font('700'),
   },
 });

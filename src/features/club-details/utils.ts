@@ -3,6 +3,7 @@ import type { ClubTeam, ScheduleMatch } from '@/src/types/tttracker';
 import { formatDate, normalizeSchedule } from '@/src/utils/normalizers';
 import { isFavorite } from '@/src/storage/favorites';
 import type { ClubApiWithOptionalEndpoints, ClubScheduleMatch, RichObject, ClubPlayer, ThemeColors, ScheduleDateGroup } from './types';
+import { getCurrentSeason } from '@/src/utils/dates';
 
 export const TEAM_HOME_KEYS = [
     'team_home',
@@ -133,7 +134,7 @@ export async function loadClubScheduleFromTeamLeagues(
     for (const team of teams) {
         if (!team.association || !team.groupId || !team.teamName) continue;
 
-        const season = team.season ?? '25/26';
+        const season = team.season || getCurrentSeason();
         const leagueSlug = team.leagueSlug ?? 'x';
         const key = [team.association, season, team.groupId, leagueSlug].join('|');
 

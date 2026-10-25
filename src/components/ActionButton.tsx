@@ -1,59 +1,64 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Platform, Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
-import { MIN_TOUCH, spacing } from '../theme/spacing';
 import { useTheme } from '../theme/ThemeProvider';
-import { typography } from '../theme/typography';
+import { font } from '../theme/typography';
 
 type ActionButtonProps = {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress?: () => void;
-  variant?: 'primary' | 'secondary';
+  // primary: Akzent gefüllt; secondary: weiße Karte; active: hervorgehoben (z. B. Favorit gesetzt)
+  variant?: 'primary' | 'secondary' | 'active';
+  // horizontal: Icon neben dem Text, flacher (z. B. Verein: Mein Verein / Favorit)
+  layout?: 'stacked' | 'inline';
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
-// Icon über Label, für Aktionsleisten. In einer Zeile mit flex: 1 nebeneinander legen.
+const ACTIVE_COLOR = '#D97706';
+
+// Aktionsleisten: mehrere davon mit flex: 1 nebeneinander.
 export function ActionButton({
                                icon,
                                label,
                                onPress,
                                variant = 'secondary',
+                               layout = 'stacked',
                                loading,
                                disabled,
                                style,
                              }: ActionButtonProps) {
   const { colors } = useTheme();
   const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
-
   const primary = variant === 'primary';
-  const foreground = primary ? colors.primaryForeground : colors.text;
+  const active = variant === 'active';
+
+  const foreground = primary ? colors.primaryForeground : active ? ACTIVE_COLOR : colors.text;
+  const backgroundColor = primary ? colors.primary : active ? `${ACTIVE_COLOR}1F` : colors.card;
+  const borderColor = primary ? colors.primary : active ? `${ACTIVE_COLOR}59` : colors.border;
 
   return (
       <Pressable
           accessibilityRole="button"
           accessibilityLabel={label}
-          accessibilityState={{ disabled: Boolean(disabled), busy: Boolean(loading) }}
+          accessibilityState={{ disabled: Boolean(disabled), busy: Boolean(loading), selected: active }}
           onPress={disabled || loading ? undefined : onPress}
           style={({ pressed }) => [
             styles.button,
+            layout === 'inline' ? styles.inline : styles.stacked,
             noWebOutline,
-            {
-              backgroundColor: primary ? colors.primary : colors.card,
-              borderColor: primary ? colors.primary : colors.border,
-              opacity: disabled ? 0.48 : pressed ? 0.78 : 1,
-            },
+            { backgroundColor, borderColor, opacity: disabled ? 0.45 : pressed ? 0.78 : 1 },
             style,
           ]}
       >
         {loading ? (
             <ActivityIndicator size="small" color={foreground} />
         ) : (
-            <Ionicons name={icon} size={20} color={primary ? foreground : colors.primary} />
+            <Ionicons name={icon} size={layout === 'inline' ? 17 : 21} color={foreground} />
         )}
 
-        <Text style={[typography.label, styles.label, { color: foreground }]} numberOfLines={1}>
+        <Text style={[styles.label, layout === 'inline' && styles.labelInline, { color: foreground }]} numberOfLines={1}>
           {label}
         </Text>
       </Pressable>
@@ -63,16 +68,28 @@ export function ActionButton({
 const styles = StyleSheet.create({
   button: {
     flex: 1,
-    minHeight: MIN_TOUCH + 12,
-    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    paddingHorizontal: 8,
+  },
+  stacked: {
+    height: 68,
+    borderRadius: 16,
+    gap: 6,
+  },
+  inline: {
+    height: 44,
+    borderRadius: 14,
+    flexDirection: 'row',
+    gap: 8,
   },
   label: {
-    fontWeight: '700',
+    fontSize: 13,
+    lineHeight: 16,
+    ...font('600'),
+  },
+  labelInline: {
+    fontSize: 14,
   },
 });

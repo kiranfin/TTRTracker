@@ -1,13 +1,14 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
     content: {
-        padding: 16,
-        paddingTop: 20,
+        paddingHorizontal: 16,
+        paddingTop: 4,
         paddingBottom: 112,
         gap: 16,
     },
-    error: {
+    error: { ...font('400'),
         fontSize: 14,
         lineHeight: 20,
     },
@@ -20,9 +21,10 @@ export const styles = StyleSheet.create({
         gap: 14,
     },
     leagueHeadText: {
-        flex: 1,
-        minWidth: 0,
         gap: 4,
+    },
+    leagueHeadSubtitle: {
+        fontSize: 14,
     },
     tableCard: {
         borderRadius: 20,
@@ -30,22 +32,28 @@ export const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     tableRow: {
-        minHeight: 48,
+        minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',
         paddingRight: 14,
-        paddingVertical: 8,
+        paddingVertical: 6,
     },
     tableHeader: {
-        minHeight: 34,
-        paddingVertical: 6,
+        minHeight: 36,
+        paddingVertical: 4,
+    },
+    headerLabel: {
+        letterSpacing: 0.4,
+        textTransform: 'uppercase',
     },
     rankBar: {
         position: 'absolute',
         left: 0,
-        top: 0,
-        bottom: 0,
+        top: 8,
+        bottom: 8,
         width: 4,
+        borderTopRightRadius: 3,
+        borderBottomRightRadius: 3,
     },
     colRank: {
         width: 40,
@@ -82,6 +90,6 @@ export const styles = StyleSheet.create({
     legendDot: {
         width: 10,
         height: 10,
-        borderRadius: 5,
+        borderRadius: 3,
     },
 });

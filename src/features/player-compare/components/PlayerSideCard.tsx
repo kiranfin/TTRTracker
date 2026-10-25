@@ -1,7 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
-import { Card } from '@/src/components/Card';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { numeric, typography } from '@/src/theme/typography';
@@ -9,56 +7,96 @@ import type { PlayerCompareSide } from '../types';
 import { formatOptionalNumber, getClubName, getPlayerName } from '../utils';
 import { styles } from '../styles';
 
-type PlayerSideCardProps = {
+type PlayerHalfProps = {
   player?: PlayerCompareSide;
-  favorite?: boolean;
-  onPress: () => void;
+  color: string;
+  onChange: () => void;
   onOpenProfile?: () => void;
 };
 
-// Spielerkarte. Tippen öffnet die Spielerwahl, das kleine Icon das Profil.
-export function PlayerSideCard({ player, favorite, onPress, onOpenProfile }: PlayerSideCardProps) {
+// Eine Hälfte der Vergleichskarte: Avatar, Name, Verein, TTR in Seitenfarbe, darunter "Wechseln".
+function PlayerHalf({ player, color, onChange, onOpenProfile }: PlayerHalfProps) {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+  const name = player ? getPlayerName(player, t) : undefined;
+
+  return (
+      <View style={styles.half}>
+        <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={name ?? t('compare.pickPlayer')}
+            onPress={player && onOpenProfile ? onOpenProfile : onChange}
+            style={styles.halfIdentity}
+        >
+          <View style={[styles.halfAvatar, { backgroundColor: `${color}24` }]}>
+            {name ? (
+                <Text style={[typography.section, { color }]}>{name.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</Text>
+            ) : (
+                <Avatar icon="person-add-outline" size={52} />
+            )}
+          </View>
+
+          <Text style={[typography.bodyStrong, styles.halfText, { color: name ? colors.text : colors.primary }]} numberOfLines={2}>
+            {name ?? t('compare.pickPlayer')}
+          </Text>
+
+          {player ? (
+              <Text style={[typography.label, styles.halfText, { color: colors.mutedText }]} numberOfLines={1}>
+                {getClubName(player, t)}
+              </Text>
+          ) : null}
+
+          {player ? (
+              <Text style={[numeric.large, { color }]}>{formatOptionalNumber(player.ratings?.currentTtr)}</Text>
+          ) : null}
+        </Pressable>
+
+        <Pressable
+            accessibilityRole="button"
+            onPress={onChange}
+            style={({ pressed }) => [
+              styles.changePill,
+              { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+            ]}
+        >
+          <Text style={[typography.label, styles.changePillText, { color: colors.text }]}>{t('compare.change')}</Text>
+        </Pressable>
+      </View>
+  );
+}
+
+type PlayersCardProps = {
+  left?: PlayerCompareSide;
+  right?: PlayerCompareSide;
+  onChangeLeft: () => void;
+  onChangeRight: () => void;
+  onOpenLeft?: () => void;
+  onOpenRight?: () => void;
+  onSwap?: () => void;
+};
+
+// Beide Spieler in einer Karte, dazwischen "VS". Tippen auf VS tauscht die Seiten.
+export function PlayersCard({ left, right, onChangeLeft, onChangeRight, onOpenLeft, onOpenRight, onSwap }: PlayersCardProps) {
   const { colors } = useTheme();
   const { t } = useI18n();
 
   return (
-      <Card
-          pressable
-          onPress={onPress}
-          style={[styles.sideCard, favorite && { borderColor: colors.primary }]}
-      >
-        <View style={styles.sideCardTop}>
-          {player ? <Avatar name={getPlayerName(player, t)} size={52} /> : <Avatar icon="person-add" size={52} />}
+      <View style={[styles.playersCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <PlayerHalf player={left} color={colors.primary} onChange={onChangeLeft} onOpenProfile={onOpenLeft} />
 
-          {player && onOpenProfile ? (
-              <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t('compare.openProfile')}
-                  onPress={onOpenProfile}
-                  style={styles.sideOpenProfile}
-              >
-                <Ionicons name="open-outline" size={18} color={colors.mutedText} />
-              </Pressable>
-          ) : null}
+        <View style={styles.vsWrap}>
+          <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('compare.swapSides')}
+              disabled={!onSwap}
+              onPress={onSwap}
+              style={[styles.vsBadge, { backgroundColor: colors.text }]}
+          >
+            <Text style={[typography.caption, styles.vsText, { color: colors.card }]}>VS</Text>
+          </Pressable>
         </View>
 
-        {player ? (
-            <>
-              <Text style={[typography.bodyStrong, styles.sideName, { color: colors.text }]} numberOfLines={2}>
-                {getPlayerName(player, t)}
-              </Text>
-
-              <Text style={[typography.label, styles.sideName, { color: colors.mutedText }]} numberOfLines={1}>
-                {getClubName(player, t)}
-              </Text>
-
-              <Text style={[numeric.large, { color: colors.text }]}>{formatOptionalNumber(player.ratings?.currentTtr)}</Text>
-            </>
-        ) : (
-            <Text style={[typography.bodyStrong, styles.sideName, { color: colors.primary }]}>
-              {t('compare.pickPlayer')}
-            </Text>
-        )}
-      </Card>
+        <PlayerHalf player={right} color={colors.orange} onChange={onChangeRight} onOpenProfile={onOpenRight} />
+      </View>
   );
 }

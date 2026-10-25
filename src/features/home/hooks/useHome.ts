@@ -5,7 +5,7 @@ import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
-import { getMePlayerNuid, setMePlayerNuid } from '@/src/storage/mePlayer';
+import { getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
 import type { HomeClubMatch } from '../types';
@@ -106,6 +106,13 @@ export function useHome() {
 
   const displayName = formatPersonName(meHistory?.personName) || t('home.profileFallback');
   const firstName = meHistory?.personName ? getFirstName(meHistory.personName) : '';
+
+  // Namen merken, damit die Einstellungen ihn ohne eigenen Request zeigen können.
+  useEffect(() => {
+    if (meNuid && meHistory?.personName) {
+      setMePlayerName(formatPersonName(meHistory.personName)).catch(() => undefined);
+    }
+  }, [meNuid, meHistory?.personName]);
   const clubName = meHistory?.clubName;
 
   const currentTtr =

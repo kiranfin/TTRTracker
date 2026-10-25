@@ -12,6 +12,7 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { SegmentedTabs } from '@/src/components/SegmentedTabs';
 import { StatStrip } from '@/src/components/StatStrip';
 import { typography } from '@/src/theme/typography';
+import { formatSeasonLong, getCurrentSeason } from '@/src/utils/dates';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { InfosTab, LineupTab, ScheduleTab, BalancesTab } from '../../../src/features/team-details/components';
@@ -50,8 +51,8 @@ export default function TeamDetailsScreen() {
                 leagueTitle: params.leagueTitle,
                 association: params.association,
                 groupId: params.groupId,
-                season: params.season ?? '25/26',
-                apiSeason: normalizeSeasonForApi(params.season ?? '25/26'),
+                season: params.season || getCurrentSeason(),
+                apiSeason: normalizeSeasonForApi(params.season || getCurrentSeason()),
                 leagueSlug: params.leagueSlug ?? 'x',
             };
         },
@@ -317,18 +318,17 @@ export default function TeamDetailsScreen() {
                 <ScreenHeader />
 
                 <View style={styles.teamHead}>
-                    <Avatar icon="people" shape="square" size={56} />
+                    <Avatar icon="people-outline" shape="square" size={60} tone="accent" />
 
                     <View style={styles.teamHeadText}>
-                        <Text style={[typography.title, { color: colors.text }]} numberOfLines={2}>
+                        <Text style={[typography.heading, { color: colors.text }]} numberOfLines={2}>
                             {team.teamName}
                         </Text>
 
-                        <Text style={[typography.meta, { color: colors.mutedText }]} numberOfLines={1}>
+                        <Text style={[typography.meta, { color: colors.mutedText, fontSize: 14 }]} numberOfLines={1}>
                             {[
                                 team.leagueTitle,
-                                t('favorites.seasonValue', { season: team.season }),
-                                team.groupId ? t('team.groupValue', { groupId: team.groupId }) : undefined,
+                                t('leagues.seasonLabel', { season: formatSeasonLong(team.season) }),
                             ]
                                 .filter(Boolean)
                                 .join(' · ')}
@@ -338,7 +338,8 @@ export default function TeamDetailsScreen() {
 
                 <View style={styles.actionRow}>
                     <ActionButton
-                        icon="podium-outline"
+                        layout="inline"
+                        icon="trophy-outline"
                         label={t('team.openLeagueDetails')}
                         disabled={!team.association || !team.groupId}
                         onPress={() =>

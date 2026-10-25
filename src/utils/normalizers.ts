@@ -15,6 +15,7 @@ import type {
   ScheduleMatchStatus,
   TableRow,
 } from '../types/tttracker';
+import { getCurrentSeason } from './dates';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -187,7 +188,7 @@ export function normalizeTeams(response: unknown): ClubTeam[] {
 
     const teamId = firstString(team.team_id, team.teamId, team.id);
     const groupId = firstString(team.group_id, team.groupId, team.group);
-    const season = firstString(team.season, '25/26');
+    const season = firstString(team.season, getCurrentSeason());
     const association = firstString(team.team_organisation_short, team.organization_short, team.association, team.organization);
 
     return {
@@ -245,7 +246,7 @@ export function normalizeLeagues(response: LeagueSearchResult[], region: string)
         league.association
     );
 
-    const season = firstString(item.season, league.saison, league.season_name, '25/26') ?? '25/26';
+    const season = firstString(item.season, league.saison, league.season_name, getCurrentSeason()) || getCurrentSeason();
 
     return {
       id: firstString(item.id, groupId, `${region}-${index}`) ?? `${region}-${index}`,

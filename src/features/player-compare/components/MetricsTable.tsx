@@ -11,7 +11,6 @@ import {
   formatSignedAverage,
   formatSignedNumber,
   getLeader,
-  getPlayerName,
 } from '../utils';
 import { styles } from '../styles';
 
@@ -25,27 +24,35 @@ type MetricRow = {
   rightText?: string;
 };
 
+// Wert links und rechts, Kennzahl in der Mitte. Der bessere Wert steht in der Seitenfarbe mit Punkt.
 function MetricLine({ row }: { row: MetricRow }) {
   const { colors } = useTheme();
   const leader: Leader = getLeader(row.left, row.right);
 
-  const valueStyle = (side: 'left' | 'right') => [
-    numeric.medium,
-    styles.metricValue,
-    leader === side
-        ? { color: colors.primary, fontWeight: '900' as const }
-        : { color: colors.text, fontWeight: '600' as const },
-  ];
+  const sideColor = (side: 'left' | 'right') => (side === 'left' ? colors.primary : colors.orange);
+
+  const renderValue = (side: 'left' | 'right') => {
+    const lead = leader === side;
+    const text = side === 'left' ? row.leftText ?? row.format(row.left) : row.rightText ?? row.format(row.right);
+
+    return (
+        <View style={[styles.metricValueWrap, side === 'right' && styles.metricValueWrapRight]}>
+          {lead && side === 'right' ? <View style={[styles.leadDot, { backgroundColor: sideColor(side) }]} /> : null}
+          <Text style={[numeric.row, { color: lead ? sideColor(side) : colors.text }]}>{text}</Text>
+          {lead && side === 'left' ? <View style={[styles.leadDot, { backgroundColor: sideColor(side) }]} /> : null}
+        </View>
+    );
+  };
 
   return (
       <View style={styles.metricRow}>
-        <Text style={valueStyle('left')}>{row.leftText ?? row.format(row.left)}</Text>
+        {renderValue('left')}
 
-        <Text style={[typography.label, styles.metricLabel, { color: colors.mutedText }]} numberOfLines={2}>
+        <Text style={[typography.meta, styles.metricLabel, { color: colors.mutedText }]} numberOfLines={2}>
           {row.label}
         </Text>
 
-        <Text style={valueStyle('right')}>{row.rightText ?? row.format(row.right)}</Text>
+        {renderValue('right')}
       </View>
   );
 }
@@ -59,7 +66,6 @@ type MetricsTableProps = {
 // Kennzahlen nebeneinander, der bessere Wert ist hervorgehoben.
 export function MetricsTable({ comparison, leftStats, rightStats }: MetricsTableProps) {
   const { t } = useI18n();
-  const { colors } = useTheme();
 
   const rows: MetricRow[] = [
     {
@@ -121,20 +127,10 @@ export function MetricsTable({ comparison, leftStats, rightStats }: MetricsTable
   ];
 
   return (
-      <View style={{ gap: 10 }}>
+      <View style={styles.section}>
         <SectionHeader title={t('compare.keyMetrics')} />
 
         <ListGroup>
-          <View style={[styles.metricRow, { backgroundColor: colors.soft }]}>
-            <Text style={[typography.label, styles.metricValue, { color: colors.mutedText }]} numberOfLines={1}>
-              {getPlayerName(comparison.left, t)}
-            </Text>
-            <View style={{ flex: 1.2 }} />
-            <Text style={[typography.label, styles.metricValue, { color: colors.mutedText }]} numberOfLines={1}>
-              {getPlayerName(comparison.right, t)}
-            </Text>
-          </View>
-
           {rows.map((row) => (
               <MetricLine key={row.label} row={row} />
           ))}

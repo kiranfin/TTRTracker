@@ -22,7 +22,7 @@ export function RecentEventsSection({ comparison }: { comparison: PlayerComparis
   const events = sortEventsNewestFirst(getEvents(player)).slice(0, 5);
 
   return (
-      <View style={{ gap: 10 }}>
+      <View style={styles.section}>
         <SectionHeader title={t('compare.latestEvents')} />
 
         <SegmentedTabs
@@ -44,7 +44,7 @@ export function RecentEventsSection({ comparison }: { comparison: PlayerComparis
                       trailing={
                         <View style={styles.eventTrailing}>
                           <Text style={[numeric.medium, { color: colors.text }]}>{formatOptionalNumber(event.ttr_after)}</Text>
-                          <DeltaText value={numberFromUnknown(event.ttr_delta)} size={12} />
+                          <DeltaText value={numberFromUnknown(event.ttr_delta)} size={13} />
                         </View>
                       }
                   />

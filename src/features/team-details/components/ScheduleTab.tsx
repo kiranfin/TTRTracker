@@ -1,90 +1,82 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Text, View } from 'react-native';
-import { Card } from '@/src/components/Card';
+import { router } from 'expo-router';
+import { View } from 'react-native';
 import { EmptyState } from '@/src/components/EmptyState';
+import { ListGroup } from '@/src/components/ListGroup';
+import { MatchRow } from '@/src/components/MatchRow';
+import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
-import { useTheme } from '@/src/theme/ThemeProvider';
 import type { TeamContext, ScheduleSummary, TeamScheduleMatch } from '../types';
+import { formatDateLabel } from '../utils';
 import { styles } from '../styles';
-import { MiniStat } from './MiniStat';
-import { TeamMatchCard } from './TeamMatchCard';
 
+function MatchList({ matches, team }: { matches: TeamScheduleMatch[]; team: TeamContext }) {
+  const { language } = useI18n();
+
+  return (
+      <ListGroup>
+        {matches.map((match, index) => {
+          const canOpen = Boolean(match.id) && match.status !== 'free';
+
+          return (
+              <MatchRow
+                  key={`${match.id ?? 'no-id'}-${index}`}
+                  homeTeam={match.homeTeam}
+                  awayTeam={match.awayTeam}
+                  homeScore={match.homeScore}
+                  awayScore={match.awayScore}
+                  status={match.status}
+                  time={match.time}
+                  meta={[formatDateLabel(match.date, language), match.roundName].filter(Boolean).join(' · ')}
+                  highlightTeam={team.teamName}
+                  onPress={
+                    canOpen
+                        ? () =>
+                            router.push({
+                              pathname: '/match/[meetingId]',
+                              params: { meetingId: match.id!, homeTeam: match.homeTeam, awayTeam: match.awayTeam },
+                            })
+                        : undefined
+                  }
+              />
+          );
+        })}
+      </ListGroup>
+  );
+}
+
+// Offene und abgeschlossene Spiele der Mannschaft, im gleichen Zeilenstil wie Verein und Liga.
 export function ScheduleTab({
-                         matches,
-                         team,
-                         summary,
-                     }: {
-    matches: TeamScheduleMatch[];
-    team: TeamContext;
-    summary: ScheduleSummary;
+                              matches,
+                              team,
+                            }: {
+  matches: TeamScheduleMatch[];
+  team: TeamContext;
+  summary: ScheduleSummary;
 }) {
-    const { colors } = useTheme();
-    const { t } = useI18n();
+  const { t } = useI18n();
 
-    const upcoming = matches.filter((match) => match.status !== 'completed');
-    const completed = matches.filter((match) => match.status === 'completed');
+  const upcoming = matches.filter((match) => match.status !== 'completed');
+  const completed = matches.filter((match) => match.status === 'completed');
 
-    if (matches.length === 0) {
-        return <EmptyState icon="calendar-outline" title={t('team.scheduleEmpty')} />;
-    }
+  if (matches.length === 0) {
+    return <EmptyState icon="calendar-outline" title={t('team.scheduleEmpty')} />;
+  }
 
-    return (
-        <View style={styles.stack}>
-            <Card style={styles.sectionCard}>
-                <View style={styles.sectionHeaderCompact}>
-                    <Ionicons name="analytics-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>{t('team.seasonOverview')}</Text>
-                </View>
+  return (
+      <View style={styles.stack}>
+        {upcoming.length > 0 ? (
+            <View style={styles.section}>
+              <SectionHeader variant="label" title={`${t('team.openGames')} (${upcoming.length})`} />
+              <MatchList matches={upcoming} team={team} />
+            </View>
+        ) : null}
 
-                <View style={styles.miniStatRow}>
-                    <MiniStat label={t('team.resultRecord')} value={`${summary.wins}-${summary.draws}-${summary.losses}`} />
-                    <MiniStat label={t('team.played')} value={String(summary.played)} />
-                    <MiniStat label={t('team.open')} value={String(summary.open)} />
-                </View>
-            </Card>
-
-            {upcoming.length > 0 ? (
-                <Card style={styles.sectionCard}>
-                    <View style={styles.sectionHeaderCompact}>
-                        <Ionicons name="time-outline" size={18} color={colors.primary} />
-                        <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                            {t('team.openGames')} ({upcoming.length})
-                        </Text>
-                    </View>
-
-                    <View style={styles.stack}>
-                        {upcoming.map((match, index) => (
-                            <TeamMatchCard
-                                key={`upcoming-${match.id ?? 'no-id'}-${index}`}
-                                match={match}
-                                team={team}
-                                highlighted
-                            />
-                        ))}
-                    </View>
-                </Card>
-            ) : null}
-
-            {completed.length > 0 ? (
-                <Card style={styles.sectionCard}>
-                    <View style={styles.sectionHeaderCompact}>
-                        <Ionicons name="checkmark-circle-outline" size={18} color={colors.primary} />
-                        <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>
-                            {t('team.completedGames')} ({completed.length})
-                        </Text>
-                    </View>
-
-                    <View style={styles.stack}>
-                        {completed.map((match, index) => (
-                            <TeamMatchCard
-                                key={`completed-${match.id ?? 'no-id'}-${index}`}
-                                match={match}
-                                team={team}
-                            />
-                        ))}
-                    </View>
-                </Card>
-            ) : null}
-        </View>
-    );
+        {completed.length > 0 ? (
+            <View style={styles.section}>
+              <SectionHeader variant="label" title={`${t('team.completedGames')} (${completed.length})`} />
+              <MatchList matches={completed} team={team} />
+            </View>
+        ) : null}
+      </View>
+  );
 }

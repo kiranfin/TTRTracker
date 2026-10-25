@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { spacing } from '../theme/spacing';
 import { useTheme } from '../theme/ThemeProvider';
-import { typography } from '../theme/typography';
+import { font, typography } from '../theme/typography';
 
 export type BreadcrumbItem = {
   label: string;
@@ -32,7 +32,7 @@ export function Breadcrumb({ items }: { items: BreadcrumbItem[] }) {
                   <Text
                       style={[
                         typography.meta,
-                        { color: item.onPress ? colors.primary : colors.mutedText, fontWeight: last ? '700' : '600' },
+                        { color: item.onPress ? colors.primary : colors.mutedText, ...font(last ? '700' : '600') },
                       ]}
                       numberOfLines={1}
                   >

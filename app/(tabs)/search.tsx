@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
 import { Chip, ChipRow } from '@/src/components/Chip';
 import { EmptyState } from '@/src/components/EmptyState';
@@ -18,6 +18,22 @@ import { useSearch } from '../../src/features/search/hooks/useSearch';
 import { SkeletonList } from '@/src/components/SkeletonRow';
 
 const OVERVIEW_LIMIT = 4;
+
+// Letzte Zeile einer gekürzten Liste: "Alle 14 Spieler anzeigen"
+function ShowAllRow({ label, onPress }: { label: string; onPress: () => void }) {
+  const { colors } = useTheme();
+
+  return (
+      <Pressable
+          accessibilityRole="button"
+          onPress={onPress}
+          style={({ pressed }) => [styles.showAllRow, { opacity: pressed ? 0.6 : 1 }]}
+      >
+        <Text style={[typography.metaStrong, styles.showAllText, { color: colors.primary }]}>{label}</Text>
+        <Ionicons name="chevron-down" size={16} color={colors.primary} />
+      </Pressable>
+  );
+}
 
 export default function SearchScreen() {
   const { colors } = useTheme();
@@ -81,6 +97,7 @@ export default function SearchScreen() {
           ) : null}
 
           {error ? <Text style={[typography.meta, { color: colors.destructive }]}>{error}</Text> : null}
+
           {loading ? <SkeletonList count={3} /> : null}
 
           {!hasQuery && query.trim().length > 0 ? (
@@ -91,6 +108,7 @@ export default function SearchScreen() {
               recent.length > 0 ? (
                   <View style={styles.section}>
                     <SectionHeader
+                        variant="label"
                         title={t('search.recentTitle')}
                         actionLabel={t('search.clearRecent')}
                         onActionPress={() => {
@@ -106,7 +124,7 @@ export default function SearchScreen() {
                                 item.type === 'player' ? (
                                     <Avatar name={item.title} size={40} />
                                 ) : (
-                                    <Avatar icon="home" shape="square" size={40} />
+                                    <Avatar icon="business-outline" shape="square" size={40} />
                                 )
                               }
                               title={item.title}
@@ -133,11 +151,7 @@ export default function SearchScreen() {
 
           {resultsCurrent && showPlayers && visiblePlayers.length > 0 ? (
               <View style={styles.section}>
-                <SectionHeader
-                    title={t('entities.players')}
-                    actionLabel={filter === 'all' && players.length > OVERVIEW_LIMIT ? t('common.viewAll') : undefined}
-                    onActionPress={() => setFilter('players')}
-                />
+                <SectionHeader variant="label" title={t('entities.players')} />
 
                 <ListGroup>
                   {visiblePlayers.map((player, index) => (
@@ -151,17 +165,19 @@ export default function SearchScreen() {
                           }}
                       />
                   ))}
+                  {filter === 'all' && players.length > OVERVIEW_LIMIT ? (
+                      <ShowAllRow
+                          label={t('search.showAllPlayers', { count: players.length })}
+                          onPress={() => setFilter('players')}
+                      />
+                  ) : null}
                 </ListGroup>
               </View>
           ) : null}
 
           {resultsCurrent && showClubs && visibleClubs.length > 0 ? (
               <View style={styles.section}>
-                <SectionHeader
-                    title={t('entities.clubs')}
-                    actionLabel={filter === 'all' && clubs.length > OVERVIEW_LIMIT ? t('common.viewAll') : undefined}
-                    onActionPress={() => setFilter('clubs')}
-                />
+                <SectionHeader variant="label" title={t('entities.clubs')} />
 
                 <ListGroup>
                   {visibleClubs.map((club, index) => (
@@ -175,6 +191,12 @@ export default function SearchScreen() {
                           }}
                       />
                   ))}
+                  {filter === 'all' && clubs.length > OVERVIEW_LIMIT ? (
+                      <ShowAllRow
+                          label={t('search.showAllClubs', { count: clubs.length })}
+                          onPress={() => setFilter('clubs')}
+                      />
+                  ) : null}
                 </ListGroup>
               </View>
           ) : null}

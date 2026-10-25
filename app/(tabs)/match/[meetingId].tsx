@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { EmptyState } from '@/src/components/EmptyState';
 import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
@@ -49,16 +49,11 @@ export default function MatchDetailsScreen() {
               homeLink={homeTeamLink}
               awayLink={awayTeamLink}
               onOpenTeam={openTeam}
+              meta={[startText, meeting?.group_name].filter(Boolean).join(' · ') || undefined}
               summary={summaryParts}
           />
 
-          {!loading && !error ? (
-              <View style={styles.infoPills}>
-                {startText ? <InfoPill icon="time-outline" text={startText} /> : null}
-                {meeting?.group_name ? <InfoPill icon="trophy-outline" text={meeting.group_name} /> : null}
-                {locationText ? <InfoPill icon="location-outline" text={locationText} /> : null}
-              </View>
-          ) : null}
+          {!loading && !error && locationText ? <InfoPill icon="location-outline" text={locationText} /> : null}
 
           {loading ? <SkeletonList count={3} /> : null}
 
@@ -69,7 +64,7 @@ export default function MatchDetailsScreen() {
           ) : null}
 
           {!loading && !error && doubles.length > 0 ? <MatchSection title={t('match.doublesMatches')} rows={doubles} /> : null}
-          {!loading && !error && singles.length > 0 ? <MatchSection title={t('match.singlesMatches')} rows={singles} /> : null}
+          {!loading && !error && singles.length > 0 ? <MatchSection title={t('match.singlesMatches')} rows={singles} collapseAfter={6} /> : null}
         </ScrollView>
       </Screen>
   );

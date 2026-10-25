@@ -8,6 +8,7 @@ import {
   clearMePlayerNuid,
   getMePlayerNuid,
   normalizeMePlayerNuid,
+  setMePlayerName,
   setMePlayerNuid as saveMePlayerNuid,
 } from '@/src/storage/mePlayer';
 import type { NormalizedPlayerTtrHistory, NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
@@ -226,6 +227,7 @@ export function usePlayerDetails() {
       }
 
       const saved = await saveMePlayerNuid(normalizedCurrentNuid);
+      await setMePlayerName(displayName);
       setStoredMePlayerNuid(saved);
     } catch {
       // Keine sichtbare Statusmeldung: Der Button bleibt einfach im bisherigen Zustand.
