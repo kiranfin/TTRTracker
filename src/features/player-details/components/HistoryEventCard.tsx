@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 import { Badge } from '@/src/components/Badge';
 import { Card } from '@/src/components/Card';
+import { DeltaText } from '@/src/components/Delta';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import type { NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
 import { formatDate } from '@/src/utils/normalizers';
-import { formatSignedNumber, getEventTtr, getEventWinLoss, parseOptionalNumber } from '../utils';
+import { getEventTtr, getEventWinLoss, parseOptionalNumber } from '../utils';
 import { styles } from '../styles';
 import { HistoryMatchCard } from './HistoryMatchCard';
 
@@ -22,9 +23,6 @@ export function HistoryEventCard({
     const { colors } = useTheme();
     const { t } = useI18n();
 
-    const delta = event.delta ?? 0;
-    const deltaColor = delta > 0 ? '#16a34a' : delta < 0 ? colors.destructive : colors.mutedText;
-    const deltaLabel = event.delta !== undefined ? formatSignedNumber(delta) : '—';
     const eventTtr = getEventTtr(event);
     const eventWinLoss = getEventWinLoss(event);
     const eventRatioTotal = eventWinLoss.won + eventWinLoss.lost;
@@ -58,9 +56,7 @@ export function HistoryEventCard({
                     <Text style={[styles.eventTtr, { color: colors.text }]}>
                         {eventTtr ?? '-'}
                     </Text>
-                    <Text style={[styles.eventDelta, { color: deltaColor }]}>
-                        {deltaLabel}
-                    </Text>
+                    <DeltaText value={event.delta} size={13} />
                     <Ionicons
                         name={expanded ? 'chevron-up' : 'chevron-down'}
                         size={18}

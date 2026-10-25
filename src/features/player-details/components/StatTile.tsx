@@ -23,7 +23,7 @@ export function StatTile({
     const valueColor = negative
         ? colors.destructive
         : positive
-            ? '#16a34a'
+            ? colors.positive
             : colors.text;
 
     return (

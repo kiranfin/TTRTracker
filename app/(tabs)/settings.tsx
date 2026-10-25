@@ -256,7 +256,7 @@ export default function SettingsScreen() {
 
                     {savedMeNuid ? (
                         <View style={[styles.savedBox, { borderColor: colors.border }]}>
-                          <Ionicons name="checkmark-circle-outline" size={18} color="#16a34a" />
+                          <Ionicons name="checkmark-circle-outline" size={18} color={colors.positive} />
 
                           <View style={styles.savedBoxText}>
                             <Text style={[styles.savedBoxTitle, { color: colors.text }]}>
@@ -283,7 +283,7 @@ export default function SettingsScreen() {
                                     meNuidMessage.includes('entfernt') ||
                                     meNuidMessage.includes('saved') ||
                                     meNuidMessage.includes('removed')
-                                        ? '#16a34a'
+                                        ? colors.positive
                                         : colors.destructive,
                               },
                             ]}
@@ -364,7 +364,7 @@ export default function SettingsScreen() {
 
                     {savedMeClub ? (
                         <View style={[styles.savedBox, { borderColor: colors.border }]}>
-                          <Ionicons name="checkmark-circle-outline" size={18} color="#16a34a" />
+                          <Ionicons name="checkmark-circle-outline" size={18} color={colors.positive} />
 
                           <View style={styles.savedBoxText}>
                             <Text style={[styles.savedBoxTitle, { color: colors.text }]}>
@@ -392,7 +392,7 @@ export default function SettingsScreen() {
                                     meClubMessage.includes('entfernt') ||
                                     meClubMessage.includes('saved') ||
                                     meClubMessage.includes('removed')
-                                        ? '#16a34a'
+                                        ? colors.positive
                                         : colors.destructive,
                               },
                             ]}
@@ -611,7 +611,7 @@ export default function SettingsScreen() {
                                   backgroundMessage.includes('saved') ||
                                   backgroundMessage.includes('restored') ||
                                   backgroundMessage.includes('No changes')
-                                      ? '#16a34a'
+                                      ? colors.positive
                                       : colors.destructive,
                             },
                           ]}
@@ -724,7 +724,7 @@ export default function SettingsScreen() {
                                   authMessage.includes('ausgeloggt') ||
                                   authMessage.includes('Logged') ||
                                   authMessage.includes('Registered')
-                                      ? '#16a34a'
+                                      ? colors.positive
                                       : colors.destructive,
                             },
                           ]}
@@ -775,7 +775,7 @@ export default function SettingsScreen() {
                                   styles.statusBox,
                                   {
                                     borderColor:
-                                        myttStatus.hasSession && !myttStatus.expired ? '#16a34a' : colors.border,
+                                        myttStatus.hasSession && !myttStatus.expired ? colors.positive : colors.border,
                                     backgroundColor: colors.primarySoft,
                                   },
                                 ]}
@@ -792,7 +792,7 @@ export default function SettingsScreen() {
                                     size={20}
                                     color={
                                       myttStatus.hasSession && !myttStatus.expired
-                                          ? '#16a34a'
+                                          ? colors.positive
                                           : myttStatus.expired
                                               ? '#ea580c'
                                               : colors.destructive
@@ -805,7 +805,7 @@ export default function SettingsScreen() {
                                       {
                                         color:
                                             myttStatus.hasSession && !myttStatus.expired
-                                                ? '#16a34a'
+                                                ? colors.positive
                                                 : myttStatus.expired
                                                     ? '#ea580c'
                                                     : colors.destructive,
@@ -938,7 +938,7 @@ export default function SettingsScreen() {
                                         grantMessage.includes('entfernt') ||
                                         grantMessage.includes('created') ||
                                         grantMessage.includes('removed')
-                                            ? '#16a34a'
+                                            ? colors.positive
                                             : colors.destructive,
                                   },
                                 ]}
@@ -996,7 +996,7 @@ export default function SettingsScreen() {
                             {
                               color:
                                   health.includes('erreichbar') || health.includes('reachable')
-                                      ? '#16a34a'
+                                      ? colors.positive
                                       : colors.destructive,
                             },
                           ]}

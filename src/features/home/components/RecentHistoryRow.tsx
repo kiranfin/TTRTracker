@@ -1,22 +1,15 @@
 import { Text, View } from 'react-native';
+import { DeltaText } from '@/src/components/Delta';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import type { NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
 import { formatDate } from '@/src/utils/normalizers';
-import { getEventTtr, formatSignedNumber } from '../utils';
+import { getEventTtr } from '../utils';
 import { styles } from '../styles';
 
 export function RecentHistoryRow({ event }: { event: NormalizedTtrHistoryEvent }) {
   const { colors } = useTheme();
   const { t } = useI18n();
-
-  const delta = event.delta;
-  const deltaColor =
-      typeof delta === 'number' && delta > 0
-          ? '#16a34a'
-          : typeof delta === 'number' && delta < 0
-              ? colors.destructive
-              : colors.mutedText;
 
   return (
       <View style={[styles.recentRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -36,9 +29,7 @@ export function RecentHistoryRow({ event }: { event: NormalizedTtrHistoryEvent }
             {getEventTtr(event) ?? '—'}
           </Text>
 
-          <Text style={[styles.recentDelta, { color: deltaColor }]}>
-            {formatSignedNumber(delta)}
-          </Text>
+          <DeltaText value={event.delta} size={12} />
         </View>
       </View>
   );

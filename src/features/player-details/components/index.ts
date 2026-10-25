@@ -1,4 +1,3 @@
-export { BackButton } from './BackButton';
 export { MarkAsMeButton } from './MarkAsMeButton';
 export { FavoritePlayerButton } from './FavoritePlayerButton';
 export { OpenClubButton } from './OpenClubButton';

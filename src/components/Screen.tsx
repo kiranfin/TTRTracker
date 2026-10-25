@@ -30,8 +30,8 @@ export function Screen({ children, style, contentStyle }: ScreenProps) {
 
   const overlayColor =
       mode === 'dark'
-          ? 'rgba(23, 23, 23, 0.78)'
-          : 'rgba(249, 250, 251, 0.78)';
+          ? 'rgba(11, 15, 23, 0.78)'
+          : 'rgba(244, 245, 247, 0.78)';
 
   const content = (
       <View

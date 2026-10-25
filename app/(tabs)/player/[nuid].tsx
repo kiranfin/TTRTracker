@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, LayoutAnimation, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ttApi } from '@/src/api/tttracker';
+import { BackButton } from '../../../src/components/ScreenHeader';
 import { Card } from '@/src/components/Card';
 import { EmptyState } from '@/src/components/EmptyState';
 import { Screen } from '@/src/components/Screen';
@@ -12,7 +13,7 @@ import type { NormalizedPlayerTtrHistory, NormalizedTtrHistoryEvent } from '@/sr
 import { getMePlayerNuid, clearMePlayerNuid, normalizeMePlayerNuid, setMePlayerNuid as saveMePlayerNuid } from '@/src/storage/mePlayer';
 import { addFavorite, isFavorite, removeFavorite } from '@/src/storage/favorites';
 import { formatDate, normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
-import { BackButton, MarkAsMeButton, FavoritePlayerButton, OpenClubButton, HeadToHeadButton, OverviewFact, StatTile, ChartRangeButton, TtrLineChart, LeagueOption, PaginationIconButton, HistoryEventCard } from '../../../src/features/player-details/components';
+import { MarkAsMeButton, FavoritePlayerButton, OpenClubButton, HeadToHeadButton, OverviewFact, StatTile, ChartRangeButton, TtrLineChart, LeagueOption, PaginationIconButton, HistoryEventCard } from '../../../src/features/player-details/components';
 import { styles } from '../../../src/features/player-details/styles';
 import { getPlayerHistoryData, normalizeClubLookupText, PLAYER_FAVORITE_TYPE, parseOptionalNumber, historyEventMatchesSearch, PAGE_SIZE, getEventTtr, CHART_RANGES, parseDateTimestamp, subtractMonths, isFiniteNumber, getEventWinLoss, formatOptionalNumber, formatPercent, formatSignedAverage, formatSignedNumber } from '../../../src/features/player-details/utils';
 import type { ClubRouteParams, ChartRangeId, PlayerStats } from '../../../src/features/player-details/types';

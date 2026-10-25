@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ttApi } from '../../../src/api/tttracker';
+import { BackButton } from '../../../src/components/ScreenHeader';
 import { Badge } from '../../../src/components/Badge';
 import { Button, IconButton } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
@@ -358,27 +359,6 @@ export default function RegionLeaguesScreen() {
   );
 }
 
-function BackButton({ onPress }: { onPress: () => void }) {
-  const { colors } = useTheme();
-  const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {};
-
-  return (
-      <Pressable
-          onPress={onPress}
-          hitSlop={10}
-          style={({ pressed }) => [
-            styles.backButton,
-            noWebOutline,
-            {
-              backgroundColor: pressed ? colors.primarySoft : 'transparent',
-              borderColor: pressed ? colors.primarySoftBorder : colors.border,
-            },
-          ]}
-      >
-        <Ionicons name="arrow-back" size={23} color={colors.text} />
-      </Pressable>
-  );
-}
 
 function formatSeasonLabel(value?: string) {
   return String(value ?? DEFAULT_SEASON).replace(/--/g, '/');

@@ -1,4 +1,3 @@
-export { BackButton } from './BackButton';
 export { LeagueDetailsButton } from './LeagueDetailsButton';
 export { InfosTab } from './InfosTab';
 export { LineupTab } from './LineupTab';

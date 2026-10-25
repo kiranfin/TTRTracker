@@ -1,10 +1,11 @@
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { BackButton } from '../../../src/components/ScreenHeader';
 import { Card } from '@/src/components/Card';
 import { EmptyState } from '@/src/components/EmptyState';
 import { Screen } from '@/src/components/Screen';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { BackButton, InfoPill, MatchSection } from '../../../src/features/match-details/components';
+import { InfoPill, MatchSection } from '../../../src/features/match-details/components';
 import { styles } from '../../../src/features/match-details/styles';
 import { useMatchDetails } from '../../../src/features/match-details/hooks/useMatchDetails';
 

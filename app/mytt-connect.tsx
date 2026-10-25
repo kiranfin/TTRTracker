@@ -112,7 +112,7 @@ export default function MyttConnectScreen() {
                                 styles.message,
                                 {
                                     color: message.includes('gespeichert') || message.includes('saved')
-                                        ? '#16a34a'
+                                        ? colors.positive
                                         : colors.destructive,
                                 },
                             ]}

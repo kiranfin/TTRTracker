@@ -21,22 +21,23 @@ export function SegmentedTabs<T extends string>({
   const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
 
   return (
-      <View style={[styles.wrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+      <View style={[styles.wrap, { backgroundColor: colors.soft }]}>
         {options.map((option) => {
           const active = option.value === value;
-          const textColor = active ? colors.primary : colors.mutedText;
+          const textColor = active ? colors.text : colors.mutedText;
 
           return (
               <Pressable
                   key={option.value}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
                   onPress={() => onChange(option.value)}
                   style={({ pressed }) => [
                     styles.tab,
                     noWebOutline,
                     active && {
                       backgroundColor: colors.card,
-                      borderColor: colors.primarySoftBorder,
-                      shadowColor: colors.shadow,
+                      borderColor: colors.border,
                     },
                     pressed && styles.pressed,
                   ]}
@@ -55,15 +56,14 @@ export function SegmentedTabs<T extends string>({
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
-    borderRadius: 18,
-    padding: 5,
-    gap: 5,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    padding: 3,
+    gap: 3,
   },
   tab: {
     flex: 1,
-    minHeight: 42,
-    borderRadius: 14,
+    minHeight: 40,
+    borderRadius: 11,
     borderWidth: 1,
     borderColor: 'transparent',
     alignItems: 'center',
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     lineHeight: 18,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   pressed: {
     opacity: 0.78,
