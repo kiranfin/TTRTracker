@@ -70,10 +70,7 @@ export function useSettings() {
   const [grantLoading, setGrantLoading] = useState<'load' | 'create' | null>(null);
   const [deletingGrantId, setDeletingGrantId] = useState<string | null>(null);
 
-  const [meNuidInput, setMeNuidInput] = useState('');
   const [savedMeNuid, setSavedMeNuid] = useState<string | null>(null);
-  const [meNuidMessage, setMeNuidMessage] = useState<string | null>(null);
-  const [meNuidLoading, setMeNuidLoading] = useState<'save' | 'clear' | null>(null);
 
   const [clubIdInput, setClubIdInput] = useState('');
   const [clubNameInput, setClubNameInput] = useState('');
@@ -188,7 +185,6 @@ export function useSettings() {
             if (!active) return;
 
             setSavedMeNuid(storedNuid);
-            setMeNuidInput(storedNuid ?? '');
 
             setSavedMeClub(storedClub);
             setClubIdInput(formatClubId(storedClub));
@@ -361,36 +357,14 @@ export function useSettings() {
     }
   }
 
-  async function handleSaveMeNuid() {
-    setMeNuidLoading('save');
-    setMeNuidMessage(null);
-
-    try {
-      const saved = await setMePlayerNuid(meNuidInput);
-      setSavedMeNuid(saved);
-      setMeNuidInput(saved);
-      setMeNuidMessage(t('settings.profileSaved'));
-    } catch (error) {
-      setMeNuidMessage(error instanceof Error ? error.message : t('settings.nuidSaveError'));
-    } finally {
-      setMeNuidLoading(null);
-    }
+  async function handleSelectMePlayer(nuid: string) {
+    const saved = await setMePlayerNuid(nuid);
+    setSavedMeNuid(saved);
   }
 
   async function handleClearMeNuid() {
-    setMeNuidLoading('clear');
-    setMeNuidMessage(null);
-
-    try {
-      await clearMePlayerNuid();
-      setSavedMeNuid(null);
-      setMeNuidInput('');
-      setMeNuidMessage(t('settings.profileRemoved'));
-    } catch (error) {
-      setMeNuidMessage(error instanceof Error ? error.message : t('settings.nuidRemoveError'));
-    } finally {
-      setMeNuidLoading(null);
-    }
+    await clearMePlayerNuid();
+    setSavedMeNuid(null);
   }
 
   async function handleSaveMeClub() {
@@ -503,11 +477,7 @@ export function useSettings() {
     grantMessage,
     grantLoading,
     deletingGrantId,
-    meNuidInput,
-    setMeNuidInput,
     savedMeNuid,
-    meNuidMessage,
-    meNuidLoading,
     clubIdInput,
     setClubIdInput,
     clubNameInput,
@@ -531,7 +501,7 @@ export function useSettings() {
     handleLoadGrants,
     handleCreateGrant,
     handleRevokeGrant,
-    handleSaveMeNuid,
+    handleSelectMePlayer,
     handleClearMeNuid,
     handleSaveMeClub,
     handleClearMeClub,
@@ -541,3 +511,5 @@ export function useSettings() {
     canCreateGrant,
   };
 }
+
+export type SettingsController = ReturnType<typeof useSettings>;

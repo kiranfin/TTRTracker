@@ -4,38 +4,7 @@ export const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 112,
-    gap: 16,
-  },
-  titleBlock: {
-    gap: 4,
-  },
-  title: {
-    fontSize: 25,
-    lineHeight: 32,
-    fontWeight: '800',
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  card: {
-    padding: 16,
-    gap: 14,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-  },
-  label: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
+    gap: 22,
   },
   input: {
     minHeight: 46,
@@ -89,45 +58,6 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'center',
-  },
-  accentPreview: {
-    minHeight: 78,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  accentPreviewTextBlock: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  accentPreviewTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '900',
-  },
-  accentPreviewMeta: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '800',
-    opacity: 0.9,
-  },
-  contrastBadge: {
-    minWidth: 68,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contrastBadgeText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '900',
   },
   colorPickerBox: {
     alignItems: 'center',
@@ -210,53 +140,10 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  versionCard: {
-    padding: 22,
-    alignItems: 'center',
-    gap: 4,
-  },
   versionText: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
-  },
-  versionSubtext: {
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-  profileSection: {
-    gap: 10,
-  },
-  profileSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  profileSectionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileSectionTitleBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  profileSectionTitle: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '900',
-  },
-  profileSectionSubtitle: {
-    marginTop: 1,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  profileDivider: {
-    height: StyleSheet.hairlineWidth,
-    opacity: 0.9,
   },
   compactInput: {
     minHeight: 42,
@@ -290,5 +177,23 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
+  },
+  sheetBody: {
+    gap: 14,
+    paddingBottom: 12,
+  },
+  group: {
+    gap: 10,
+  },
+  groupLabel: {
+    paddingHorizontal: 4,
+  },
+  segmentRow: {
+    padding: 16,
+    gap: 10,
+  },
+  versionBox: {
+    alignItems: 'center',
+    paddingVertical: 8,
   },
 });

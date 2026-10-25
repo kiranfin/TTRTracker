@@ -1,6 +1,5 @@
-export { ShortcutCard } from './ShortcutCard';
-export { MeQuickStatsCard } from './MeQuickStatsCard';
-export { ClubQuickStatsCard } from './ClubQuickStatsCard';
-export { MiniStat } from './MiniStat';
+export { HomeHeader } from './HomeHeader';
+export { MeHeroCard } from './MeHeroCard';
+export { FindYourselfCard } from './FindYourselfCard';
+export { ClubCard } from './ClubCard';
 export { RecentHistoryRow } from './RecentHistoryRow';
-export { ClubCompletedMatchRow } from './ClubCompletedMatchRow';

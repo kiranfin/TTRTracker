@@ -11,6 +11,7 @@ type ListRowProps = {
   leading?: ReactNode;
   trailing?: ReactNode;
   chevron?: boolean;
+  destructive?: boolean;
   onPress?: () => void;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -22,6 +23,7 @@ export function ListRow({
                           leading,
                           trailing,
                           chevron,
+                          destructive,
                           onPress,
                           accessibilityLabel,
                           style,
@@ -35,7 +37,10 @@ export function ListRow({
         {leading ? <View style={styles.leading}>{leading}</View> : null}
 
         <View style={styles.main}>
-          <Text style={[typography.bodyStrong, { color: colors.text }]} numberOfLines={1}>
+          <Text
+              style={[typography.bodyStrong, { color: destructive ? colors.destructive : colors.text }]}
+              numberOfLines={1}
+          >
             {title}
           </Text>
 

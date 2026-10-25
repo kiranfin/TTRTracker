@@ -5,11 +5,11 @@ import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
-import { getMePlayerNuid } from '@/src/storage/mePlayer';
+import { getMePlayerNuid, setMePlayerNuid } from '@/src/storage/mePlayer';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
 import type { HomeClubMatch } from '../types';
-import { compareMatchesNewestFirst, formatPersonName, getCurrentBackendSeason, getDefaultSeasonDateRange, getFirstName, getPlayerHistoryData, isCompletedClubMatch, normalizeHomeClubSchedule, parseOptionalNumber } from '../utils';
+import { compareMatchesNewestFirst, compareMatchesOldestFirst, formatPersonName, getCurrentBackendSeason, getDefaultSeasonDateRange, getFirstName, getPlayerHistoryData, getTtrDeltaSince, getTtrSeries, getWinRatePercent, isCompletedClubMatch, isUpcomingClubMatch, normalizeHomeClubSchedule, parseOptionalNumber } from '../utils';
 
 export function useHome() {
   const { t } = useI18n();
@@ -18,9 +18,11 @@ export function useHome() {
   const [meApiHistoryData, setMeApiHistoryData] = useState<Record<string, unknown> | null>(null);
   const [meLoading, setMeLoading] = useState(false);
   const [meError, setMeError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [meClub, setMeClub] = useState<MeClub | null>(null);
   const [clubCompletedMatches, setClubCompletedMatches] = useState<HomeClubMatch[]>([]);
+  const [clubNextMatch, setClubNextMatch] = useState<HomeClubMatch | null>(null);
   const [clubLoading, setClubLoading] = useState(false);
   const [clubError, setClubError] = useState<string | null>(null);
 
@@ -70,10 +72,10 @@ export function useHome() {
 
         loadMe().catch(() => undefined);
 
-  return () => {
+        return () => {
           active = false;
         };
-      }, []),
+      }, [reloadKey]),
   );
 
   useFocusEffect(
@@ -118,9 +120,15 @@ export function useHome() {
       parseOptionalNumber(meHistory?.maxTtr) ??
       parseOptionalNumber(meApiHistoryData?.maxTtr);
 
+  const events = meHistory?.events;
+
   const recentEvents = useMemo(() => {
-    return [...(meHistory?.events ?? [])].reverse().slice(0, 2);
-  }, [meHistory?.events]);
+    return [...(events ?? [])].reverse().slice(0, 3);
+  }, [events]);
+
+  const ttrSeries = useMemo(() => getTtrSeries(events ?? []).slice(-30), [events]);
+  const ttrDelta30 = useMemo(() => getTtrDeltaSince(events ?? [], 30), [events]);
+  const winRate = useMemo(() => getWinRatePercent(events ?? []), [events]);
 
   useEffect(() => {
     let active = true;
@@ -128,6 +136,7 @@ export function useHome() {
     async function loadClubMatches() {
       if (!meClub?.organization || !meClub.clubNumber) {
         setClubCompletedMatches([]);
+        setClubNextMatch(null);
         setClubError(null);
         setClubLoading(false);
         return;
@@ -136,6 +145,7 @@ export function useHome() {
       setClubLoading(true);
       setClubError(null);
       setClubCompletedMatches([]);
+      setClubNextMatch(null);
 
       try {
         const season = meClub.season ?? getCurrentBackendSeason();
@@ -152,12 +162,17 @@ export function useHome() {
 
         if (!active) return;
 
-        const matches = normalizeHomeClubSchedule(response)
+        const allMatches = normalizeHomeClubSchedule(response);
+
+        const matches = allMatches
             .filter(isCompletedClubMatch)
             .sort(compareMatchesNewestFirst)
-            .slice(0, 3);
+            .slice(0, 2);
+
+        const upcoming = allMatches.filter(isUpcomingClubMatch).sort(compareMatchesOldestFirst);
 
         setClubCompletedMatches(matches);
+        setClubNextMatch(upcoming[0] ?? null);
       } catch (error) {
         if (!active) return;
 
@@ -180,6 +195,15 @@ export function useHome() {
       active = false;
     };
   }, [meClub]);
+
+  function reloadMe() {
+    setReloadKey((current) => current + 1);
+  }
+
+  async function selectMePlayer(nuid: string) {
+    await setMePlayerNuid(nuid);
+    reloadMe();
+  }
 
   function openMeProfile() {
     if (!meNuid) {
@@ -226,12 +250,18 @@ export function useHome() {
     qTtr,
     maxTtr,
     recentEvents,
+    ttrSeries,
+    ttrDelta30,
+    winRate,
     meLoading,
     meError,
     meClub,
     clubCompletedMatches,
+    clubNextMatch,
     clubLoading,
     clubError,
+    selectMePlayer,
+    reloadMe,
     openMeProfile,
     openMyClub,
   };

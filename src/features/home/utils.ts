@@ -2,6 +2,7 @@ import { ttApi } from '@/src/api/tttracker';
 import type { TranslationKey } from '@/src/i18n';
 import type { NormalizedTtrHistoryEvent, ScheduleMatch } from '@/src/types/tttracker';
 import { normalizeSchedule } from '@/src/utils/normalizers';
+import { getEventWinLoss } from '../player-details/utils';
 import type { ClubReference, RichObject, HomeClubMatch } from './types';
 
 export const TEAM_HOME_KEYS = [
@@ -109,6 +110,63 @@ export function formatSignedNumber(value: number | null | undefined) {
 
 export function getEventTtr(event: NormalizedTtrHistoryEvent) {
   return event.ttrAfter ?? event.ttr;
+}
+
+// Verlauf als Zahlenreihe (älteste zuerst) für die Sparkline
+export function getTtrSeries(events: NormalizedTtrHistoryEvent[]) {
+  return events
+      .map((event) => getEventTtr(event))
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+}
+
+// Summe der TTR-Änderungen der letzten `days` Tage. Ohne Verlauf gibt es keinen Wert.
+export function getTtrDeltaSince(events: NormalizedTtrHistoryEvent[], days: number) {
+  if (events.length === 0) return undefined;
+
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  let sum = 0;
+
+  for (const event of events) {
+    const date = parseMatchDate(event.date)?.getTime();
+    if (date === undefined || date < cutoff) continue;
+
+    const delta =
+        typeof event.delta === 'number'
+            ? event.delta
+            : typeof event.ttrBefore === 'number' && typeof event.ttrAfter === 'number'
+                ? event.ttrAfter - event.ttrBefore
+                : 0;
+
+    sum += delta;
+  }
+
+  return sum;
+}
+
+export function getWinRatePercent(events: NormalizedTtrHistoryEvent[]) {
+  let won = 0;
+  let lost = 0;
+
+  for (const event of events) {
+    const result = getEventWinLoss(event);
+    won += result.won;
+    lost += result.lost;
+  }
+
+  return won + lost > 0 ? Math.round((won / (won + lost)) * 100) : undefined;
+}
+
+export function isUpcomingClubMatch(match: HomeClubMatch) {
+  if (match.status !== 'scheduled' && match.status !== 'live') return false;
+
+  const date = parseMatchDate(match.date);
+  if (!date) return true;
+
+  return date.getTime() >= startOfDay(new Date()).getTime();
+}
+
+export function compareMatchesOldestFirst(left: HomeClubMatch, right: HomeClubMatch) {
+  return compareMatchesNewestFirst(right, left);
 }
 
 export function formatPersonName(value?: string | null) {

@@ -6,12 +6,12 @@ import type { TranslationKey } from '../i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
 
+// Einstellungen sind kein Tab mehr (Zugang über den Avatar auf der Startseite), gehören aber zum Start-Tab.
 const items = [
-  { labelKey: 'tabs.home', href: '/', icon: 'home-outline', activeIcon: 'home', match: (path: string) => path === '/' },
+  { labelKey: 'tabs.home', href: '/', icon: 'home-outline', activeIcon: 'home', match: (path: string) => path === '/' || path.startsWith('/settings') },
   { labelKey: 'tabs.search', href: '/search', icon: 'search-outline', activeIcon: 'search', match: (path: string) => path.startsWith('/search') || path.startsWith('/player') || path.startsWith('/club') },
-  { labelKey: 'tabs.leagues', href: '/leagues', icon: 'podium-outline', activeIcon: 'podium', match: (path: string) => path.startsWith('/leagues') || path.startsWith('/region') || path.startsWith('/league') || path.startsWith('/match') },
+  { labelKey: 'tabs.leagues', href: '/leagues', icon: 'podium-outline', activeIcon: 'podium', match: (path: string) => path.startsWith('/leagues') || path.startsWith('/region') || path.startsWith('/league') || path.startsWith('/match') || path.startsWith('/team') },
   { labelKey: 'tabs.favorites', href: '/favorites', icon: 'star-outline', activeIcon: 'star', match: (path: string) => path.startsWith('/favorites') },
-  { labelKey: 'tabs.settings', href: '/settings', icon: 'settings-outline', activeIcon: 'settings', match: (path: string) => path.startsWith('/settings') },
 ] as const;
 
 export function AppTabBar() {
@@ -21,31 +21,36 @@ export function AppTabBar() {
   const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
 
   return (
-      <SafeAreaView edges={['bottom']} pointerEvents="box-none" style={styles.safe}>
-        <View style={[styles.shell, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>
+      <SafeAreaView
+          edges={['bottom']}
+          pointerEvents="box-none"
+          style={[styles.safe, { backgroundColor: colors.card, borderTopColor: colors.border }]}
+      >
+        <View style={styles.row}>
           {items.map((item) => {
             const active = item.match(pathname);
             const color = active ? colors.primary : colors.mutedText;
+            const label = t(item.labelKey as TranslationKey);
 
             return (
                 <Pressable
                     key={item.href}
+                    accessibilityRole="tab"
+                    accessibilityLabel={label}
+                    accessibilityState={{ selected: active }}
                     onPress={() => router.push(item.href)}
-                    hitSlop={6}
-                    style={({ pressed }) => [
-                      styles.item,
-                      noWebOutline,
-                      active && { backgroundColor: colors.primarySoft, borderColor: colors.primarySoftBorder },
-                      pressed && styles.pressed,
-                    ]}
+                    style={({ pressed }) => [styles.item, noWebOutline, pressed && styles.pressed]}
                 >
-                  <Ionicons
-                      name={(active ? item.activeIcon : item.icon) as keyof typeof Ionicons.glyphMap}
-                      size={20}
-                      color={color}
-                  />
+                  <View style={[styles.pill, active && { backgroundColor: colors.primarySoft }]}>
+                    <Ionicons
+                        name={(active ? item.activeIcon : item.icon) as keyof typeof Ionicons.glyphMap}
+                        size={22}
+                        color={color}
+                    />
+                  </View>
+
                   <Text style={[styles.label, { color }]} numberOfLines={1}>
-                    {t(item.labelKey as TranslationKey)}
+                    {label}
                   </Text>
                 </Pressable>
             );
@@ -61,42 +66,33 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    paddingHorizontal: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  shell: {
-    maxWidth: 672,
-    width: '100%',
-    minHeight: 68,
-    borderRadius: 26,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+  row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 24,
-    elevation: 8,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
   item: {
     flex: 1,
     minHeight: 52,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
   },
+  pill: {
+    width: 56,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   label: {
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   pressed: {
     opacity: 0.72,
-    transform: [{ scale: 0.98 }],
   },
 });
