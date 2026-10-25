@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
 import { EmptyState } from '@/src/components/EmptyState';
@@ -12,6 +12,7 @@ import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import { useLeagues } from '../../src/features/leagues/hooks/useLeagues';
 import { styles } from '../../src/features/leagues/styles';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 
 export default function LeaguesScreen() {
   const { colors } = useTheme();
@@ -55,7 +56,7 @@ export default function LeaguesScreen() {
           <View style={styles.section}>
             <SectionHeader title={t('leagues.associations')} />
 
-            {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+            {loading ? <SkeletonList count={3} /> : null}
 
             {error ? (
                 <Card style={styles.errorCard}>

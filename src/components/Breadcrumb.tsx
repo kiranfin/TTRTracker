@@ -26,7 +26,7 @@ export function Breadcrumb({ items }: { items: BreadcrumbItem[] }) {
                     accessibilityRole={item.onPress ? 'link' : 'text'}
                     disabled={!item.onPress}
                     onPress={item.onPress}
-                    hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                    hitSlop={{ top: 13, bottom: 13, left: 4, right: 4 }}
                     style={styles.pressable}
                 >
                   <Text

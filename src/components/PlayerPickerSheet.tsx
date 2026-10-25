@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ttApi } from '../api/tttracker';
 import { useI18n } from '../i18n/I18nProvider';
 import { spacing } from '../theme/spacing';
@@ -13,6 +13,7 @@ import { Button } from './Button';
 import { ListGroup } from './ListGroup';
 import { ListRow } from './ListRow';
 import { SearchInput } from './SearchInput';
+import { SkeletonList } from './SkeletonRow';
 
 export type PlayerSelection = {
   nuid: string;
@@ -132,7 +133,7 @@ export function PlayerPickerSheet({ visible, onClose, onSelect, title }: PlayerP
 
           {loading ? (
               <View style={styles.center}>
-                <ActivityIndicator color={colors.primary} />
+                <SkeletonList count={3} />
               </View>
           ) : null}
 

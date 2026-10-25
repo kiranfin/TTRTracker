@@ -9,9 +9,6 @@ export const styles = StyleSheet.create({
   section: {
     gap: 10,
   },
-  loader: {
-    paddingVertical: 16,
-  },
   trailing: {
     flexDirection: 'row',
     alignItems: 'center',

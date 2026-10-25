@@ -43,9 +43,6 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  centerRow: {
-    alignItems: 'center',
-  },
   card: {
     padding: 16,
     gap: 14,
@@ -107,8 +104,5 @@ export const styles = StyleSheet.create({
   eventTrailing: {
     alignItems: 'flex-end',
     gap: 2,
-  },
-  loader: {
-    paddingVertical: 24,
   },
 });

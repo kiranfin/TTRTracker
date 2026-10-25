@@ -1,4 +1,4 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { EmptyState } from '@/src/components/EmptyState';
 import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
@@ -7,6 +7,7 @@ import { useTheme } from '@/src/theme/ThemeProvider';
 import { InfoPill, MatchHero, MatchSection } from '../../../src/features/match-details/components';
 import { styles } from '../../../src/features/match-details/styles';
 import { useMatchDetails } from '../../../src/features/match-details/hooks/useMatchDetails';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 
 export default function MatchDetailsScreen() {
   const { colors } = useTheme();
@@ -59,7 +60,7 @@ export default function MatchDetailsScreen() {
               </View>
           ) : null}
 
-          {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+          {loading ? <SkeletonList count={3} /> : null}
 
           {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 

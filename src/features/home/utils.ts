@@ -1,9 +1,7 @@
-import { ttApi } from '@/src/api/tttracker';
-import type { TranslationKey } from '@/src/i18n';
 import type { NormalizedTtrHistoryEvent, ScheduleMatch } from '@/src/types/tttracker';
 import { normalizeSchedule } from '@/src/utils/normalizers';
 import { getEventWinLoss } from '../player-details/utils';
-import type { ClubReference, RichObject, HomeClubMatch } from './types';
+import type { RichObject, HomeClubMatch } from './types';
 
 export { getTtrDeltaSince } from '../player-details/utils';
 
@@ -52,14 +50,6 @@ export const MEETING_DATE_KEYS = [
   'start_time',
   'startTime',
 ];
-
-export const statusLabelKeys = {
-  completed: 'status.completed',
-  live: 'status.live',
-  free: 'status.free',
-  postponed: 'status.postponed',
-  scheduled: 'status.scheduled',
-} as const satisfies Record<ScheduleMatch['status'], TranslationKey>;
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -172,133 +162,6 @@ export function getFirstName(value?: string | null) {
 
   return formatted.split(/\s+/)[0] ?? '';
 }
-
-export async function findClubReferencesByName(clubName: string) {
-  const results = await ttApi.searchClubs(clubName);
-  return resolveClubReferences(results as unknown[], clubName);
-}
-
-export function resolveClubReferences(results: unknown[], clubName: string): ClubReference[] {
-  const candidates = results
-      .map((result) => normalizeClubSearchResult(result))
-      .filter((result): result is ClubReference => Boolean(result));
-
-  const targetName = normalizeComparableText(clubName);
-
-  return [...candidates].sort((left, right) => {
-    const leftScore = getClubNameScore(left.title, targetName);
-    const rightScore = getClubNameScore(right.title, targetName);
-
-    if (leftScore !== rightScore) {
-      return leftScore - rightScore;
-    }
-
-    return `${left.organization}-${left.clubNumber}`.localeCompare(
-        `${right.organization}-${right.clubNumber}`,
-    );
-  });
-}
-
-export function normalizeClubSearchResult(value: unknown): ClubReference | null {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
-
-  const raw = value as RichObject;
-
-  const title = pickString(raw, [
-    'title',
-    'name',
-    'clubName',
-    'club_name',
-    'displayName',
-    'display_name',
-    'label',
-  ]);
-
-  const directOrganization = pickString(raw, [
-    'organization',
-    'association',
-    'fedNickname',
-    'fed_nickname',
-    'federation',
-    'verband',
-  ]);
-
-  const directClubNumber = pickString(raw, [
-    'clubNumber',
-    'club_number',
-    'clubnr',
-    'clubNr',
-    'clubNo',
-    'club_no',
-    'number',
-    'clubId',
-    'club_id',
-  ]);
-
-  const compositeValues = [
-    pickString(raw, ['id', 'key', 'clubKey', 'value']),
-    pickString(raw, ['url', 'href', 'link']),
-  ].filter(Boolean) as string[];
-
-  const composite = compositeValues
-      .map(extractOrganizationAndClubNumber)
-      .find((entry) => entry?.organization && entry.clubNumber);
-
-  const organization = directOrganization ?? composite?.organization;
-  const clubNumber = extractClubNumber(directClubNumber) ?? composite?.clubNumber;
-
-  if (!organization || !clubNumber) {
-    return null;
-  }
-
-  return {
-    organization,
-    clubNumber,
-    title,
-    state: pickString(raw, ['state', 'bundesland', 'region']),
-    clubSlug: pickString(raw, ['clubSlug', 'club_slug', 'slug']),
-  };
-}
-
-export function getClubNameScore(value: string | undefined, targetName: string) {
-  const normalized = normalizeComparableText(value);
-
-  if (!normalized) return 10;
-  if (normalized === targetName) return 0;
-  if (normalized.includes(targetName)) return 1;
-  if (targetName.includes(normalized)) return 2;
-
-  return 5;
-}
-
-export function extractOrganizationAndClubNumber(value?: string) {
-  const raw = String(value ?? '');
-  const match = raw.match(/\b([A-ZÄÖÜ]{2,8})[:/_-](\d{4,})\b/i);
-
-  if (!match) {
-    return null;
-  }
-
-  return {
-    organization: match[1].toUpperCase(),
-    clubNumber: match[2],
-  };
-}
-
-export function extractClubNumber(value?: string) {
-  const raw = String(value ?? '').trim();
-
-  if (!raw) return undefined;
-
-  const exact = raw.match(/^\d{4,}$/);
-  if (exact) return raw;
-
-  const match = raw.match(/\b\d{4,}\b/);
-  return match?.[0];
-}
-
 export function normalizeHomeClubSchedule(response: unknown) {
   const customMatches = normalizeClubScheduleResponse(response);
   const fallbackMatches = (normalizeSchedule(response) as HomeClubMatch[]).map((match) => ({
@@ -666,12 +529,4 @@ export function getTimeValue(value?: string) {
 
 export function normalizeTeamKey(teamName?: string) {
   return (teamName ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-export function normalizeComparableText(value?: string) {
-  return String(value ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ')
-      .replace(/\s+/g, ' ');
 }

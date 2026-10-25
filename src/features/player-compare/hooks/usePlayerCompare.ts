@@ -107,5 +107,3 @@ export function usePlayerCompare() {
     openPlayer,
   };
 }
-
-export type PlayerCompareController = ReturnType<typeof usePlayerCompare>;

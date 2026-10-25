@@ -1,5 +1,4 @@
 import { ttApi } from '@/src/api/tttracker';
-import type { TranslationKey } from '@/src/i18n';
 import type { ClubTeam, ScheduleMatch } from '@/src/types/tttracker';
 import { formatDate, normalizeSchedule } from '@/src/utils/normalizers';
 import { isFavorite } from '@/src/storage/favorites';
@@ -52,19 +51,6 @@ export const MEETING_DATE_KEYS = [
 ];
 
 export const CLUB_FAVORITE_TYPE = 'club' as Parameters<typeof isFavorite>[0];
-
-export const scheduleStatusLabelKeys = {
-    completed: 'status.completed',
-    live: 'status.live',
-    free: 'status.free',
-    postponed: 'status.postponed',
-    scheduled: 'status.scheduled',
-} as const satisfies Record<ScheduleMatch['status'], TranslationKey>;
-
-export function matchStatusLabelKey(status: ScheduleMatch['status']) {
-    return scheduleStatusLabelKeys[status];
-}
-
 export async function loadClubPlayers(
     clubApi: ClubApiWithOptionalEndpoints,
     organization: string,
@@ -557,45 +543,6 @@ export function hasLastYearNoGame(value?: string) {
 
     return normalized.length > 0 && normalized !== 'no';
 }
-
-export function getPlayerCardAccent(colors: ThemeColors, noGameLastYear: boolean) {
-    const dark = isDarkTheme(colors);
-
-    if (noGameLastYear) {
-        return dark
-            ? {
-                background: 'rgba(239, 68, 68, 0.14)',
-                border: 'rgba(248, 113, 113, 0.58)',
-                rankBackground: 'rgba(239, 68, 68, 0.22)',
-                rankBorder: 'rgba(248, 113, 113, 0.78)',
-                rankText: '#FCA5A5',
-            }
-            : {
-                background: 'rgba(239, 68, 68, 0.11)',
-                border: 'rgba(220, 38, 38, 0.38)',
-                rankBackground: 'rgba(239, 68, 68, 0.17)',
-                rankBorder: 'rgba(220, 38, 38, 0.45)',
-                rankText: '#DC2626',
-            };
-    }
-
-    return dark
-        ? {
-            background: 'rgba(255, 255, 255, 0.035)',
-            border: 'rgba(255, 255, 255, 0.09)',
-            rankBackground: 'rgba(255, 255, 255, 0.06)',
-            rankBorder: 'rgba(255, 255, 255, 0.12)',
-            rankText: '#CBD5E1',
-        }
-        : {
-            background: colors.card,
-            border: colors.border,
-            rankBackground: colors.muted,
-            rankBorder: colors.border,
-            rankText: colors.mutedText,
-        };
-}
-
 export function isDarkTheme(colors: ThemeColors) {
     return getRelativeLuminance(colors.background) < 0.45;
 }

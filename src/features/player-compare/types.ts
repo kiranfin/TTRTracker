@@ -98,8 +98,3 @@ export type RecentStats = {
 // Ergebnis eines Kennzahlen-Vergleichs: wer hat den besseren Wert (höher ist besser)
 export type Leader = SideId | 'tie' | 'unknown';
 
-// Spieler, der über den Picker oder die Route gewählt wurde. Der Name ist nur ein Platzhalter bis zum Laden.
-export type CompareSelection = {
-  nuid: string;
-  name?: string;
-};

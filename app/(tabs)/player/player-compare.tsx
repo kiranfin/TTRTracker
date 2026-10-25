@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { EmptyState } from '@/src/components/EmptyState';
 import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
@@ -16,6 +16,7 @@ import {
 import { usePlayerCompare } from '../../../src/features/player-compare/hooks/usePlayerCompare';
 import { styles } from '../../../src/features/player-compare/styles';
 import { getWinChance } from '../../../src/features/player-compare/utils';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 
 export default function PlayerCompareScreen() {
   const { colors } = useTheme();
@@ -73,7 +74,7 @@ export default function PlayerCompareScreen() {
             />
           </View>
 
-          {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+          {loading ? <SkeletonList count={3} /> : null}
           {error ? <Text style={{ color: colors.destructive }}>{error}</Text> : null}
 
           {!loading && !error && comparison ? (

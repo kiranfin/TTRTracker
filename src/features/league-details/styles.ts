@@ -7,9 +7,6 @@ export const styles = StyleSheet.create({
         paddingBottom: 112,
         gap: 16,
     },
-    loader: {
-        paddingVertical: 22,
-    },
     error: {
         fontSize: 14,
         lineHeight: 20,

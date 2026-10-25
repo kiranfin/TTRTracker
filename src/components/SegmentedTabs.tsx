@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 11,
     borderWidth: 1,
     borderColor: 'transparent',

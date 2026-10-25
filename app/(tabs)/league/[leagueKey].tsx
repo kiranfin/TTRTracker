@@ -1,4 +1,4 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
 import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
@@ -11,6 +11,7 @@ import { typography } from '@/src/theme/typography';
 import { LeagueMatchGroup, LeagueScheduleTab, LeagueTable } from '../../../src/features/league-details/components';
 import { useLeagueDetails } from '../../../src/features/league-details/hooks/useLeagueDetails';
 import { styles } from '../../../src/features/league-details/styles';
+import { SkeletonList } from '../../../src/components/SkeletonRow';
 
 export default function LeagueDetailsScreen() {
     const { colors } = useTheme();
@@ -73,7 +74,7 @@ export default function LeagueDetailsScreen() {
                     ]}
                 />
 
-                {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+                {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
                 {!loading && !error && activeTab === 'table' ? (

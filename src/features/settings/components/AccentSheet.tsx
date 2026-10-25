@@ -52,7 +52,7 @@ export function AccentSheet({ settings, visible, onClose }: SheetProps) {
                         accessibilityRole="button"
                         accessibilityLabel={`${t('settings.accentColor')} ${normalizedSwatch}`}
                         onPress={() => handlePreviewAccent(normalizedSwatch)}
-                        hitSlop={5}
+                        hitSlop={8}
                         style={({ pressed }) => [
                           styles.swatchButton,
                           {

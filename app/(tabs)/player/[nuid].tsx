@@ -1,4 +1,4 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { ActionButton } from '@/src/components/ActionButton';
 import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
@@ -10,6 +10,7 @@ import { useTheme } from '@/src/theme/ThemeProvider';
 import { HistorySection, PlayerHeader, TtrChartCard } from '../../../src/features/player-details/components';
 import { usePlayerDetails } from '../../../src/features/player-details/hooks/usePlayerDetails';
 import { styles } from '../../../src/features/player-details/styles';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 import {
     formatOptionalNumber,
     formatSignedAverage,
@@ -88,7 +89,7 @@ export default function PlayerDetailsScreen() {
                     />
                 </View>
 
-                {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+                {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
                 {!loading && !error ? (

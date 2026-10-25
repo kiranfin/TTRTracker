@@ -162,9 +162,6 @@ export type NormalizedPlayerTtrHistory = {
   personName?: string;
   events: NormalizedTtrHistoryEvent[];
 };
-
-export type SearchCategory = 'players' | 'clubs';
-
 export type NormalizedPlayer = {
   id: string;
   fullName: string;

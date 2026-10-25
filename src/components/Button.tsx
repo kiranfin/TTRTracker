@@ -62,6 +62,8 @@ export function Button({
 
     return (
         <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: Boolean(disabled), busy: Boolean(loading) }}
             onPress={disabled || loading ? undefined : onPress}
             style={({ pressed }) => [
                 styles.button,
@@ -100,6 +102,7 @@ export function IconButton({ icon, onPress, active, accessibilityLabel }: IconBu
 
     return (
         <Pressable
+            accessibilityRole="button"
             accessibilityLabel={accessibilityLabel}
             onPress={onPress}
             hitSlop={8}

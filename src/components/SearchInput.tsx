@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
 
 type SearchInputProps = {
@@ -11,6 +12,7 @@ type SearchInputProps = {
 
 export function SearchInput({ value, onChangeText, placeholder, onSubmitEditing }: SearchInputProps) {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   return (
       <View style={[styles.wrap, { backgroundColor: colors.input, borderColor: colors.border }]}>
@@ -29,7 +31,13 @@ export function SearchInput({ value, onChangeText, placeholder, onSubmitEditing 
         />
 
         {value.length > 0 ? (
-            <Pressable hitSlop={8} onPress={() => onChangeText('')} style={styles.clearButton}>
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('common.reset')}
+                hitSlop={9}
+                onPress={() => onChangeText('')}
+                style={styles.clearButton}
+            >
               <Ionicons name="close-circle" size={19} color={colors.mutedText} />
             </Pressable>
         ) : null}

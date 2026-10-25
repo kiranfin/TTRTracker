@@ -1,6 +1,5 @@
 import { Linking } from 'react-native';
 import { useI18n } from '@/src/i18n/I18nProvider';
-import { useTheme } from '@/src/theme/ThemeProvider';
 import type { TeamPlayer, TeamApiClient, TeamInfo, TeamContext, TeamScheduleMatch, TeamBalance, ScheduleSummary, RoundFilter } from './types';
 
 export function normalizeLineup(
@@ -871,67 +870,6 @@ export function formatPercent(value?: number) {
     if (value === undefined || Number.isNaN(value)) return '-';
     return `${Math.round(value * 100)}%`;
 }
-
-export function getTileColors(tone: 'primary' | 'green' | 'orange' | 'purple', colors: ReturnType<typeof useTheme>['colors']) {
-    const dark = getRelativeLuminance(colors.background) < 0.45;
-
-    switch (tone) {
-        case 'green':
-            return dark
-                ? {
-                    background: 'rgba(34, 197, 94, 0.14)',
-                    border: 'rgba(74, 222, 128, 0.35)',
-                    label: '#86EFAC',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(34, 197, 94, 0.12)',
-                    border: 'rgba(22, 163, 74, 0.3)',
-                    label: '#16A34A',
-                    value: '#15803D',
-                };
-
-        case 'orange':
-            return dark
-                ? {
-                    background: 'rgba(249, 115, 22, 0.14)',
-                    border: 'rgba(251, 146, 60, 0.38)',
-                    label: '#FDBA74',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(249, 115, 22, 0.12)',
-                    border: 'rgba(234, 88, 12, 0.3)',
-                    label: '#EA580C',
-                    value: '#C2410C',
-                };
-
-        case 'purple':
-            return dark
-                ? {
-                    background: 'rgba(168, 85, 247, 0.16)',
-                    border: 'rgba(192, 132, 252, 0.38)',
-                    label: '#D8B4FE',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(168, 85, 247, 0.12)',
-                    border: 'rgba(147, 51, 234, 0.3)',
-                    label: '#9333EA',
-                    value: '#7E22CE',
-                };
-
-        case 'primary':
-        default:
-            return {
-                background: colors.primarySoft,
-                border: colors.primarySoftBorder,
-                label: colors.primary,
-                value: colors.primary,
-            };
-    }
-}
-
 export function getRelativeLuminance(color: string) {
     const hex = color.trim();
 

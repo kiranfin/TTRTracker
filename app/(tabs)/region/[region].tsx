@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
 import { Breadcrumb } from '@/src/components/Breadcrumb';
 import { Button, IconButton } from '@/src/components/Button';
@@ -18,6 +18,7 @@ import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import { formatSeasonLabel, useRegionLeagues } from '../../../src/features/leagues/hooks/useRegionLeagues';
 import { styles } from '../../../src/features/leagues/styles';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 
 export default function RegionLeaguesScreen() {
   const { colors } = useTheme();
@@ -66,7 +67,7 @@ export default function RegionLeaguesScreen() {
             </Text>
           </View>
 
-          {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+          {loading ? <SkeletonList count={3} /> : null}
 
           {error ? (
               <Card style={styles.errorCard}>

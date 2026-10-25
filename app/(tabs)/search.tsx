@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
 import { Chip, ChipRow } from '@/src/components/Chip';
 import { EmptyState } from '@/src/components/EmptyState';
@@ -15,6 +15,7 @@ import { typography } from '@/src/theme/typography';
 import { PlayerRow, ClubRow } from '../../src/features/search/components';
 import { styles } from '../../src/features/search/styles';
 import { useSearch } from '../../src/features/search/hooks/useSearch';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 
 const OVERVIEW_LIMIT = 4;
 
@@ -80,7 +81,7 @@ export default function SearchScreen() {
           ) : null}
 
           {error ? <Text style={[typography.meta, { color: colors.destructive }]}>{error}</Text> : null}
-          {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+          {loading ? <SkeletonList count={3} /> : null}
 
           {!hasQuery && query.trim().length > 0 ? (
               <Text style={[typography.meta, { color: colors.mutedText }]}>{t('search.minCharacters')}</Text>

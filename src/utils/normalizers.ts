@@ -567,25 +567,6 @@ export function formatTime(value?: string) {
   if (!value) return '';
   return value;
 }
-
-export function ttrTone(value?: number): any {
-  if (!value) return 'secondary';
-  if (value >= 1800) return 'green';
-  if (value >= 1500) return 'blue';
-  if (value >= 1200) return 'orange';
-  return 'secondary';
-}
-
-export function levelTone(value?: string): any {
-  const text = String(value ?? '').toLowerCase();
-
-  if (text.includes('oberliga') || text.includes('verbands') || text.includes('landes')) return 'green';
-  if (text.includes('bezirks')) return 'blue';
-  if (text.includes('kreis')) return 'orange';
-
-  return 'secondary';
-}
-
 export function matchStatusLabel(status: ScheduleMatchStatus) {
   switch (status) {
     case 'completed':

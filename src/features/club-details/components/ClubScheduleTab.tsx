@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Chip, ChipRow } from '@/src/components/Chip';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
@@ -11,6 +11,7 @@ import { typography } from '@/src/theme/typography';
 import type { ClubDetailsController } from '../hooks/useClubDetails';
 import { styles } from '../styles';
 import { SchedulePeriodSheet } from './SchedulePeriodSheet';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 
 export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
     const { colors } = useTheme();
@@ -42,7 +43,7 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
             </ChipRow>
 
             {scheduleError ? <Text style={[typography.meta, { color: colors.destructive }]}>{scheduleError}</Text> : null}
-            {scheduleLoading ? <ActivityIndicator color={colors.primary} style={styles.inlineLoader} /> : null}
+            {scheduleLoading ? <SkeletonList count={3} /> : null}
 
             {!scheduleLoading && !scheduleError && scheduleGroups.length === 0 ? (
                 <EmptyState icon="calendar-outline" title={t('club.noMatches')} />
@@ -51,7 +52,7 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
             {scheduleGroups.map((group) => (
                 <View key={group.dateKey} style={styles.dayGroup}>
                     <Text style={[typography.label, styles.dayLabel, { color: colors.mutedText }]}>
-                        {group.dateLabel.toUpperCase()}
+                        {(group.dateKey === '9999-99-99' ? t('common.dateUnknown') : group.dateLabel).toUpperCase()}
                     </Text>
 
                     <ListGroup>

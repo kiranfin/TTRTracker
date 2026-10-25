@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { ttApi } from '@/src/api/tttracker';
 import { ActionButton } from '@/src/components/ActionButton';
 import { Avatar } from '@/src/components/Avatar';
@@ -18,6 +18,7 @@ import { InfosTab, LineupTab, ScheduleTab, BalancesTab } from '../../../src/feat
 import { styles } from '../../../src/features/team-details/styles';
 import { slugifyMyttPathSegment, normalizeSeasonForApi, normalizeLineup, enrichLineupWithTtr, normalizeTeamInfo, normalizeTeamSchedule, normalizeBalances, filterScheduleByRound, buildScheduleSummary, buildBalanceSummary } from '../../../src/features/team-details/utils';
 import type { DetailTab, RoundFilter, TeamInfo, TeamPlayer, TeamScheduleMatch, TeamBalance, TeamContext, TeamApiClient } from '../../../src/features/team-details/types';
+import { SkeletonList } from '@/src/components/SkeletonRow';
 
 export default function TeamDetailsScreen() {
     const params = useLocalSearchParams<Record<string, string>>();
@@ -380,7 +381,7 @@ export default function TeamDetailsScreen() {
                     </ChipRow>
                 ) : null}
 
-                {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+                {loading ? <SkeletonList count={3} /> : null}
 
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 

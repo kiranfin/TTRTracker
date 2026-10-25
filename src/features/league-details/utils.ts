@@ -1,25 +1,7 @@
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { ScheduleMatch, TableRow } from '@/src/types/tttracker';
 import type { SchedulePeriodFilter, RoundFilter, LeagueInfo, TeamScheduleStats, RichTableRow, PromotionState, ThemeColors, EnrichedScheduleMatch, ScheduleRound } from './types';
-
-export const periodFilters: SchedulePeriodFilter[] = ['all', 'past30', 'next30'];
-
-export const roundFilters: RoundFilter[] = ['all', 'vr', 'rr'];
-
 export const LEAGUE_FAVORITE_TYPE = 'league' as const;
-
-export function periodFilterLabel(filter: SchedulePeriodFilter, t: ReturnType<typeof useI18n>['t']) {
-    switch (filter) {
-        case 'past30':
-            return t('league.last30Days');
-        case 'next30':
-            return t('league.next30Days');
-        case 'all':
-        default:
-            return t('common.all');
-    }
-}
-
 export function roundFilterLabel(filter: RoundFilter, t: ReturnType<typeof useI18n>['t']) {
     switch (filter) {
         case 'vr':
@@ -31,19 +13,6 @@ export function roundFilterLabel(filter: RoundFilter, t: ReturnType<typeof useI1
             return t('common.all');
     }
 }
-
-export function leagueMatchStatusLabel(status: ScheduleMatch['status'], t: ReturnType<typeof useI18n>['t']) {
-    switch (status) {
-        case 'completed':
-            return t('status.completed');
-        case 'free':
-            return t('status.free');
-        case 'scheduled':
-        default:
-            return t('status.scheduled');
-    }
-}
-
 export function formatDateLabel(value: string | undefined, language: ReturnType<typeof useI18n>['language']) {
     const date = parseMatchDate(value);
     if (!date) return valueToString(value) ?? '-';
@@ -333,133 +302,6 @@ export function getPromotionState(row: TableRow): PromotionState {
 
     return 'none';
 }
-
-export function getTableCardAccent(row: TableRow, colors: ThemeColors) {
-    const promotionState = getPromotionState(row);
-    const dark = isDarkTheme(colors);
-
-    if (promotionState === 'promotion') {
-        return dark
-            ? {
-                background: 'rgba(34, 197, 94, 0.15)',
-                border: 'rgba(74, 222, 128, 0.55)',
-                rankBackground: 'rgba(34, 197, 94, 0.22)',
-                rankBorder: 'rgba(74, 222, 128, 0.75)',
-                rankText: '#86EFAC',
-            }
-            : {
-                background: 'rgba(34, 197, 94, 0.11)',
-                border: 'rgba(22, 163, 74, 0.38)',
-                rankBackground: 'rgba(34, 197, 94, 0.16)',
-                rankBorder: 'rgba(22, 163, 74, 0.45)',
-                rankText: '#15803D',
-            };
-    }
-
-    if (promotionState === 'relegation') {
-        return dark
-            ? {
-                background: 'rgba(239, 68, 68, 0.14)',
-                border: 'rgba(248, 113, 113, 0.58)',
-                rankBackground: 'rgba(239, 68, 68, 0.22)',
-                rankBorder: 'rgba(248, 113, 113, 0.78)',
-                rankText: '#FCA5A5',
-            }
-            : {
-                background: 'rgba(239, 68, 68, 0.11)',
-                border: 'rgba(220, 38, 38, 0.38)',
-                rankBackground: 'rgba(239, 68, 68, 0.17)',
-                rankBorder: 'rgba(220, 38, 38, 0.45)',
-                rankText: '#DC2626',
-            };
-    }
-
-    return dark
-        ? {
-            background: 'rgba(255, 255, 255, 0.035)',
-            border: 'rgba(255, 255, 255, 0.09)',
-            rankBackground: 'rgba(255, 255, 255, 0.06)',
-            rankBorder: 'rgba(255, 255, 255, 0.12)',
-            rankText: '#CBD5E1',
-        }
-        : {
-            background: colors.card,
-            border: colors.border,
-            rankBackground: colors.muted,
-            rankBorder: colors.border,
-            rankText: colors.mutedText,
-        };
-}
-
-export function getStatTileColors(
-    tone: 'points' | 'games' | 'record' | 'ratio',
-    themeColors: ThemeColors,
-) {
-    const dark = isDarkTheme(themeColors);
-
-    switch (tone) {
-        case 'points':
-            return dark
-                ? {
-                    background: 'rgba(59, 130, 246, 0.16)',
-                    border: 'rgba(96, 165, 250, 0.4)',
-                    label: '#93C5FD',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(59, 130, 246, 0.12)',
-                    border: 'rgba(37, 99, 235, 0.3)',
-                    label: '#2563EB',
-                    value: '#1D4ED8',
-                };
-
-        case 'games':
-            return dark
-                ? {
-                    background: 'rgba(34, 197, 94, 0.14)',
-                    border: 'rgba(74, 222, 128, 0.35)',
-                    label: '#86EFAC',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(34, 197, 94, 0.12)',
-                    border: 'rgba(22, 163, 74, 0.3)',
-                    label: '#16A34A',
-                    value: '#15803D',
-                };
-
-        case 'record':
-            return dark
-                ? {
-                    background: 'rgba(168, 85, 247, 0.16)',
-                    border: 'rgba(192, 132, 252, 0.38)',
-                    label: '#D8B4FE',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(168, 85, 247, 0.12)',
-                    border: 'rgba(147, 51, 234, 0.3)',
-                    label: '#9333EA',
-                    value: '#7E22CE',
-                };
-
-        case 'ratio':
-            return dark
-                ? {
-                    background: 'rgba(249, 115, 22, 0.14)',
-                    border: 'rgba(251, 146, 60, 0.38)',
-                    label: '#FDBA74',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(249, 115, 22, 0.12)',
-                    border: 'rgba(234, 88, 12, 0.3)',
-                    label: '#EA580C',
-                    value: '#C2410C',
-                };
-    }
-}
-
 export function isDarkTheme(colors: ThemeColors) {
     return getRelativeLuminance(colors.background) < 0.45;
 }

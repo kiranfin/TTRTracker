@@ -1,4 +1,4 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { ActionButton } from '@/src/components/ActionButton';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
@@ -17,6 +17,7 @@ import {
 import { useClubDetails } from '../../../src/features/club-details/hooks/useClubDetails';
 import { styles } from '../../../src/features/club-details/styles';
 import { getPlayerKey, getTeamKey } from '../../../src/features/club-details/utils';
+import { SkeletonList } from '../../../src/components/SkeletonRow';
 
 export default function ClubDetailsScreen() {
     const { colors } = useTheme();
@@ -73,7 +74,7 @@ export default function ClubDetailsScreen() {
                     />
                 </View>
 
-                {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+                {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
                 {!loading && !error ? (

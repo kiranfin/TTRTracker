@@ -145,15 +145,6 @@ export const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700',
   },
-  compactInput: {
-    minHeight: 42,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    fontSize: 14,
-    lineHeight: 20,
-  },
   savedBox: {
     borderWidth: 1,
     borderRadius: 14,

@@ -25,12 +25,6 @@ export const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         gap: 10,
     },
-    loader: {
-        paddingVertical: 24,
-    },
-    inlineLoader: {
-        paddingVertical: 12,
-    },
     error: {
         fontSize: 14,
         lineHeight: 20,
@@ -100,9 +94,9 @@ export const styles = StyleSheet.create({
         gap: 12,
     },
     calendarNavButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',

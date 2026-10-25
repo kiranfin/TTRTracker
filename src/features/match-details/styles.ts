@@ -24,9 +24,6 @@ export const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '700',
   },
-  loader: {
-    paddingVertical: 22,
-  },
   error: {
     fontSize: 14,
     lineHeight: 20,

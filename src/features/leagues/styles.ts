@@ -9,9 +9,6 @@ export const styles = StyleSheet.create({
   section: {
     gap: 10,
   },
-  loader: {
-    paddingVertical: 24,
-  },
   errorCard: {
     padding: 16,
     gap: 12,
@@ -30,8 +27,5 @@ export const styles = StyleSheet.create({
   },
   headerBlock: {
     gap: 8,
-  },
-  headerTitle: {
-    flex: 1,
   },
 });
