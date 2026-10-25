@@ -55,6 +55,9 @@ export const de = {
     notConfirmed: 'Nicht bestätigt',
   },
   search: {
+    noResults: 'Keine Treffer',
+    recentTitle: 'Zuletzt angesehen',
+    clearRecent: 'Löschen',
     title: 'Suche',
     placeholder: 'Name oder Verein eingeben...',
     minCharacters: 'Bitte mindestens 2 Zeichen eingeben.',
@@ -78,6 +81,9 @@ export const de = {
     associationUnknown: 'Verband unbekannt',
   },
   favorites: {
+    edit: 'Bearbeiten',
+    done: 'Fertig',
+    removeFavorite: 'Aus Favoriten entfernen',
     title: 'Favoriten',
     emptyTitle: 'Noch keine Favoriten',
     emptySubtitle: 'Speichere Spieler oder Vereine über das Stern-Icon.',

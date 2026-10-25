@@ -63,6 +63,9 @@ export const en: TranslationResource = {
     notConfirmed: 'Not confirmed',
   },
   search: {
+    noResults: 'No results',
+    recentTitle: 'Recently viewed',
+    clearRecent: 'Clear',
     title: 'Search',
     placeholder: 'Enter a name or club...',
     minCharacters: 'Please enter at least 2 characters.',
@@ -86,6 +89,9 @@ export const en: TranslationResource = {
     associationUnknown: 'Unknown association',
   },
   favorites: {
+    edit: 'Edit',
+    done: 'Done',
+    removeFavorite: 'Remove from favorites',
     title: 'Favorites',
     emptyTitle: 'No favorites yet',
     emptySubtitle: 'Save players or clubs with the star icon.',

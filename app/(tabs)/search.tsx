@@ -1,183 +1,183 @@
+import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { Badge } from '@/src/components/Badge';
-import { BottomSheet } from '@/src/components/BottomSheet';
-import { Button, IconButton } from '@/src/components/Button';
+import { Avatar } from '@/src/components/Avatar';
+import { Chip, ChipRow } from '@/src/components/Chip';
 import { EmptyState } from '@/src/components/EmptyState';
+import { ListGroup } from '@/src/components/ListGroup';
+import { ListRow } from '@/src/components/ListRow';
 import { Screen } from '@/src/components/Screen';
 import { SearchInput } from '@/src/components/SearchInput';
-import { SegmentedTabs } from '@/src/components/SegmentedTabs';
+import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { favoriteKey } from '@/src/storage/favorites';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { PlayerCard, ClubCard, DetailRow } from '../../src/features/search/components';
+import { typography } from '@/src/theme/typography';
+import { PlayerRow, ClubRow } from '../../src/features/search/components';
 import { styles } from '../../src/features/search/styles';
 import { useSearch } from '../../src/features/search/hooks/useSearch';
+
+const OVERVIEW_LIMIT = 4;
 
 export default function SearchScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
   const {
     query,
-    submittedQuery,
-    activeTab,
-    setActiveTab,
+    searchedQuery,
+    filter,
+    setFilter,
     players,
     clubs,
     favoriteSet,
-    selectedPlayer,
-    setSelectedPlayer,
-    selectedClub,
-    setSelectedClub,
-    clubTeams,
+    recent,
     loading,
-    loadingTeams,
     error,
+    hasQuery,
+    resultsCurrent,
     handleQueryChange,
-    runSearch,
     togglePlayerFavorite,
     toggleClubFavorite,
-    openClub,
     openPlayerDetails,
     openClubDetails,
-    tabOptions,
-    hasSubmitted,
-    queryChanged,
+    openRecent,
+    clearRecent,
   } = useSearch();
+
+  const showPlayers = filter === 'all' || filter === 'players';
+  const showClubs = filter === 'all' || filter === 'clubs';
+  const visiblePlayers = filter === 'all' ? players.slice(0, OVERVIEW_LIMIT) : players;
+  const visibleClubs = filter === 'all' ? clubs.slice(0, OVERVIEW_LIMIT) : clubs;
+
+  const nothingFound =
+      resultsCurrent &&
+      ((filter === 'all' && players.length === 0 && clubs.length === 0) ||
+          (filter === 'players' && players.length === 0) ||
+          (filter === 'clubs' && clubs.length === 0));
 
   return (
       <Screen>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: colors.text }]}>{t('search.title')}</Text>
-          </View>
+          <Text style={[typography.titleLarge, { color: colors.text }]}>{t('search.title')}</Text>
 
-          <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabOptions} />
+          <SearchInput value={query} onChangeText={handleQueryChange} placeholder={t('search.placeholder')} />
 
-          <View style={styles.searchBlock}>
-            <SearchInput
-                value={query}
-                onChangeText={handleQueryChange}
-                onSubmitEditing={runSearch}
-                placeholder={t('search.placeholder')}
-            />
-            <Button
-                icon="search-outline"
-                loading={loading}
-                disabled={loading || query.trim().length < 2}
-                onPress={runSearch}
-                style={styles.searchButton}
-            >
-              {t('common.search')}
-            </Button>
-          </View>
-
-          {queryChanged ? (
-              <Text style={[styles.hint, { color: colors.mutedText }]}>{t('search.updateHint')}</Text>
+          {hasQuery ? (
+              <ChipRow>
+                <Chip label={t('common.all')} active={filter === 'all'} onPress={() => setFilter('all')} />
+                <Chip
+                    label={t('entities.players')}
+                    count={resultsCurrent ? players.length : undefined}
+                    active={filter === 'players'}
+                    onPress={() => setFilter('players')}
+                />
+                <Chip
+                    label={t('entities.clubs')}
+                    count={resultsCurrent ? clubs.length : undefined}
+                    active={filter === 'clubs'}
+                    onPress={() => setFilter('clubs')}
+                />
+              </ChipRow>
           ) : null}
 
-          {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+          {error ? <Text style={[typography.meta, { color: colors.destructive }]}>{error}</Text> : null}
           {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
 
-          {!loading && activeTab === 'players' ? (
-              <View style={styles.stack}>
-                {!query.trim() ? <EmptyState icon="search-outline" title={t('search.enterTerm')} /> : null}
-                {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title={t('search.readyTitle')} subtitle={t('search.readySubtitle')} /> : null}
-                {hasSubmitted && players.length === 0 ? <EmptyState icon="person-outline" title={t('search.noPlayers')} subtitle={t('search.noResultsFor', { query: submittedQuery })} /> : null}
+          {!hasQuery && query.trim().length > 0 ? (
+              <Text style={[typography.meta, { color: colors.mutedText }]}>{t('search.minCharacters')}</Text>
+          ) : null}
 
-                {players.map((player, index) => (
-                    <PlayerCard
-                        key={`player-${player.id}-${player.internalId ?? ''}-${player.personId ?? ''}-${index}`}
-                        player={player}
-                        favorite={favoriteSet.has(favoriteKey('player', player.id))}
-                        onPress={() => setSelectedPlayer(player)}
-                        onToggleFavorite={() => togglePlayerFavorite(player)}
+          {!hasQuery && query.trim().length === 0 ? (
+              recent.length > 0 ? (
+                  <View style={styles.section}>
+                    <SectionHeader
+                        title={t('search.recentTitle')}
+                        actionLabel={t('search.clearRecent')}
+                        onActionPress={() => {
+                          clearRecent().catch(() => undefined);
+                        }}
                     />
-                ))}
+
+                    <ListGroup>
+                      {recent.map((item) => (
+                          <ListRow
+                              key={`${item.type}-${item.id}`}
+                              leading={
+                                item.type === 'player' ? (
+                                    <Avatar name={item.title} size={40} />
+                                ) : (
+                                    <Avatar icon="home" shape="square" size={40} />
+                                )
+                              }
+                              title={item.title}
+                              subtitle={item.subtitle || undefined}
+                              trailing={<Ionicons name="time-outline" size={18} color={colors.mutedText} />}
+                              chevron={false}
+                              onPress={() => openRecent(item)}
+                          />
+                      ))}
+                    </ListGroup>
+                  </View>
+              ) : (
+                  <EmptyState icon="search-outline" title={t('search.enterTerm')} />
+              )
+          ) : null}
+
+          {nothingFound ? (
+              <EmptyState
+                  icon="search-outline"
+                  title={filter === 'clubs' ? t('search.noClubs') : filter === 'players' ? t('search.noPlayers') : t('search.noResults')}
+                  subtitle={t('search.noResultsFor', { query: searchedQuery })}
+              />
+          ) : null}
+
+          {resultsCurrent && showPlayers && visiblePlayers.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader
+                    title={t('entities.players')}
+                    actionLabel={filter === 'all' && players.length > OVERVIEW_LIMIT ? t('common.viewAll') : undefined}
+                    onActionPress={() => setFilter('players')}
+                />
+
+                <ListGroup>
+                  {visiblePlayers.map((player, index) => (
+                      <PlayerRow
+                          key={`player-${player.id}-${player.internalId ?? ''}-${index}`}
+                          player={player}
+                          favorite={favoriteSet.has(favoriteKey('player', player.id))}
+                          onPress={() => openPlayerDetails(player)}
+                          onToggleFavorite={() => {
+                            togglePlayerFavorite(player).catch(() => undefined);
+                          }}
+                      />
+                  ))}
+                </ListGroup>
               </View>
           ) : null}
 
-          {!loading && activeTab === 'clubs' ? (
-              <View style={styles.stack}>
-                {!query.trim() ? <EmptyState icon="search-outline" title={t('search.enterTerm')} /> : null}
-                {query.trim() && !hasSubmitted ? <EmptyState icon="arrow-up-circle-outline" title={t('search.readyTitle')} subtitle={t('search.readySubtitle')} /> : null}
-                {hasSubmitted && clubs.length === 0 ? <EmptyState icon="business-outline" title={t('search.noClubs')} subtitle={t('search.noResultsFor', { query: submittedQuery })} /> : null}
+          {resultsCurrent && showClubs && visibleClubs.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader
+                    title={t('entities.clubs')}
+                    actionLabel={filter === 'all' && clubs.length > OVERVIEW_LIMIT ? t('common.viewAll') : undefined}
+                    onActionPress={() => setFilter('clubs')}
+                />
 
-                {clubs.map((club, index) => (
-                    <ClubCard
-                        key={`club-${club.id}-${club.clubNumber ?? ''}-${index}`}
-                        club={club}
-                        favorite={favoriteSet.has(favoriteKey('club', club.id))}
-                        onPress={() => openClub(club)}
-                        onToggleFavorite={() => toggleClubFavorite(club)}
-                    />
-                ))}
+                <ListGroup>
+                  {visibleClubs.map((club, index) => (
+                      <ClubRow
+                          key={`club-${club.id}-${club.clubNumber ?? ''}-${index}`}
+                          club={club}
+                          favorite={favoriteSet.has(favoriteKey('club', club.id))}
+                          onPress={() => openClubDetails(club)}
+                          onToggleFavorite={() => {
+                            toggleClubFavorite(club).catch(() => undefined);
+                          }}
+                      />
+                  ))}
+                </ListGroup>
               </View>
           ) : null}
         </ScrollView>
-
-        <BottomSheet
-            visible={!!selectedPlayer}
-            title={selectedPlayer?.fullName ?? ''}
-            onClose={() => setSelectedPlayer(null)}
-            headerRight={
-              selectedPlayer ? (
-                  <IconButton
-                      icon={favoriteSet.has(favoriteKey('player', selectedPlayer.id)) ? 'star' : 'star-outline'}
-                      active={favoriteSet.has(favoriteKey('player', selectedPlayer.id))}
-                      onPress={() => togglePlayerFavorite(selectedPlayer)}
-                  />
-              ) : null
-            }
-        >
-          {selectedPlayer ? (
-              <View style={styles.sheetStack}>
-                <DetailRow label={t('entities.club')} value={selectedPlayer.clubName} />
-                <DetailRow label="TTR" value={selectedPlayer.ttr ? String(selectedPlayer.ttr) : t('common.notAvailable')} />
-
-                {selectedPlayer.internalId ? (
-                    <Button icon="stats-chart-outline" onPress={() => openPlayerDetails(selectedPlayer)}>
-                      {t('search.seeMore')}
-                    </Button>
-                ) : (
-                    <Text style={[styles.sheetMuted, { color: colors.mutedText }]}>{t('search.playerMissingNuid')}</Text>
-                )}
-              </View>
-          ) : null}
-        </BottomSheet>
-
-        <BottomSheet
-            visible={!!selectedClub}
-            title={selectedClub?.name ?? ''}
-            onClose={() => setSelectedClub(null)}
-            headerRight={
-              selectedClub ? (
-                  <IconButton
-                      icon={favoriteSet.has(favoriteKey('club', selectedClub.id)) ? 'star' : 'star-outline'}
-                      active={favoriteSet.has(favoriteKey('club', selectedClub.id))}
-                      onPress={() => toggleClubFavorite(selectedClub)}
-                  />
-              ) : null
-            }
-        >
-          {selectedClub ? (
-              <View style={styles.sheetStack}>
-                <DetailRow label={t('search.clubNumber')} value={selectedClub.clubNumber ?? t('common.notFound')} monospace />
-                <DetailRow label={t('search.state')} value={selectedClub.state ?? t('common.notAvailable')} />
-                <DetailRow label={t('entities.association')} value={selectedClub.organization ?? selectedClub.organizationName ?? t('common.unknown')} />
-
-                <View style={styles.sheetStatRow}>
-                  <Badge tone="secondary" icon="people-outline">{t('search.teamsCount', { count: clubTeams.length })}</Badge>
-                  {selectedClub.organization ? <Badge tone="outline">{selectedClub.organization}</Badge> : null}
-                </View>
-
-                {loadingTeams ? <ActivityIndicator color={colors.primary} /> : null}
-
-                <Button icon="business-outline" onPress={() => openClubDetails(selectedClub)}>
-                  {t('search.seeMore')}
-                </Button>
-              </View>
-          ) : null}
-        </BottomSheet>
       </Screen>
   );
 }

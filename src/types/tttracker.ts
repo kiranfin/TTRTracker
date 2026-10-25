@@ -6,6 +6,8 @@ export type FavoriteItem = {
   title: string;
   subtitle?: string;
   createdAt: string;
+  // TTR zum Zeitpunkt des Hinzufügens (nur Spieler)
+  ttr?: number;
   params?: Record<string, string>;
 };
 

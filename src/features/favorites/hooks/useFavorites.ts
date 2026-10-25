@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 
 import { FavoriteItem, getFavorites, removeFavorite } from '@/src/storage/favorites';
+import { addRecentViewed } from '@/src/storage/recentViewed';
 
 export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -28,38 +29,48 @@ export function useFavorites() {
 
       if (!nuid) return;
 
-      router.push({
-        pathname: '/player/[nuid]',
-        params: {
-          nuid,
-          title: item.title,
-          clubName: item.params?.clubName ?? item.subtitle ?? '',
-          clubKey: item.params?.clubKey ?? '',
-          organization: item.params?.organization ?? '',
-          organizationName: item.params?.organizationName ?? '',
-          clubNumber: item.params?.clubNumber ?? '',
-          state: item.params?.state ?? '',
-          externalId: item.params?.externalId ?? '',
-          ttr: item.params?.ttr ?? '',
-        },
-      });
+      const params = {
+        nuid,
+        title: item.title,
+        clubName: item.params?.clubName ?? item.subtitle ?? '',
+        clubKey: item.params?.clubKey ?? '',
+        organization: item.params?.organization ?? '',
+        organizationName: item.params?.organizationName ?? '',
+        clubNumber: item.params?.clubNumber ?? '',
+        state: item.params?.state ?? '',
+        externalId: item.params?.externalId ?? '',
+        ttr: item.params?.ttr ?? '',
+      };
+
+      addRecentViewed({ type: 'player', id: nuid, title: item.title, subtitle: params.clubName, params }).catch(
+          () => undefined,
+      );
+
+      router.push({ pathname: '/player/[nuid]', params });
 
       return;
     }
 
     if (item.type === 'club') {
-      router.push({
-        pathname: '/club/[clubKey]',
-        params: {
-          clubKey: item.id,
-          title: item.title,
-          organization: item.params?.organization ?? '',
-          organizationName: item.params?.organizationName ?? '',
-          clubNumber: item.params?.clubNumber ?? '',
-          state: item.params?.state ?? '',
-          externalId: item.params?.externalId ?? '',
-        },
-      });
+      const params = {
+        clubKey: item.id,
+        title: item.title,
+        organization: item.params?.organization ?? '',
+        organizationName: item.params?.organizationName ?? '',
+        clubNumber: item.params?.clubNumber ?? '',
+        state: item.params?.state ?? '',
+        externalId: item.params?.externalId ?? '',
+      };
+
+      addRecentViewed({
+        type: 'club',
+        id: item.id,
+        title: item.title,
+        subtitle: [params.organizationName, params.organization].filter(Boolean).join(' • '),
+        params,
+      }).catch(() => undefined);
+
+      router.push({ pathname: '/club/[clubKey]', params });
 
       return;
     }
