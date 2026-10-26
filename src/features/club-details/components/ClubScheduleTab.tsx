@@ -65,7 +65,7 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
                                 awayScore={match.awayScore}
                                 status={match.status}
                                 time={match.time}
-                                meta={[match.clubTeamName, match.leagueName].filter(Boolean).join(' · ') || undefined}
+                                meta={match.leagueName || undefined}
                                 highlightTeam={match.clubTeamName}
                                 onPress={
                                     match.id && match.status !== 'free'

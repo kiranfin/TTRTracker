@@ -62,8 +62,10 @@ export function useSearch() {
           .then((response) => {
             if (requestId !== requestCounter.current) return;
 
-            const ttr = response.data.ttr;
-            if (typeof ttr !== 'number') return;
+            // Das Backend reicht den Wert von myTischtennis durch, der kann auch als Text kommen.
+            const rawTtr = response.data.ttr as unknown;
+            const ttr = typeof rawTtr === 'string' && rawTtr.trim() ? Number(rawTtr) : rawTtr;
+            if (typeof ttr !== 'number' || !Number.isFinite(ttr)) return;
 
             setPlayers((previous) =>
                 previous.map((candidate) => (candidate.internalId === nuid ? { ...candidate, ttr } : candidate)),

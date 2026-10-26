@@ -33,7 +33,7 @@ export default function HomeScreen() {
     meError,
     meClub,
     clubCompletedMatches,
-    clubNextMatch,
+    clubUpcomingMatches,
     clubLoading,
     clubError,
     selectMePlayer,
@@ -87,7 +87,7 @@ export default function HomeScreen() {
                 <ClubCard
                     clubName={meClub?.title ?? meClub?.clubName ?? clubName}
                     hasSavedClub={Boolean(meClub)}
-                    nextMatch={clubNextMatch}
+                    upcoming={clubUpcomingMatches}
                     results={clubCompletedMatches}
                     loading={clubLoading}
                     error={clubError}

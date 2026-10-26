@@ -194,7 +194,12 @@ export default function TeamDetailsScreen() {
                 }
 
                 if (infoResult.status === 'fulfilled') {
-                    setTeamInfo(normalizeTeamInfo(infoResult.value));
+                    setTeamInfo(
+                        normalizeTeamInfo(
+                            infoResult.value,
+                            scheduleResult.status === 'fulfilled' ? scheduleResult.value : undefined,
+                        ),
+                    );
                 } else {
                     setTeamInfo(null);
                     warnings.push(t('team.infosLoadError'));

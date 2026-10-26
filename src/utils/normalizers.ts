@@ -15,7 +15,7 @@ import type {
   ScheduleMatchStatus,
   TableRow,
 } from '../types/tttracker';
-import { getCurrentSeason } from './dates';
+import { getCurrentSeason, splitLocalDateTime } from './dates';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -64,19 +64,6 @@ function findFirstArray(value: unknown, depth = 0): unknown[] | null {
 
 function rowsFromResponse(value: unknown) {
   return findFirstArray(value) ?? [];
-}
-
-function extractIsoDate(value?: string) {
-  if (!value) return undefined;
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match?.[1] ?? value;
-}
-
-function extractIsoTime(value?: string) {
-  if (!value) return undefined;
-  const match = value.match(/T(\d{2}):(\d{2})/);
-  if (!match) return undefined;
-  return `${match[1]}:${match[2]}`;
 }
 
 function compactJoin(parts: Array<string | undefined | null>, separator = ', ') {
@@ -322,15 +309,29 @@ function isFreeMatch(homeTeam?: string, awayTeam?: string) {
   return text.includes('spielfrei');
 }
 
-function mapScheduleStatus(state: unknown, live: unknown, homeTeam?: string, awayTeam?: string): ScheduleMatchStatus {
-  if (isFreeMatch(homeTeam, awayTeam)) return 'free';
-  if (live === true) return 'live';
+// Maßgeblich ist `state`. Geplante Spiele kommen mit matches_won/matches_lost "0"/"0",
+// ein vorhandenes Ergebnis heißt also nicht, dass gespielt wurde.
+export function mapScheduleStatus(
+    state: unknown,
+    live: unknown,
+    homeTeam?: string,
+    awayTeam?: string,
+    homeScore?: string,
+    awayScore?: string,
+): ScheduleMatchStatus {
+  const normalized = String(state ?? '').trim().toLowerCase();
 
-  const normalized = String(state ?? '').toLowerCase();
+  if (isFreeMatch(homeTeam, awayTeam) || normalized.includes('spielfrei')) return 'free';
+  if (live === true || normalized === 'live' || normalized === 'running') return 'live';
 
-  if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') return 'completed';
-  if (normalized === 'scheduled' || normalized === 'open' || normalized === 'planned') return 'scheduled';
-  if (normalized === 'postponed' || normalized === 'cancelled' || normalized === 'canceled') return 'postponed';
+  if (['done', 'completed', 'complete', 'finished', 'beendet', 'gespielt'].includes(normalized)) return 'completed';
+  if (['scheduled', 'open', 'planned', 'geplant'].includes(normalized)) return 'scheduled';
+  if (['postponed', 'cancelled', 'canceled', 'verlegt', 'abgesagt'].includes(normalized)) return 'postponed';
+
+  // Ohne bekannten Status zählt nur ein echtes Ergebnis, 0:0 ist der Platzhalter geplanter Spiele.
+  const home = Number(homeScore);
+  const away = Number(awayScore);
+  if (Number.isFinite(home) && Number.isFinite(away) && home + away > 0) return 'completed';
 
   return 'scheduled';
 }
@@ -379,6 +380,10 @@ export function normalizeSchedule(response: unknown): ScheduleMatch[] {
     const rawDate = firstString(meeting.date, meeting.start_date, meeting.startDate);
     const rawEndDate = firstString(meeting.end_date, meeting.endDate);
 
+    const start = splitLocalDateTime(rawDate);
+    const homeScore = firstString(meeting.matches_won, meeting.homeScore, meeting.score_home);
+    const awayScore = firstString(meeting.matches_lost, meeting.awayScore, meeting.score_away);
+
     const venue = compactJoin([
       firstString(location.label),
       firstString(location.street),
@@ -387,17 +392,17 @@ export function normalizeSchedule(response: unknown): ScheduleMatch[] {
 
     return {
       id: firstString(meeting.meeting_id, meeting.meetingId, meeting.id, `${index}`),
-      date: extractIsoDate(rawDate),
-      time: extractIsoTime(rawDate),
-      endTime: extractIsoTime(rawEndDate),
+      date: start.date,
+      time: start.time,
+      endTime: splitLocalDateTime(rawEndDate).time,
       homeTeam,
       awayTeam,
       homeTeamId: firstString(meeting.team_home_id, meeting.homeTeamId),
       awayTeamId: firstString(meeting.team_away_id, meeting.awayTeamId),
       homeClubId: firstString(meeting.team_home_club_id, meeting.homeClubId),
       awayClubId: firstString(meeting.team_away_club_id, meeting.awayClubId),
-      homeScore: firstString(meeting.matches_won, meeting.homeScore, meeting.score_home),
-      awayScore: firstString(meeting.matches_lost, meeting.awayScore, meeting.score_away),
+      homeScore,
+      awayScore,
       venue: venue || undefined,
       city: firstString(location.city),
       street: firstString(location.street),
@@ -410,9 +415,10 @@ export function normalizeSchedule(response: unknown): ScheduleMatch[] {
       association: firstString(meeting.league_org_short_name, meeting.association),
       confirmed: typeof meeting.is_confirmed === 'boolean' ? meeting.is_confirmed : undefined,
       complete: typeof meeting.is_meeting_complete === 'boolean' ? meeting.is_meeting_complete : undefined,
-      live: meeting.live === true || meeting.nu_score_live_enabled === true,
+      // nu_score_live_enabled heißt nur, dass das Spiel per nuScore erfasst wird, nicht dass es gerade läuft.
+      live: meeting.live === true,
       pdfUrl: firstString(meeting.pdf_url, meeting.pdfUrl),
-      status: mapScheduleStatus(meeting.state, meeting.live === true || meeting.nu_score_live_enabled === true, homeTeam, awayTeam),
+      status: mapScheduleStatus(meeting.state, meeting.live, homeTeam, awayTeam, homeScore, awayScore),
     };
   });
 }
@@ -484,9 +490,12 @@ function normalizeTtrHistoryEvent(event: unknown, index: number): NormalizedTtrH
       row.updated_at
   );
 
+  const eventDate = splitLocalDateTime(dateTime);
   const ttrBefore = firstNumber(row.ttr_before, row.ttrBefore);
   const ttrAfter = firstNumber(row.ttr_after, row.ttrAfter);
-  const delta = firstNumber(row.ttr_delta, row.delta, row.change, row.diff);
+  const delta =
+      firstNumber(row.ttr_delta, row.delta, row.change, row.diff) ??
+      (ttrBefore !== undefined && ttrAfter !== undefined ? ttrAfter - ttrBefore : undefined);
 
   const matches = Array.isArray(row.match)
       ? row.match.map(normalizeHistoryMatch)
@@ -497,8 +506,8 @@ function normalizeTtrHistoryEvent(event: unknown, index: number): NormalizedTtrH
     title: rawTitle,
     leagueName: rawLeagueName,
     meetingLabel: rawMeetingLabel,
-    date: extractIsoDate(dateTime),
-    time: extractIsoTime(dateTime),
+    date: eventDate.date,
+    time: eventDate.time,
     type: firstString(row.type),
     ttr: ttrAfter,
     ttrBefore,
@@ -513,17 +522,18 @@ function normalizeTtrHistoryEvent(event: unknown, index: number): NormalizedTtrH
   };
 }
 
+function getEventSortKey(event: NormalizedTtrHistoryEvent) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(event.date ?? '') ? `${event.date} ${event.time ?? '00:00'}` : '0000-00-00';
+}
+
 export function normalizePlayerTtrHistory(response: PlayerTtrHistoryResponse): NormalizedPlayerTtrHistory {
   const data = response.data;
 
   const events = Array.isArray(data.events)
       ? data.events
           .map(normalizeTtrHistoryEvent)
-          .sort((a, b) => {
-            const dateA = a.date ? new Date(a.date).getTime() : 0;
-            const dateB = b.date ? new Date(b.date).getTime() : 0;
-            return dateA - dateB;
-          })
+          // Mit Uhrzeit sortieren, sonst stehen mehrere Events am selben Tag in zufälliger Reihenfolge
+          .sort((a, b) => getEventSortKey(a).localeCompare(getEventSortKey(b)))
       : [];
 
   return {

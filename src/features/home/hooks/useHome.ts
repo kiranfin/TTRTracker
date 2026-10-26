@@ -22,7 +22,7 @@ export function useHome() {
 
   const [meClub, setMeClub] = useState<MeClub | null>(null);
   const [clubCompletedMatches, setClubCompletedMatches] = useState<HomeClubMatch[]>([]);
-  const [clubNextMatch, setClubNextMatch] = useState<HomeClubMatch | null>(null);
+  const [clubUpcomingMatches, setClubUpcomingMatches] = useState<HomeClubMatch[]>([]);
   const [clubLoading, setClubLoading] = useState(false);
   const [clubError, setClubError] = useState<string | null>(null);
 
@@ -143,7 +143,7 @@ export function useHome() {
     async function loadClubMatches() {
       if (!meClub?.organization || !meClub.clubNumber) {
         setClubCompletedMatches([]);
-        setClubNextMatch(null);
+        setClubUpcomingMatches([]);
         setClubError(null);
         setClubLoading(false);
         return;
@@ -152,7 +152,7 @@ export function useHome() {
       setClubLoading(true);
       setClubError(null);
       setClubCompletedMatches([]);
-      setClubNextMatch(null);
+      setClubUpcomingMatches([]);
 
       try {
         const season = meClub.season ?? getCurrentBackendSeason();
@@ -176,14 +176,18 @@ export function useHome() {
             .sort(compareMatchesNewestFirst)
             .slice(0, 2);
 
-        const upcoming = allMatches.filter(isUpcomingClubMatch).sort(compareMatchesOldestFirst);
+        const upcoming = allMatches
+            .filter(isUpcomingClubMatch)
+            .sort(compareMatchesOldestFirst)
+            .slice(0, 2);
 
         setClubCompletedMatches(matches);
-        setClubNextMatch(upcoming[0] ?? null);
+        setClubUpcomingMatches(upcoming);
       } catch (error) {
         if (!active) return;
 
         setClubCompletedMatches([]);
+        setClubUpcomingMatches([]);
         setClubError(
             error instanceof Error
                 ? error.message
@@ -264,7 +268,7 @@ export function useHome() {
     meError,
     meClub,
     clubCompletedMatches,
-    clubNextMatch,
+    clubUpcomingMatches,
     clubLoading,
     clubError,
     selectMePlayer,

@@ -8,6 +8,7 @@ export type MyLeague = {
   // favorite: als Liga gemerkt, club: Liga einer Mannschaft des gespeicherten Vereins
   source: 'favorite' | 'club';
   teamName?: string;
+  teamId?: string;
 };
 
 // Platz und Punkte der eigenen Mannschaft in "Deine Ligen", size = Anzahl Mannschaften

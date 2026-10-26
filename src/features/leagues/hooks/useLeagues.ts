@@ -103,6 +103,7 @@ export function useLeagues() {
                   leagueSlug: team.leagueSlug,
                   source: 'club',
                   teamName: team.teamName,
+                  teamId: team.teamId,
                 });
               }
             }
@@ -131,9 +132,13 @@ export function useLeagues() {
                       ),
                   );
 
-                  const own = league.teamName
-                      ? rows.find((row) => normalizeTeamName(row.teamName) === normalizeTeamName(league.teamName))
-                      : undefined;
+                  // Die Teamliste des Vereins nennt die Mannschaft nur "Erwachsene II", die Tabelle
+                  // "TTV Pleidelsheim II". Die Team-ID passt dagegen immer.
+                  const own =
+                      (league.teamId ? rows.find((row) => row.id === league.teamId) : undefined) ??
+                      (league.teamName
+                          ? rows.find((row) => normalizeTeamName(row.teamName) === normalizeTeamName(league.teamName))
+                          : undefined);
 
                   next[leagueKey(league)] = {
                     size: rows.length,

@@ -8,6 +8,7 @@ import { SegmentedTabs } from '@/src/components/SegmentedTabs';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { numeric, typography } from '@/src/theme/typography';
+import { splitLocalDateTime } from '@/src/utils/dates';
 import { formatDate } from '@/src/utils/normalizers';
 import type { PlayerComparisonData, SideId } from '../types';
 import { formatOptionalNumber, getEvents, getPlayerName, numberFromUnknown, sortEventsNewestFirst } from '../utils';
@@ -40,10 +41,10 @@ export function RecentEventsSection({ comparison }: { comparison: PlayerComparis
                   <ListRow
                       key={`${side}-${event.event_id}`}
                       title={event.event_name ?? t('compare.unknownEvent')}
-                      subtitle={event.event_date_time ? formatDate(event.event_date_time) : t('common.dateUnknown')}
+                      subtitle={event.event_date_time ? formatDate(splitLocalDateTime(event.event_date_time).date) : t('common.dateUnknown')}
                       trailing={
                         <View style={styles.eventTrailing}>
-                          <Text style={[numeric.medium, { color: colors.text }]}>{formatOptionalNumber(event.ttr_after)}</Text>
+                          <Text style={[numeric.medium, { color: colors.text }]}>{formatOptionalNumber(numberFromUnknown(event.ttr_after))}</Text>
                           <DeltaText value={numberFromUnknown(event.ttr_delta)} size={13} />
                         </View>
                       }

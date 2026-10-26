@@ -1,9 +1,9 @@
 import { ttApi } from '@/src/api/tttracker';
 import type { ClubTeam, ScheduleMatch } from '@/src/types/tttracker';
-import { formatDate, normalizeSchedule } from '@/src/utils/normalizers';
+import { formatDate, mapScheduleStatus, normalizeSchedule } from '@/src/utils/normalizers';
 import { isFavorite } from '@/src/storage/favorites';
 import type { ClubApiWithOptionalEndpoints, ClubScheduleMatch, RichObject, ClubPlayer, ThemeColors, ScheduleDateGroup } from './types';
-import { getCurrentSeason } from '@/src/utils/dates';
+import { getCurrentSeason, splitLocalDateTime } from '@/src/utils/dates';
 
 export const TEAM_HOME_KEYS = [
     'team_home',
@@ -92,7 +92,8 @@ export async function loadClubSchedule(
         );
 
         const teamNames = teams.map((team) => team.teamName).filter(Boolean);
-        const clubMatches = normalizeClubScheduleResponse(response, teamNames);
+        const teamIds = teams.map((team) => team.teamId).filter((id): id is string => Boolean(id));
+        const clubMatches = normalizeClubScheduleResponse(response, teamNames, teamIds);
 
         const fallbackMatches =
             clubMatches.length > 0
@@ -179,11 +180,11 @@ export async function loadClubScheduleFromTeamLeagues(
     return sortSchedule(dedupeSchedule(filterMatchesByDate(matches, options?.dateStart, options?.dateEnd)));
 }
 
-export function normalizeClubScheduleResponse(response: unknown, teamNames: string[]) {
+export function normalizeClubScheduleResponse(response: unknown, teamNames: string[], teamIds: string[] = []) {
     const meetings = collectClubMeetings(response);
 
     return meetings
-        .map((meeting, index) => normalizeClubScheduleMeeting(meeting, index, teamNames))
+        .map((meeting, index) => normalizeClubScheduleMeeting(meeting, index, teamNames, teamIds))
         .filter((match): match is ClubScheduleMatch => Boolean(match));
 }
 
@@ -255,6 +256,7 @@ export function normalizeClubScheduleMeeting(
     value: unknown,
     index: number,
     teamNames: string[],
+    teamIds: string[] = [],
 ): ClubScheduleMatch | null {
     if (!value || typeof value !== 'object') {
         return null;
@@ -267,12 +269,13 @@ export function normalizeClubScheduleMeeting(
 
     const id = pickDeepString(raw, MEETING_ID_KEYS);
 
-    const date =
-        pickDeepString(raw, MEETING_DATE_KEYS) ??
-        undefined;
+    // UTC-Zeitstempel in lokales Datum und lokale Uhrzeit umrechnen
+    const start = splitLocalDateTime(pickDeepString(raw, MEETING_DATE_KEYS));
+    const date = start.date;
 
     const time =
-        pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel', 'start_time', 'startTime']) ??
+        pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel']) ??
+        start.time ??
         extractTimeFromDateValue(date);
 
     const homeScore = pickDeepString(raw, [
@@ -323,8 +326,19 @@ export function normalizeClubScheduleMeeting(
         'number',
     ]);
 
+    // In der Teamliste heißt die Mannschaft nur "Erwachsene II", im Spielplan "TTV Pleidelsheim II".
+    // Die eigene Seite finden wir deshalb zuerst über die Team-ID.
+    const homeTeamId = pickDeepString(raw, ['team_home_id', 'homeTeamId']);
+    const awayTeamId = pickDeepString(raw, ['team_away_id', 'awayTeamId']);
+    const ownTeamById =
+        homeTeamId && teamIds.includes(homeTeamId)
+            ? homeTeam
+            : awayTeamId && teamIds.includes(awayTeamId)
+                ? awayTeam
+                : undefined;
+
     const rawStatus = pickDeepString(raw, ['state', 'status', 'meeting_state', 'meetingState']);
-    const status = normalizeClubMeetingStatus(rawStatus, homeScore, awayScore);
+    const status = mapScheduleStatus(rawStatus, raw.live, homeTeam, awayTeam, homeScore, awayScore);
 
     return {
         id: id ?? `${date ?? 'no-date'}-${homeTeam}-${awayTeam}-${index}`,
@@ -338,7 +352,7 @@ export function normalizeClubScheduleMeeting(
         leagueName,
         roundName,
         meetingNumber,
-        clubTeamName: findMatchedTeamName(
+        clubTeamName: ownTeamById ?? findMatchedTeamName(
             {
                 homeTeam,
                 awayTeam,
@@ -346,30 +360,6 @@ export function normalizeClubScheduleMeeting(
             teamNames,
         ),
     } as ClubScheduleMatch;
-}
-
-export function normalizeClubMeetingStatus(
-    rawStatus?: string,
-    homeScore?: string,
-    awayScore?: string,
-): ScheduleMatch['status'] {
-    const normalized = String(rawStatus ?? '').trim().toLowerCase();
-
-    if (normalized.includes('spielfrei') || normalized.includes('frei')) {
-        return 'free';
-    }
-
-    if (
-        normalized.includes('beendet') ||
-        normalized.includes('gespielt') ||
-        normalized.includes('completed') ||
-        normalized.includes('done') ||
-        (homeScore !== undefined && awayScore !== undefined)
-    ) {
-        return 'completed';
-    }
-
-    return 'scheduled';
 }
 
 export function pickDeepString(row: RichObject, keys: string[]) {

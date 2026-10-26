@@ -80,8 +80,13 @@ export function useMatchDetails() {
   const homeMatches = toNumber(meeting?.matches_home);
   const guestMatches = toNumber(meeting?.matches_guest);
 
+  // Noch nicht gespielte Begegnungen liefern 0:0, dort gehört "vs" hin und kein Ergebnis.
+  const hasStarted =
+      Boolean(meeting?.live || meeting?.is_completed || meeting?.is_meeting_complete) ||
+      (homeMatches ?? 0) + (guestMatches ?? 0) > 0;
+
   const mainScore =
-      homeMatches !== undefined && guestMatches !== undefined
+      hasStarted && homeMatches !== undefined && guestMatches !== undefined
           ? `${homeMatches}:${guestMatches}`
           : 'vs';
 

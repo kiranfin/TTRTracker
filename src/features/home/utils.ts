@@ -1,5 +1,6 @@
-import type { NormalizedTtrHistoryEvent, ScheduleMatch } from '@/src/types/tttracker';
-import { normalizeSchedule } from '@/src/utils/normalizers';
+import type { NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
+import { splitLocalDateTime } from '@/src/utils/dates';
+import { mapScheduleStatus, normalizeSchedule } from '@/src/utils/normalizers';
 import { getEventWinLoss } from '../player-details/utils';
 import type { RichObject, HomeClubMatch } from './types';
 
@@ -253,10 +254,13 @@ export function normalizeClubScheduleMeeting(value: unknown, index: number): Hom
   const homeTeam = pickDeepString(raw, TEAM_HOME_KEYS) ?? 'Heim';
   const awayTeam = pickDeepString(raw, TEAM_AWAY_KEYS) ?? 'Gast';
   const id = pickDeepString(raw, MEETING_ID_KEYS);
-  const date = pickDeepString(raw, MEETING_DATE_KEYS) ?? undefined;
+  // UTC-Zeitstempel in lokales Datum und lokale Uhrzeit umrechnen
+  const start = splitLocalDateTime(pickDeepString(raw, MEETING_DATE_KEYS));
+  const date = start.date;
 
   const time =
-      pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel', 'start_time', 'startTime']) ??
+      pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel']) ??
+      start.time ??
       extractTimeFromDateValue(date);
 
   const homeScore = pickDeepString(raw, [
@@ -308,7 +312,7 @@ export function normalizeClubScheduleMeeting(value: unknown, index: number): Hom
   ]);
 
   const rawStatus = pickDeepString(raw, ['state', 'status', 'meeting_state', 'meetingState']);
-  const status = normalizeClubMeetingStatus(rawStatus, homeScore, awayScore);
+  const status = mapScheduleStatus(rawStatus, raw.live, homeTeam, awayTeam, homeScore, awayScore);
 
   return {
     id: id ?? `${date ?? 'no-date'}-${homeTeam}-${awayTeam}-${index}`,
@@ -325,35 +329,9 @@ export function normalizeClubScheduleMeeting(value: unknown, index: number): Hom
   } as HomeClubMatch;
 }
 
-export function normalizeClubMeetingStatus(
-    rawStatus?: string,
-    homeScore?: string,
-    awayScore?: string,
-): ScheduleMatch['status'] {
-  const normalized = String(rawStatus ?? '').trim().toLowerCase();
-
-  if (normalized.includes('spielfrei') || normalized.includes('frei')) {
-    return 'free';
-  }
-
-  if (
-      normalized.includes('beendet') ||
-      normalized.includes('gespielt') ||
-      normalized.includes('completed') ||
-      normalized.includes('done') ||
-      (homeScore !== undefined && awayScore !== undefined)
-  ) {
-    return 'completed';
-  }
-
-  return 'scheduled';
-}
-
+// Nur der Status zählt: geplante Spiele haben ebenfalls ein Ergebnis (0:0).
 export function isCompletedClubMatch(match: HomeClubMatch) {
-  if (match.status === 'completed') return true;
-  if (match.status === 'free') return false;
-
-  return match.homeScore !== undefined && match.awayScore !== undefined;
+  return match.status === 'completed';
 }
 
 export function dedupeSchedule(matches: HomeClubMatch[]) {

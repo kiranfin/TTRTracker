@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
-import { MatchHighlightCard } from '@/src/components/MatchHighlightCard';
+import { ListGroup } from '@/src/components/ListGroup';
+import { MatchRow } from '@/src/components/MatchRow';
 import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
@@ -44,7 +45,7 @@ function getHomeSide(match: HomeClubMatch, clubName?: string | null) {
 type ClubCardProps = {
   clubName?: string | null;
   hasSavedClub: boolean;
-  nextMatch: HomeClubMatch | null;
+  upcoming: HomeClubMatch[];
   results: HomeClubMatch[];
   loading: boolean;
   error: string | null;
@@ -52,11 +53,55 @@ type ClubCardProps = {
   onOpenSearch: () => void;
 };
 
-// Vereinsbereich: Überschrift mit Link zum Verein, darunter das nächste Spiel (oder das letzte Ergebnis).
+function ClubMatchList({ title, matches, emptyText, clubName, onOpenClub }: {
+  title: string;
+  matches: HomeClubMatch[];
+  emptyText: string;
+  clubName?: string | null;
+  onOpenClub: () => void;
+}) {
+  const { colors } = useTheme();
+  const { language } = useI18n();
+
+  return (
+      <View style={styles.section}>
+        <SectionHeader variant="label" title={title} />
+
+        {matches.length === 0 ? (
+            <Card style={styles.clubMessage}>
+              <Text style={[typography.body, { color: colors.mutedText }]}>{emptyText}</Text>
+            </Card>
+        ) : (
+            <ListGroup>
+              {matches.map((match, index) => {
+                const homeSide = getHomeSide(match, clubName);
+
+                return (
+                    <MatchRow
+                        key={`${match.id ?? 'no-id'}-${index}`}
+                        homeTeam={match.homeTeam}
+                        awayTeam={match.awayTeam}
+                        homeScore={match.homeScore}
+                        awayScore={match.awayScore}
+                        status={match.status}
+                        time={match.time}
+                        meta={[formatShortWeekdayDate(match.date, language), match.leagueName].filter(Boolean).join(' · ')}
+                        highlightTeam={homeSide === undefined ? undefined : homeSide ? match.homeTeam : match.awayTeam}
+                        onPress={getOpenMatchHandler(match) ?? onOpenClub}
+                    />
+                );
+              })}
+            </ListGroup>
+        )}
+      </View>
+  );
+}
+
+// Vereinsbereich: Überschrift mit Link zum Verein, darunter die letzten zwei Ergebnisse und die nächsten zwei Spiele.
 export function ClubCard({
                            clubName,
                            hasSavedClub,
-                           nextMatch,
+                           upcoming,
                            results,
                            loading,
                            error,
@@ -64,7 +109,7 @@ export function ClubCard({
                            onOpenSearch,
                          }: ClubCardProps) {
   const { colors } = useTheme();
-  const { t, language } = useI18n();
+  const { t } = useI18n();
 
   if (!hasSavedClub) {
     return (
@@ -80,14 +125,6 @@ export function ClubCard({
         </Card>
     );
   }
-
-  const match = nextMatch ?? results[0] ?? null;
-  const homeSide = match ? getHomeSide(match, clubName) : undefined;
-  const footer = match
-      ? [match.leagueName, homeSide === undefined ? undefined : homeSide ? t('home.homeMatch') : t('home.awayMatch')]
-          .filter(Boolean)
-          .join(' · ')
-      : '';
 
   return (
       <View style={styles.section}>
@@ -105,20 +142,23 @@ export function ClubCard({
             <Card style={styles.clubMessage}>
               <Text style={[typography.body, { color: colors.destructive }]}>{error}</Text>
             </Card>
-        ) : !match ? (
-            <Card style={styles.clubMessage}>
-              <Text style={[typography.body, { color: colors.mutedText }]}>{t('home.noUpcomingMatch')}</Text>
-            </Card>
         ) : (
-            <MatchHighlightCard
-                badge={nextMatch ? t('home.nextMatch') : t('home.lastResult')}
-                dateLabel={formatShortWeekdayDate(match.date, language, match.time)}
-                homeTeam={match.homeTeam}
-                awayTeam={match.awayTeam}
-                score={nextMatch ? undefined : `${match.homeScore ?? '-'}:${match.awayScore ?? '-'}`}
-                footer={footer || undefined}
-                onPress={getOpenMatchHandler(match) ?? onOpenClub}
-            />
+            <>
+              <ClubMatchList
+                  title={t('home.lastResults')}
+                  matches={results}
+                  emptyText={t('home.noRecentResults')}
+                  clubName={clubName}
+                  onOpenClub={onOpenClub}
+              />
+              <ClubMatchList
+                  title={t('home.upcomingMatches')}
+                  matches={upcoming}
+                  emptyText={t('home.noUpcomingMatch')}
+                  clubName={clubName}
+                  onOpenClub={onOpenClub}
+              />
+            </>
         )}
       </View>
   );

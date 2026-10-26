@@ -128,7 +128,7 @@ export function MetricsTable({ comparison, leftStats, rightStats }: MetricsTable
 
   return (
       <View style={styles.section}>
-        <SectionHeader title={t('compare.keyMetrics')} />
+        <SectionHeader title={t('compare.keyMetrics')} meta={t('compare.keyMetricsBasis')} />
 
         <ListGroup>
           {rows.map((row) => (

@@ -12,6 +12,10 @@ import { styles } from '../styles';
 function MatchList({ matches, team }: { matches: TeamScheduleMatch[]; team: TeamContext }) {
   const { language } = useI18n();
 
+  // Der Routenname ist oft nur "Erwachsene II", im Spielplan steht der volle Name. Über die ID finden wir ihn.
+  const ownMatch = matches.find((match) => match.homeTeamId === team.teamId || match.awayTeamId === team.teamId);
+  const ownName = ownMatch ? (ownMatch.homeTeamId === team.teamId ? ownMatch.homeTeam : ownMatch.awayTeam) : team.teamName;
+
   return (
       <ListGroup>
         {matches.map((match, index) => {
@@ -27,7 +31,7 @@ function MatchList({ matches, team }: { matches: TeamScheduleMatch[]; team: Team
                   status={match.status}
                   time={match.time}
                   meta={[formatDateLabel(match.date, language), match.roundName].filter(Boolean).join(' · ')}
-                  highlightTeam={team.teamName}
+                  highlightTeam={ownName}
                   onPress={
                     canOpen
                         ? () =>
