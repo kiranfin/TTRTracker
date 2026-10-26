@@ -18,6 +18,36 @@ export function parseDateValue(value?: string | null): Date | undefined {
   return Number.isFinite(direct.getTime()) ? direct : undefined;
 }
 
+// Spieltermine kommen als UTC-Zeitstempel ("2026-10-26T19:00:00.000+00:00"). Ohne Umrechnung
+// wäre die Uhrzeit 1 bis 2 Stunden zu früh und spätabends sogar der Tag falsch.
+// Liefert Datum ("2026-10-26") und Uhrzeit ("20:00") in der lokalen Zeit des Geräts.
+export function splitLocalDateTime(value?: string | null): { date?: string; time?: string } {
+  const raw = value?.trim();
+  if (!raw) return {};
+
+  const zoned = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)(Z|[+-]\d{2}:?\d{2})$/);
+  if (zoned) {
+    const offset = zoned[2] === 'Z' ? 'Z' : zoned[2].replace(/^([+-]\d{2})(\d{2})$/, '$1:$2');
+    const parsed = new Date(`${zoned[1]}${offset}`);
+
+    if (Number.isFinite(parsed.getTime())) {
+      const pad = (part: number) => String(part).padStart(2, '0');
+
+      return {
+        date: `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`,
+        time: `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`,
+      };
+    }
+  }
+
+  const iso = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (iso) {
+    return { date: iso[1], time: iso[2] ? `${iso[2]}:${iso[3]}` : undefined };
+  }
+
+  return { date: raw };
+}
+
 function localeFor(language: Language) {
   return language === 'de' ? 'de-DE' : 'en-GB';
 }
