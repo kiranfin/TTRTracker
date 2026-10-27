@@ -115,6 +115,7 @@ export const de = {
   league: {
     legendPromotion: 'Aufstieg',
     legendRelegation: 'Abstieg',
+    legendPlayoff: 'Relegation',
     ownTeam: 'Deine Mannschaft',
     lastMatchday: 'Letzter Spieltag',
     rankShort: 'Pl.',

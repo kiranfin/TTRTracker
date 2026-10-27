@@ -11,6 +11,7 @@ import type {
   NormalizedTtrHistoryMatch,
   PlayerSearchResult,
   PlayerTtrHistoryResponse,
+  PromotionState,
   ScheduleMatch,
   ScheduleMatchStatus,
   TableRow,
@@ -33,6 +34,18 @@ function firstString(...values: unknown[]) {
   if (value === undefined || value === null) return undefined;
   const text = String(value).trim();
   return text.length > 0 ? text : undefined;
+}
+
+function toPromotionState(value?: string): PromotionState {
+  switch (value) {
+    case 'promotion':
+    case 'promotionPlayoff':
+    case 'relegation':
+    case 'relegationPlayoff':
+      return value;
+    default:
+      return 'none';
+  }
 }
 
 function firstNumber(...values: unknown[]) {
@@ -296,12 +309,7 @@ export function normalizeTable(response: unknown): TableRow[] {
 
       tendency: firstString(row.tendency),
       riseFallState: firstString(row.rise_fall_state, row.riseFallState),
-      promotionState:
-          firstString(row.promotion_state, row.promotionState) === 'promotion'
-              ? 'promotion'
-              : firstString(row.promotion_state, row.promotionState) === 'relegation'
-                  ? 'relegation'
-                  : 'none',
+      promotionState: toPromotionState(firstString(row.promotion_state, row.promotionState)),
       isExcluded: typeof row.is_excluded === 'boolean' ? row.is_excluded : undefined,
     };
   });

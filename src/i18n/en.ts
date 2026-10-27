@@ -123,6 +123,7 @@ export const en: TranslationResource = {
   league: {
     legendPromotion: 'Promotion',
     legendRelegation: 'Relegation',
+    legendPlayoff: 'Play-off spot',
     ownTeam: 'Your team',
     lastMatchday: 'Latest matchday',
     rankShort: 'Pos',

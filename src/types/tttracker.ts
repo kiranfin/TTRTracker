@@ -252,7 +252,7 @@ export type LeagueReference = {
   leagueSlug?: string;
 };
 
-export type PromotionState = 'promotion' | 'relegation' | 'none';
+export type PromotionState = 'promotion' | 'promotionPlayoff' | 'relegation' | 'relegationPlayoff' | 'none';
 
 export type TableRow = {
   id: string;
