@@ -153,8 +153,11 @@ export function normalizeClub(club: ClubSearchResult): NormalizedClub {
       firstString(club.clubname, club.name, raw.club_name, raw.clubName) ??
       'Unbekannter Verein';
 
+  // Verband und Vereinsnummer ergeben eine stabile ID, external_id/id liefert myTischtennis nicht immer mit.
+  const stableId = organization && clubNumber ? `${organization}:${clubNumber}` : undefined;
+
   return {
-    id: firstString(club.external_id, club.id, clubNumber, name) ?? name,
+    id: stableId ?? firstString(club.external_id, club.id, clubNumber, name) ?? name,
     name,
     city: firstString(club.city, raw.location, raw.club_city),
     region: state,

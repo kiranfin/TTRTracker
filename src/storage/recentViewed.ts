@@ -29,12 +29,38 @@ function isRecentItem(value: unknown): value is RecentViewedItem {
     );
 }
 
+// Vereine werden über Verband und Vereinsnummer erkannt, die rohe id kann je nach Treffer variieren.
+function recentIdentity(item: Pick<RecentViewedItem, 'type' | 'id' | 'params'>) {
+    if (item.type === 'club') {
+        const organization = item.params.organization?.trim();
+        const clubNumber = item.params.clubNumber?.trim();
+
+        if (organization && clubNumber) return `club:${organization}:${clubNumber}`;
+    }
+
+    return `${item.type}:${item.id}`;
+}
+
+function dedupeRecent(items: RecentViewedItem[]) {
+    const seen = new Set<string>();
+
+    return items.filter((item) => {
+        const key = recentIdentity(item);
+
+        if (seen.has(key)) return false;
+
+        seen.add(key);
+        return true;
+    });
+}
+
 export async function getRecentViewed(): Promise<RecentViewedItem[]> {
     try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         const parsed = stored ? JSON.parse(stored) : [];
 
-        return Array.isArray(parsed) ? parsed.filter(isRecentItem) : [];
+        // Auch bereits gespeicherte Doppelungen verschwinden hier
+        return Array.isArray(parsed) ? dedupeRecent(parsed.filter(isRecentItem)) : [];
     } catch {
         return [];
     }
@@ -43,10 +69,11 @@ export async function getRecentViewed(): Promise<RecentViewedItem[]> {
 export async function addRecentViewed(item: Omit<RecentViewedItem, 'viewedAt'>) {
     try {
         const items = await getRecentViewed();
+        const identity = recentIdentity(item);
 
         const next = [
             { ...item, viewedAt: new Date().toISOString() },
-            ...items.filter((candidate) => !(candidate.type === item.type && candidate.id === item.id)),
+            ...items.filter((candidate) => recentIdentity(candidate) !== identity),
         ].slice(0, MAX_ITEMS);
 
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
