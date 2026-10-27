@@ -73,7 +73,14 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                     const promotion = getPromotionState(row);
                     const own = isOwnTeam(row, stats.teamName, meClub);
                     const diff = getDiff(stats.ratio);
-                    const barColor = promotion === 'promotion' ? colors.positive : promotion === 'relegation' ? colors.negative : 'transparent';
+                    const barColor =
+                        promotion === 'promotion'
+                            ? colors.positive
+                            : promotion === 'relegation'
+                                ? colors.negative
+                                : promotion === 'none'
+                                    ? 'transparent'
+                                    : colors.warning;
 
                     return (
                         <Pressable
@@ -144,6 +151,16 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                     <View style={[styles.legendDot, { backgroundColor: colors.negative }]} />
                     <Text style={[typography.label, { color: colors.mutedText }]}>{t('league.legendRelegation')}</Text>
                 </View>
+
+                {rows.some((row) => {
+                    const state = getPromotionState(row);
+                    return state === 'promotionPlayoff' || state === 'relegationPlayoff';
+                }) ? (
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+                        <Text style={[typography.label, { color: colors.mutedText }]}>{t('league.legendPlayoff')}</Text>
+                    </View>
+                ) : null}
 
                 {meClub ? (
                     <View style={styles.legendItem}>

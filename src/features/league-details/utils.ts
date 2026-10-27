@@ -283,6 +283,14 @@ export function getPromotionState(row: TableRow): PromotionState {
         .trim()
         .toLowerCase();
 
+    if (value === 'promotionplayoff' || value === 'riserelegation') {
+        return 'promotionPlayoff';
+    }
+
+    if (value === 'relegationplayoff' || value === 'fallrelegation') {
+        return 'relegationPlayoff';
+    }
+
     if (
         value === 'promotion' ||
         value === 'rise' ||
