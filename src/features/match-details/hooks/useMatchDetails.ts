@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { MeetingDetails, TeamLinkContext } from '../types';
-import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getParam, normalizeMeetingRows, toNumber, unwrapMeetingResponse } from '../utils';
+import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getMeetingClub, getParam, normalizeMeetingRows, toNumber, unwrapMeetingResponse } from '../utils';
 import { getCurrentSeason } from '@/src/utils/dates';
 
 export function useMatchDetails() {
@@ -117,6 +117,9 @@ export function useMatchDetails() {
     };
   }
 
+  const homeClub = getMeetingClub(meeting, 'home');
+  const awayClub = getMeetingClub(meeting, 'away');
+
   const homeTeamLink = getTeamLink('home');
   const awayTeamLink = getTeamLink('away');
 
@@ -154,6 +157,8 @@ export function useMatchDetails() {
     awayWon,
     homeTeamLink,
     awayTeamLink,
+    homeClub,
+    awayClub,
     openTeam,
     summaryParts,
     startText,

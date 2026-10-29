@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { isValidElement, useState, type ReactElement } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useClubLogo } from '../hooks/useClubLogo';
 import { useTheme } from '../theme/ThemeProvider';
@@ -12,8 +12,8 @@ type ClubLogoProps = {
   uri?: string;
   size?: number;
   // icon: Gebäude-Icon wie bisher (Listen, Kopf), blank: leere Kachel, damit Tabellenzeilen bündig bleiben,
-  // none: gar nichts (Logo neben einem Textlink)
-  fallback?: 'icon' | 'blank' | 'none';
+  // none: gar nichts (Logo neben einem Textlink), oder ein eigenes Element (Kürzel-Kachel im Spielbericht)
+  fallback?: 'icon' | 'blank' | 'none' | ReactElement;
 };
 
 // Vereinslogo von click-tt auf weißer Kachel (die Logos sind meist JPGs mit weißem Rand).
@@ -27,6 +27,7 @@ export function ClubLogo({ organization, clubNumber, uri, size = 40, fallback = 
 
   if (!url || failedUrl === url) {
     if (fallback === 'none') return null;
+    if (isValidElement(fallback)) return fallback;
 
     return fallback === 'blank' ? (
         <View style={{ width: size, height: size, borderRadius, backgroundColor: colors.soft }} />

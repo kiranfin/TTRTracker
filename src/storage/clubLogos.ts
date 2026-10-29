@@ -6,6 +6,7 @@ import { ttApi } from '../api/tttracker';
 // null heißt "Verein hat kein Logo" und wird genauso gemerkt, damit nicht ständig neu gefragt wird.
 
 const STORAGE_KEY = 'tttracker.clubLogos';
+const LOGO_BASE_URL = 'https://ttde-portal.liga.nu/rs/2014/images/';
 const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const RETRY_AFTER_MS = 5 * 60 * 1000;
 const BATCH_DELAY_MS = 40;
@@ -22,6 +23,15 @@ const failedAt = new Map<string, number>();
 let loadPromise: Promise<void> | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Logo ID von click-tt (z. B. home_image_url im Spielbericht) zur Bild URL, gleiche Größe wie im Backend.
+export function buildClubLogoUrl(logoId?: string | null) {
+  const id = logoId?.trim();
+  if (!id) return undefined;
+  if (/^https?:\/\//i.test(id)) return id;
+
+  return `${LOGO_BASE_URL}${encodeURIComponent(id)}?pixelHeight=160&onlyScaleSmaller=true&quality=0.9`;
+}
 
 export function clubLogoRef(organization?: string, clubNumber?: string) {
   const org = organization?.trim().toUpperCase();

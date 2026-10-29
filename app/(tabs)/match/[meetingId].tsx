@@ -27,6 +27,8 @@ export default function MatchDetailsScreen() {
     awayWon,
     homeTeamLink,
     awayTeamLink,
+    homeClub,
+    awayClub,
     openTeam,
     summaryParts,
     startText,
@@ -48,6 +50,8 @@ export default function MatchDetailsScreen() {
               awayWon={awayWon}
               homeLink={homeTeamLink}
               awayLink={awayTeamLink}
+              homeClub={homeClub}
+              awayClub={awayClub}
               onOpenTeam={openTeam}
               meta={[startText, meeting?.group_name].filter(Boolean).join(' · ') || undefined}
               summary={summaryParts}

@@ -1,30 +1,43 @@
 import { Pressable, Text, View } from 'react-native';
 import { getInitials } from '@/src/components/Avatar';
 import { Card } from '@/src/components/Card';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { font, typography } from '@/src/theme/typography';
-import type { TeamLinkContext } from '../types';
+import type { MeetingClub, TeamLinkContext } from '../types';
 import { styles } from '../styles';
 
 type TeamSideProps = {
   name: string;
   won: boolean;
   home: boolean;
+  club?: MeetingClub;
   link: TeamLinkContext | null;
   onOpenTeam: (link: TeamLinkContext) => void;
 };
 
-// Mannschaft mit Kürzel-Kachel; Heim akzentfarben, Gast neutral. Verlinkt, wenn Liga-Kontext da ist.
-function TeamSide({ name, won, home, link, onOpenTeam }: TeamSideProps) {
+// Mannschaft mit Vereinslogo, ohne Logo mit Kürzel-Kachel (Heim akzentfarben, Gast neutral).
+// Verlinkt, wenn Liga-Kontext da ist.
+function TeamSide({ name, won, home, club, link, onOpenTeam }: TeamSideProps) {
   const { colors } = useTheme();
+
+  const initialsBadge = (
+      <View style={[styles.heroBadge, { backgroundColor: home ? colors.primarySoft : colors.soft }]}>
+        <Text style={[typography.bodyStrong, styles.heroBadgeText, { color: home ? colors.primary : colors.text }]}>
+          {getInitials(name)}
+        </Text>
+      </View>
+  );
 
   const content = (
       <>
-        <View style={[styles.heroBadge, { backgroundColor: home ? colors.primarySoft : colors.soft }]}>
-          <Text style={[typography.bodyStrong, styles.heroBadgeText, { color: home ? colors.primary : colors.text }]}>
-            {getInitials(name)}
-          </Text>
-        </View>
+        <ClubLogo
+            organization={club?.organization}
+            clubNumber={club?.clubNumber}
+            uri={club?.logoUrl}
+            size={48}
+            fallback={initialsBadge}
+        />
         <Text
             style={[typography.meta, styles.heroTeam, { color: colors.text, ...font(won ? '700' : '500') }]}
             numberOfLines={3}
@@ -58,6 +71,8 @@ type MatchHeroProps = {
   awayWon: boolean;
   homeLink: TeamLinkContext | null;
   awayLink: TeamLinkContext | null;
+  homeClub?: MeetingClub;
+  awayClub?: MeetingClub;
   onOpenTeam: (link: TeamLinkContext) => void;
   // Datum, Uhrzeit und Liga in einer Zeile über den Mannschaften
   meta?: string;
@@ -74,6 +89,8 @@ export function MatchHero({
                             awayWon,
                             homeLink,
                             awayLink,
+                            homeClub,
+                            awayClub,
                             onOpenTeam,
                             meta,
                             summary,
@@ -89,7 +106,7 @@ export function MatchHero({
         ) : null}
 
         <View style={styles.heroRow}>
-          <TeamSide name={homeTeam} won={homeWon} home link={homeLink} onOpenTeam={onOpenTeam} />
+          <TeamSide name={homeTeam} won={homeWon} home club={homeClub} link={homeLink} onOpenTeam={onOpenTeam} />
 
           <View style={styles.heroScore}>
             <Text style={[styles.heroScoreText, { color: colors.text }]}>{score}</Text>
@@ -98,7 +115,7 @@ export function MatchHero({
             </View>
           </View>
 
-          <TeamSide name={awayTeam} won={awayWon} home={false} link={awayLink} onOpenTeam={onOpenTeam} />
+          <TeamSide name={awayTeam} won={awayWon} home={false} club={awayClub} link={awayLink} onOpenTeam={onOpenTeam} />
         </View>
 
         {summary.length > 0 ? (

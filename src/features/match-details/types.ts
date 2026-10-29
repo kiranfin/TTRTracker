@@ -42,6 +42,12 @@ export type RawMeetingMatch = {
   guest_wo?: boolean | null;
 };
 
+export type MeetingClub = {
+  organization?: string;
+  clubNumber?: string;
+  logoUrl?: string;
+};
+
 export type MeetingDetails = {
   live?: boolean | null;
   is_completed?: boolean | null;
@@ -50,6 +56,15 @@ export type MeetingDetails = {
 
   team_home?: string | null;
   team_guest?: string | null;
+
+  // Verein hinter der Mannschaft: Logo ID, Vereinsnummer und URI mit Verband (".../federations/TTBW/clubs/2055064")
+  home_image_url?: string | null;
+  guest_image_url?: string | null;
+  team_home_club_nr?: string | null;
+  team_guest_club_nr?: string | null;
+  team_home_club_uri?: string | null;
+  team_guest_club_uri?: string | null;
+  fed_nickname?: string | null;
 
   matches_home?: number | string | null;
   matches_guest?: number | string | null;
