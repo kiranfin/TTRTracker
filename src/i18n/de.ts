@@ -215,6 +215,8 @@ export const de = {
     notEnoughValues: 'Für diesen Zeitraum sind noch nicht genug TTR-Werte vorhanden.',
     searchPlaceholder: 'Spieler oder Verein suchen',
     allLeagues: 'Alle Ligen',
+    filterLeague: 'Nach Liga filtern',
+    searchLeague: 'Liga suchen',
     noHistory: 'Keine Historie gefunden',
     noSearchResults: 'Keine Treffer gefunden',
     noMatchDetails: 'Für diesen Historieneintrag liefert das Backend keine einzelnen Matchdetails.',

@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Button } from '@/src/components/Button';
-import { Chip, ChipRow } from '@/src/components/Chip';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
 import { useI18n } from '@/src/i18n/I18nProvider';
@@ -11,8 +10,9 @@ import { font, typography } from '@/src/theme/typography';
 import type { PlayerDetailsController } from '../hooks/usePlayerDetails';
 import { styles } from '../styles';
 import { HistoryEventRow } from './HistoryEventRow';
+import { LeagueFilterSheet } from './LeagueFilterSheet';
 
-// Verlauf nach Monat gruppiert, Filter über Liga-Chips und eine Suche hinter dem Lupen-Icon.
+// Verlauf nach Monat gruppiert, Liga-Filter im Bottom Sheet und eine Suche hinter dem Lupen-Icon.
 export function HistorySection({ details }: { details: PlayerDetailsController }) {
     const { colors, } = useTheme();
     const { t, language } = useI18n();
@@ -25,6 +25,8 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
         setHistorySearchQuery,
         searchOpen,
         setSearchOpen,
+        leagueSheetOpen,
+        setLeagueSheetOpen,
         totalEventCount,
         filteredEventCount,
         monthGroups,
@@ -36,6 +38,8 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
     } = details;
 
     const filtersActive = selectedLeague !== null || historySearchQuery.trim().length > 0;
+    const leagueActive = selectedLeague !== null;
+    const leagueTextColor = leagueActive ? colors.card : colors.text;
     const locale = language === 'de' ? 'de-DE' : 'en-GB';
 
     return (
@@ -92,19 +96,37 @@ export function HistorySection({ details }: { details: PlayerDetailsController }
             ) : null}
 
             {leagueOptions.length > 1 ? (
-                <ChipRow>
-                    <Chip label={t('common.all')} count={totalEventCount} active={selectedLeague === null} onPress={() => setSelectedLeague(null)} />
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('player.filterLeague')}
+                    onPress={() => setLeagueSheetOpen(true)}
+                    style={({ pressed }) => [
+                        styles.leagueFilterButton,
+                        {
+                            backgroundColor: leagueActive ? colors.text : colors.card,
+                            borderColor: leagueActive ? colors.text : colors.border,
+                            opacity: pressed ? 0.78 : 1,
+                        },
+                    ]}
+                >
+                    <Ionicons name="funnel-outline" size={16} color={leagueTextColor} />
 
-                    {leagueOptions.map((league) => (
-                        <Chip
-                            key={league}
-                            label={league}
-                            active={selectedLeague === league}
-                            onPress={() => setSelectedLeague(selectedLeague === league ? null : league)}
-                        />
-                    ))}
-                </ChipRow>
+                    <Text style={[typography.metaStrong, styles.leagueFilterLabel, { color: leagueTextColor }]} numberOfLines={1}>
+                        {selectedLeague ?? t('player.allLeagues')}
+                    </Text>
+
+                    <Ionicons name="chevron-down" size={16} color={leagueTextColor} />
+                </Pressable>
             ) : null}
+
+            <LeagueFilterSheet
+                visible={leagueSheetOpen}
+                onClose={() => setLeagueSheetOpen(false)}
+                options={leagueOptions}
+                totalCount={totalEventCount}
+                selected={selectedLeague}
+                onSelect={setSelectedLeague}
+            />
 
             {totalEventCount === 0 ? (
                 <EmptyState icon="time-outline" title={t('player.noHistory')} />

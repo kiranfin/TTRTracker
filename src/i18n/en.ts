@@ -223,6 +223,8 @@ export const en: TranslationResource = {
     notEnoughValues: 'There are not enough TTR values for this period yet.',
     searchPlaceholder: 'Search player or club',
     allLeagues: 'All leagues',
+    filterLeague: 'Filter by league',
+    searchLeague: 'Search league',
     noHistory: 'No history found',
     noSearchResults: 'No results found',
     noMatchDetails: 'The backend does not provide individual match details for this history entry.',

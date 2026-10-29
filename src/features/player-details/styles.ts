@@ -121,6 +121,32 @@ export const styles = StyleSheet.create({
         fontSize: 15,
         ...font('500'),
     },
+    leagueFilterButton: {
+        height: 36,
+        maxWidth: '100%',
+        borderRadius: 999,
+        borderWidth: 1,
+        paddingHorizontal: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
+    },
+    leagueFilterLabel: {
+        fontSize: 14,
+        flexShrink: 1,
+    },
+    leagueSheetBody: {
+        gap: 12,
+    },
+    leagueOptionTrailing: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    leagueOptionCount: {
+        fontVariant: ['tabular-nums'],
+    },
     monthGroup: {
         gap: 8,
         marginTop: 4,

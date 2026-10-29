@@ -13,7 +13,7 @@ import {
 } from '@/src/storage/mePlayer';
 import type { NormalizedPlayerTtrHistory, NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
 import { normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
-import type { ChartRangeId, ClubRouteParams, PlayerStats } from '../types';
+import type { ChartRangeId, ClubRouteParams, LeagueOption, PlayerStats } from '../types';
 import {
   CHART_RANGES,
   PAGE_SIZE,
@@ -43,6 +43,7 @@ export function usePlayerDetails() {
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [leagueSheetOpen, setLeagueSheetOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -331,14 +332,15 @@ export function usePlayerDetails() {
 
   const allEventsNewestFirst = useMemo(() => [...(history?.events ?? [])].reverse(), [history?.events]);
 
-  const leagueOptions = useMemo(() => {
-    const leagues = new Set<string>();
+  // Reihenfolge nach letzter Teilnahme, damit die aktuelle Saison oben im Liga-Filter steht.
+  const leagueOptions = useMemo<LeagueOption[]>(() => {
+    const counts = new Map<string, number>();
 
     allEventsNewestFirst.forEach((event) => {
-      if (event.leagueName) leagues.add(event.leagueName);
+      if (event.leagueName) counts.set(event.leagueName, (counts.get(event.leagueName) ?? 0) + 1);
     });
 
-    return [...leagues].sort((a, b) => a.localeCompare(b));
+    return [...counts].map(([name, count]) => ({ name, count }));
   }, [allEventsNewestFirst]);
 
   const filteredEventsNewestFirst = useMemo(() => {
@@ -483,6 +485,8 @@ export function usePlayerDetails() {
     setHistorySearchQuery,
     searchOpen,
     setSearchOpen,
+    leagueSheetOpen,
+    setLeagueSheetOpen,
     totalEventCount: allEventsNewestFirst.length,
     filteredEventCount: filteredEventsNewestFirst.length,
     monthGroups,
