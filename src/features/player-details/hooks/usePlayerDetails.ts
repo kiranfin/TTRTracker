@@ -82,6 +82,8 @@ export function usePlayerDetails() {
 
   const clubRouteParams = routeClubRouteParams ?? resolvedClubRouteParams;
   const effectiveClubKey = clubRouteParams?.clubKey?.trim() ?? '';
+  const clubOrganization = clubRouteParams?.organization || params.organization || undefined;
+  const clubNumber = clubRouteParams?.clubNumber || params.clubNumber || undefined;
 
   useEffect(() => {
     async function load() {
@@ -472,6 +474,8 @@ export function usePlayerDetails() {
     mePlayerLoading,
     isFavoritePlayer,
     effectiveClubKey,
+    clubOrganization,
+    clubNumber,
     comparePickerOpen,
     setComparePickerOpen,
     chartRange,

@@ -89,6 +89,8 @@ export default function ClubDetailsScreen() {
                 <ClubHeader
                     title={info?.clubName ?? title}
                     meta={meta}
+                    organization={organization}
+                    clubNumber={clubNumber}
                     logoUrl={info?.logoUrl}
                     venue={info?.venues[0]}
                     venueCount={info?.venues.length ?? 0}

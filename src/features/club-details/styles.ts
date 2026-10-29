@@ -184,15 +184,6 @@ export const styles = StyleSheet.create({
         minWidth: 0,
         gap: 3,
     },
-    logoTile: {
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        padding: 6,
-        overflow: 'hidden',
-    },
-    logoImage: {
-        flex: 1,
-    },
     venueLink: {
         flexDirection: 'row',
         alignItems: 'center',

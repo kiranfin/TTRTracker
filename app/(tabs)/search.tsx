@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
 import { Chip, ChipRow } from '@/src/components/Chip';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
 import { ListRow } from '@/src/components/ListRow';
@@ -124,7 +125,7 @@ export default function SearchScreen() {
                                 item.type === 'player' ? (
                                     <Avatar name={item.title} size={40} />
                                 ) : (
-                                    <Avatar icon="business-outline" shape="square" size={40} />
+                                    <ClubLogo organization={item.params.organization} clubNumber={item.params.clubNumber} size={40} />
                                 )
                               }
                               title={item.title}

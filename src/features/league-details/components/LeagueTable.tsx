@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { EmptyState } from '@/src/components/EmptyState';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { MeClub } from '@/src/storage/meClub';
@@ -56,6 +57,8 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
     }
 
     const headerStyle = [typography.caption, styles.headerLabel, { color: colors.mutedText }];
+    // Logos hängen am Verband des Vereins. In DTTB Ligen spielen Vereine aus allen Verbänden, da findet click-tt sie nicht.
+    const showLogos = Boolean(league.association) && league.association!.toUpperCase() !== 'DTTB';
 
     return (
         <View style={{ gap: 10 }}>
@@ -114,12 +117,17 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                                 {stats.position}
                             </Text>
 
-                            <Text
-                                style={[typography.body, styles.colTeam, { color: colors.text, ...font(own ? '800' : '600') }]}
-                                numberOfLines={1}
-                            >
-                                {stats.teamName}
-                            </Text>
+                            <View style={[styles.colTeam, styles.teamCell]}>
+                                {showLogos ? (
+                                    <ClubLogo organization={league.association} clubNumber={row.clubId} size={22} fallback="blank" />
+                                ) : null}
+                                <Text
+                                    style={[typography.body, styles.teamName, { color: colors.text, ...font(own ? '800' : '600') }]}
+                                    numberOfLines={1}
+                                >
+                                    {stats.teamName}
+                                </Text>
+                            </View>
 
                             <Text style={[numeric.small, styles.colGames, { color: colors.mutedText }]}>{stats.games}</Text>
 

@@ -106,6 +106,11 @@ export const ttApi = {
     );
   },
 
+  // Logos für mehrere Vereine, refs im Format "TTBW:2055064" (höchstens 30). Siehe storage/clubLogos.
+  getClubLogos(refs: string[]) {
+    return apiGet<unknown>('/api/clubs/logos', { clubs: refs.join(',') });
+  },
+
   // Logo, Gründungsjahr, Spiellokale, Kontakt und Vorstand (aufbereitet im Backend).
   getClubInfo(organization: string, clubNumber: string, season = getCurrentSeason(), clubSlug = 'x') {
     const query: Record<string, string> = {

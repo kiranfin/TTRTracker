@@ -5,11 +5,13 @@ import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import type { ClubAddress } from '../types';
 import { styles } from '../styles';
-import { ClubLogo } from './ClubLogo';
+import { ClubLogo } from '@/src/components/ClubLogo';
 
 type ClubHeaderProps = {
   title: string;
   meta: string;
+  organization?: string;
+  clubNumber?: string;
   logoUrl?: string;
   venue?: ClubAddress;
   venueCount: number;
@@ -23,6 +25,8 @@ type ClubHeaderProps = {
 export function ClubHeader({
   title,
   meta,
+  organization,
+  clubNumber,
   logoUrl,
   venue,
   venueCount,
@@ -38,7 +42,7 @@ export function ClubHeader({
   return (
       <View style={styles.clubHead}>
         <View style={styles.clubIdentity}>
-          <ClubLogo uri={logoUrl} />
+          <ClubLogo organization={organization} clubNumber={clubNumber} uri={logoUrl} size={64} />
 
           <View style={styles.clubHeadText}>
             <Text style={[typography.heading, { color: colors.text }]} numberOfLines={2}>

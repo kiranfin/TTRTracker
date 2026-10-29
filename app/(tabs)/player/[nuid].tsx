@@ -39,6 +39,8 @@ export default function PlayerDetailsScreen() {
         mePlayerLoading,
         isFavoritePlayer,
         effectiveClubKey,
+        clubOrganization,
+        clubNumber,
         comparePickerOpen,
         setComparePickerOpen,
         chartRange,
@@ -84,6 +86,8 @@ export default function PlayerDetailsScreen() {
                 <PlayerHeader
                     name={displayName}
                     clubName={clubName}
+                    clubOrganization={clubOrganization}
+                    clubNumber={clubNumber}
                     ttr={currentTtr}
                     ttrDate={history?.ttrDate}
                     monthlyDelta={monthlyDelta}

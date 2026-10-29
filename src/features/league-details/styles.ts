@@ -64,6 +64,14 @@ export const styles = StyleSheet.create({
         minWidth: 0,
         paddingRight: 8,
     },
+    teamCell: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    teamName: {
+        flexShrink: 1,
+    },
     colGames: {
         width: 30,
         textAlign: 'center',

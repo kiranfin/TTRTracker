@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Avatar } from '@/src/components/Avatar';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { BottomSheet } from '@/src/components/BottomSheet';
 import { ListGroup } from '@/src/components/ListGroup';
 import { ListRow } from '@/src/components/ListRow';
@@ -156,7 +157,13 @@ export default function SettingsScreen() {
 
           <ListGroup>
             <ListRow
-                leading={<IconTile icon="business-outline" />}
+                leading={
+                  savedMeClub ? (
+                      <ClubLogo organization={savedMeClub.organization} clubNumber={savedMeClub.clubNumber} size={32} />
+                  ) : (
+                      <IconTile icon="business-outline" />
+                  )
+                }
                 title={t('settings.myClub')}
                 trailing={<RowValue>{clubName || t('settings.notSet')}</RowValue>}
                 onPress={() => setSheet('meClub')}

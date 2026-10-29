@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { DeltaPill } from '@/src/components/Delta';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
@@ -11,6 +12,8 @@ import { styles } from '../styles';
 type PlayerHeaderProps = {
   name: string;
   clubName?: string;
+  clubOrganization?: string;
+  clubNumber?: string;
   ttr?: number;
   ttrDate?: string;
   monthlyDelta?: number;
@@ -25,6 +28,8 @@ type PlayerHeaderProps = {
 export function PlayerHeader({
   name,
   clubName,
+  clubOrganization,
+  clubNumber,
   ttr,
   ttrDate,
   monthlyDelta,
@@ -53,6 +58,7 @@ export function PlayerHeader({
                 hitSlop={{ top: 8, bottom: 8 }}
                 style={styles.clubLink}
             >
+              <ClubLogo organization={clubOrganization} clubNumber={clubNumber} size={20} fallback="none" />
               <Text
                   style={[typography.metaStrong, styles.clubLinkText, { color: onOpenClub ? colors.primary : colors.mutedText }]}
                   numberOfLines={1}

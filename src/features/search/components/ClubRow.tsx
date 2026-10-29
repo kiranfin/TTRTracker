@@ -1,4 +1,4 @@
-import { Avatar } from '@/src/components/Avatar';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { ListRow } from '@/src/components/ListRow';
 import { StarButton } from '@/src/components/StarButton';
 import { useI18n } from '@/src/i18n/I18nProvider';
@@ -21,7 +21,7 @@ export function ClubRow({ club, favorite, onPress, onToggleFavorite }: ClubRowPr
 
   return (
       <ListRow
-          leading={<Avatar icon="business-outline" shape="square" size={40} />}
+          leading={<ClubLogo organization={club.organization} clubNumber={club.clubNumber} size={40} />}
           title={club.name}
           subtitle={subtitle}
           chevron={false}

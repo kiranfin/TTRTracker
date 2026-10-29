@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { ListGroup } from '@/src/components/ListGroup';
 import { MatchRow } from '@/src/components/MatchRow';
 import { SectionHeader } from '@/src/components/SectionHeader';
@@ -44,6 +45,8 @@ function getHomeSide(match: HomeClubMatch, clubName?: string | null) {
 
 type ClubCardProps = {
   clubName?: string | null;
+  organization?: string;
+  clubNumber?: string;
   hasSavedClub: boolean;
   upcoming: HomeClubMatch[];
   results: HomeClubMatch[];
@@ -100,6 +103,8 @@ function ClubMatchList({ title, matches, emptyText, clubName, onOpenClub }: {
 // Vereinsbereich: Überschrift mit Link zum Verein, darunter die letzten zwei Ergebnisse und die nächsten zwei Spiele.
 export function ClubCard({
                            clubName,
+                           organization,
+                           clubNumber,
                            hasSavedClub,
                            upcoming,
                            results,
@@ -128,11 +133,16 @@ export function ClubCard({
 
   return (
       <View style={styles.section}>
-        <SectionHeader
-            title={clubName ?? t('entities.clubUnknown')}
-            actionLabel={t('home.toClub')}
-            onActionPress={onOpenClub}
-        />
+        <View style={styles.clubHeaderRow}>
+          <ClubLogo organization={organization} clubNumber={clubNumber} size={32} />
+          <View style={styles.clubHeaderTitle}>
+            <SectionHeader
+                title={clubName ?? t('entities.clubUnknown')}
+                actionLabel={t('home.toClub')}
+                onActionPress={onOpenClub}
+            />
+          </View>
+        </View>
 
         {loading ? (
             <Card style={styles.clubMessage}>

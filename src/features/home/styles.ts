@@ -97,6 +97,15 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  clubHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  clubHeaderTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
   clubMessage: {
     padding: 16,
     gap: 12,

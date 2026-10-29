@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { ListRow } from '@/src/components/ListRow';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { FavoriteItem } from '@/src/storage/favorites';
@@ -44,7 +45,11 @@ export function FavoriteRow({ item, editing, onPress, onRemove }: FavoriteRowPro
       item.type === 'player' ? (
           <Avatar name={item.title} size={40} />
       ) : item.type === 'club' ? (
-          <Avatar icon="business-outline" shape="square" size={40} />
+          <ClubLogo
+              organization={item.params?.organization}
+              clubNumber={item.params?.clubNumber}
+              size={40}
+          />
       ) : (
           <Avatar icon="trophy-outline" shape="square" size={40} tone="neutral" />
       );

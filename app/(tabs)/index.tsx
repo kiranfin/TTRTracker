@@ -86,6 +86,8 @@ export default function HomeScreen() {
 
                 <ClubCard
                     clubName={meClub?.title ?? meClub?.clubName ?? clubName}
+                    organization={meClub?.organization}
+                    clubNumber={meClub?.clubNumber}
                     hasSavedClub={Boolean(meClub)}
                     upcoming={clubUpcomingMatches}
                     results={clubCompletedMatches}
