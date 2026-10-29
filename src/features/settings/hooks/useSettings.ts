@@ -10,6 +10,7 @@ import { useAuth } from '@/src/auth/AuthProvider';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { clearMeClub, getMeClub, setMeClub as saveMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
+import type { NormalizedClub } from '@/src/types/tttracker';
 import { clearMePlayerNuid, getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import type { MyttGrant, MyttStatusView } from '../types';
@@ -430,6 +431,26 @@ export function useSettings() {
     }
   }
 
+  // Verein direkt aus der Suche übernehmen
+  async function handleSelectMeClub(club: NormalizedClub) {
+    if (!club.organization || !club.clubNumber) {
+      throw new Error(t('settings.clubSaveError'));
+    }
+
+    const saved = await saveMeClub({
+      organization: club.organization,
+      clubNumber: club.clubNumber,
+      title: club.name,
+      clubName: club.name,
+      state: club.state,
+    });
+
+    setSavedMeClub(saved);
+    setClubIdInput(formatClubId(saved));
+    setClubNameInput(getClubDisplayName(saved));
+    setMeClubMessage(null);
+  }
+
   async function handleClearMeClub() {
     setMeClubLoading('clear');
     setMeClubMessage(null);
@@ -538,6 +559,7 @@ export function useSettings() {
     handleSelectMePlayer,
     handleClearMeNuid,
     handleSaveMeClub,
+    handleSelectMeClub,
     handleClearMeClub,
     openSavedMeClub,
     openSavedMeProfile,
