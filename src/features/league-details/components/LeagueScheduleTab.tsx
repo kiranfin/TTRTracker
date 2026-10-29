@@ -56,6 +56,8 @@ export function LeagueMatchGroup({
                     awayTeam={match.awayTeam}
                     homeScore={match.homeScore}
                     awayScore={match.awayScore}
+                    homeClub={{ organization: league.association ?? match.association, clubNumber: match.homeClubId }}
+                    awayClub={{ organization: league.association ?? match.association, clubNumber: match.awayClubId }}
                     status={match.status}
                     time={match.time}
                     meta={[formatDateLabel(match.date, language), match.roundName].filter(Boolean).join(' · ')}

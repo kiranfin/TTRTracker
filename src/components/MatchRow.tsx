@@ -4,12 +4,21 @@ import { spacing } from '../theme/spacing';
 import { useTheme } from '../theme/ThemeProvider';
 import { font, numeric, typography } from '../theme/typography';
 import type { ScheduleMatchStatus } from '../types/tttracker';
+import { ClubLogo } from './ClubLogo';
+
+// Verein einer Seite, nur für das kleine Logo vor dem Mannschaftsnamen
+export type MatchRowClub = {
+  organization?: string;
+  clubNumber?: string;
+};
 
 type MatchRowProps = {
   homeTeam: string;
   awayTeam: string;
   homeScore?: string;
   awayScore?: string;
+  homeClub?: MatchRowClub;
+  awayClub?: MatchRowClub;
   status: ScheduleMatchStatus;
   time?: string;
   // Zusatzzeile unter den Mannschaften, z. B. Liga und Spieltag
@@ -18,6 +27,8 @@ type MatchRowProps = {
   highlightTeam?: string;
   onPress?: () => void;
 };
+
+const LOGO_SIZE = 22;
 
 const statusKeys = {
   completed: 'status.completed',
@@ -38,6 +49,8 @@ export function MatchRow({
                            awayTeam,
                            homeScore,
                            awayScore,
+                           homeClub,
+                           awayClub,
                            status,
                            time,
                            meta,
@@ -62,6 +75,11 @@ export function MatchRow({
     { color: own ? colors.primary : colors.text, ...font(strong || own ? '700' : '500') },
   ];
 
+  const logo = (club?: MatchRowClub) =>
+      club?.organization && club.clubNumber ? (
+          <ClubLogo organization={club.organization} clubNumber={club.clubNumber} size={LOGO_SIZE} fallback="none" />
+      ) : null;
+
   const centerLabel = showScore
       ? `${homeScore ?? '-'}:${awayScore ?? '-'}`
       : status === 'scheduled'
@@ -71,9 +89,12 @@ export function MatchRow({
   const content = (
       <>
         <View style={styles.line}>
-          <Text style={nameStyle(homeWins, isOwn(homeTeam))} numberOfLines={2}>
-            {homeTeam}
-          </Text>
+          <View style={[styles.side, styles.homeSide]}>
+            {logo(homeClub)}
+            <Text style={[nameStyle(homeWins, isOwn(homeTeam)), styles.sideName]} numberOfLines={2}>
+              {homeTeam}
+            </Text>
+          </View>
 
           <View style={[styles.pill, { backgroundColor: status === 'live' ? colors.primarySoft : colors.soft }]}>
             <Text
@@ -87,9 +108,12 @@ export function MatchRow({
             </Text>
           </View>
 
-          <Text style={[nameStyle(awayWins, isOwn(awayTeam)), styles.away]} numberOfLines={2}>
-            {awayTeam}
-          </Text>
+          <View style={[styles.side, styles.awaySide]}>
+            {logo(awayClub)}
+            <Text style={[nameStyle(awayWins, isOwn(awayTeam)), styles.sideName, styles.away]} numberOfLines={2}>
+              {awayTeam}
+            </Text>
+          </View>
         </View>
 
         {meta ? (
@@ -132,6 +156,25 @@ const styles = StyleSheet.create({
     minWidth: 0,
     fontSize: 14,
     lineHeight: 19,
+  },
+  side: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  homeSide: {
+    justifyContent: 'flex-start',
+  },
+  awaySide: {
+    justifyContent: 'flex-end',
+  },
+  // Der Name sitzt jetzt in der Seiten-Zeile, flex 1 aus team wird dort überschrieben,
+  // damit das Logo direkt neben dem Namen bleibt.
+  sideName: {
+    flex: 0,
+    flexShrink: 1,
   },
   away: {
     textAlign: 'right',

@@ -28,6 +28,8 @@ function MatchList({ matches, team }: { matches: TeamScheduleMatch[]; team: Team
                   awayTeam={match.awayTeam}
                   homeScore={match.homeScore}
                   awayScore={match.awayScore}
+                  homeClub={{ organization: team.association, clubNumber: match.homeClubId }}
+                  awayClub={{ organization: team.association, clubNumber: match.awayClubId }}
                   status={match.status}
                   time={match.time}
                   meta={[formatDateLabel(match.date, language), match.roundName].filter(Boolean).join(' · ')}

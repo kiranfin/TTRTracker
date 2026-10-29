@@ -86,6 +86,8 @@ function ClubMatchList({ title, matches, emptyText, clubName, onOpenClub }: {
                         awayTeam={match.awayTeam}
                         homeScore={match.homeScore}
                         awayScore={match.awayScore}
+                        homeClub={{ organization: match.association, clubNumber: match.homeClubId }}
+                        awayClub={{ organization: match.association, clubNumber: match.awayClubId }}
                         status={match.status}
                         time={match.time}
                         meta={[formatShortWeekdayDate(match.date, language), match.leagueName].filter(Boolean).join(' · ')}

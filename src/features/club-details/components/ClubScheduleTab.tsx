@@ -63,6 +63,8 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
                                 awayTeam={match.awayTeam}
                                 homeScore={match.homeScore}
                                 awayScore={match.awayScore}
+                                homeClub={{ organization: match.association ?? club.organization, clubNumber: match.homeClubId }}
+                                awayClub={{ organization: match.association ?? club.organization, clubNumber: match.awayClubId }}
                                 status={match.status}
                                 time={match.time}
                                 meta={match.leagueName || undefined}

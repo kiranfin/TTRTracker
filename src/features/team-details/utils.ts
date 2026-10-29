@@ -358,6 +358,8 @@ export function normalizeScheduleRow(
         awayTeam,
         homeTeamId,
         awayTeamId,
+        homeClubId: pickString(row, ['team_home_club_id', 'homeClubId']),
+        awayClubId: pickString(row, ['team_away_club_id', 'awayClubId']),
         homeScore,
         awayScore,
         ownScore,

@@ -363,6 +363,9 @@ export function normalizeClubScheduleMeeting(
         leagueName,
         roundName,
         meetingNumber,
+        homeClubId: pickDeepString(raw, ['team_home_club_id', 'homeClubId']),
+        awayClubId: pickDeepString(raw, ['team_away_club_id', 'awayClubId']),
+        association: pickDeepString(raw, ['league_org_short_name', 'association']),
         clubTeamName: ownTeamById ?? findMatchedTeamName(
             {
                 homeTeam,
