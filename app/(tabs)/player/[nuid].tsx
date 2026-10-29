@@ -3,9 +3,9 @@ import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
 import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { StatGrid, StatStrip } from '@/src/components/StatStrip';
+import { MyttConnectNotice } from '@/src/features/mytt';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { typography } from '@/src/theme/typography';
 import { parseDateValue } from '@/src/utils/dates';
 import { HistorySection, PlayerHeader, TtrChartCard } from '../../../src/features/player-details/components';
 import { usePlayerDetails } from '../../../src/features/player-details/hooks/usePlayerDetails';
@@ -31,7 +31,7 @@ export default function PlayerDetailsScreen() {
         error,
         currentTtr,
         ttrSource,
-        officialUnavailable,
+        unavailableReason,
         qTtr,
         maxTtr,
         monthlyDelta,
@@ -104,11 +104,14 @@ export default function PlayerDetailsScreen() {
                 {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
-                {!loading && officialUnavailable ? (
-                    <Text style={[typography.body, { color: colors.mutedText }]}>{t('player.officialUnavailable')}</Text>
+                {!loading && unavailableReason ? (
+                    <MyttConnectNotice
+                        reason={unavailableReason}
+                        message={unavailableReason === 'expired' ? t('player.officialExpired') : t('player.officialUnavailable')}
+                    />
                 ) : null}
 
-                {!loading && !error && !officialUnavailable ? (
+                {!loading && !error && !unavailableReason ? (
                     <>
                         <StatStrip
                             items={[

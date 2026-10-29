@@ -1,22 +1,6 @@
 import type { NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
 import { isFavorite } from '@/src/storage/favorites';
-import { ApiError } from '@/src/api/client';
 import type { ChartRangeId } from './types';
-
-const OFFICIAL_TTR_UNAVAILABLE_CODES = new Set([
-  'MYTT_ACCOUNT_REQUIRED',
-  'MYTT_AUTH_EXPIRED',
-  'MYTT_SHARED_SESSION_EXPIRED',
-  'APP_USER_REQUIRED',
-]);
-
-// Der offizielle TTR braucht eine myTischtennis Session. Fehlt oder läuft sie ab, ist das kein Fehler
-// des Profils, sondern der Fall für den öffentlichen Wert.
-export function isOfficialTtrUnavailable(error: unknown) {
-  if (!(error instanceof ApiError)) return false;
-
-  return (error.code !== undefined && OFFICIAL_TTR_UNAVAILABLE_CODES.has(error.code)) || error.status === 401;
-}
 
 export const PAGE_SIZE = 10;
 

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 import { BottomSheet } from '@/src/components/BottomSheet';
+import { useOnMyttConnected } from '@/src/features/mytt';
 import { Button } from '@/src/components/Button';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import type { SettingsController } from '../hooks/useSettings';
@@ -16,6 +17,9 @@ type SheetProps = {
 export function MyttConnectSheet({ settings, visible, onClose }: SheetProps) {
   const { colors } = useTheme();
   const { t, myttStatus, myttMessage, myttLoading, handleCheckMyttStatus } = settings;
+
+  // Nach dem Login zeigt der Status sofort die neue Verbindung.
+  useOnMyttConnected(handleCheckMyttStatus);
 
   const connected = Boolean(myttStatus?.hasSession && !myttStatus.expired);
   const statusColor = connected ? colors.positive : myttStatus?.expired ? colors.warning : colors.destructive;

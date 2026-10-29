@@ -17,6 +17,8 @@ import type {
   PlayerRating,
   PlayerRatingSource,
 } from '@/src/types/tttracker';
+import { useOnMyttConnected } from '@/src/features/mytt';
+import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
 import type { ChartRangeId, ClubRouteParams, LeagueOption, PlayerStats } from '../types';
 import {
@@ -30,7 +32,6 @@ import {
   groupEventsByMonth,
   historyEventMatchesSearch,
   isFiniteNumber,
-  isOfficialTtrUnavailable,
   normalizeClubLookupText,
   parseDateTimestamp,
   parseOptionalNumber,
@@ -53,7 +54,9 @@ export function usePlayerDetails() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [officialUnavailable, setOfficialUnavailable] = useState(false);
+  const [unavailableReason, setUnavailableReason] = useState<MyttUnavailableReason | null>(null);
+  // Wird nach einem Login erhöht, damit der offizielle Verlauf neu geladen wird.
+  const [reloadKey, setReloadKey] = useState(0);
   const [publicRating, setPublicRating] = useState<PlayerRating | null>(null);
 
   const [storedMePlayerNuid, setStoredMePlayerNuid] = useState<string | null>(null);
@@ -63,6 +66,9 @@ export function usePlayerDetails() {
 
   const [isFavoritePlayer, setIsFavoritePlayer] = useState(false);
   const [comparePickerOpen, setComparePickerOpen] = useState(false);
+
+  const reloadAfterConnect = useCallback(() => setReloadKey((current) => current + 1), []);
+  useOnMyttConnected(reloadAfterConnect);
 
   const nuid = params.nuid;
   const routeClubKey = params.clubKey?.trim() ?? '';
@@ -104,7 +110,7 @@ export function usePlayerDetails() {
 
       setLoading(true);
       setError(null);
-      setOfficialUnavailable(false);
+      setUnavailableReason(null);
       setVisibleCount(PAGE_SIZE);
       setExpandedEventId(null);
       setApiHistoryData(null);
@@ -115,8 +121,10 @@ export function usePlayerDetails() {
         setApiHistoryData(getPlayerHistoryData(response));
         setHistory(normalizePlayerTtrHistory(response));
       } catch (loadError) {
-        if (isOfficialTtrUnavailable(loadError)) {
-          setOfficialUnavailable(true);
+        const reason = getMyttUnavailableReason(loadError);
+
+        if (reason) {
+          setUnavailableReason(reason);
         } else {
           setError(loadError instanceof Error ? loadError.message : t('player.historyLoadError'));
         }
@@ -127,7 +135,7 @@ export function usePlayerDetails() {
 
     load().catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nuid]);
+  }, [nuid, reloadKey]);
 
   // Ohne Vereinsschlüssel in den Route-Parametern wird der Verein über den Namen gesucht.
   useEffect(() => {
@@ -499,7 +507,8 @@ export function usePlayerDetails() {
     history,
     loading,
     error,
-    officialUnavailable,
+    officialUnavailable: unavailableReason !== null,
+    unavailableReason,
     currentTtr,
     ttrSource,
     qTtr,

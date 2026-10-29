@@ -1,7 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
+import { useOnMyttConnected } from '@/src/features/mytt';
+import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { PlayerCompareSide, PlayerComparisonData, SideId } from '../types';
 import { buildRecentStats, getClubName, getPlayerName, unwrapComparisonResponse } from '../utils';
@@ -16,6 +18,11 @@ export function usePlayerCompare() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerSide, setPickerSide] = useState<SideId | null>(null);
+  const [unavailableReason, setUnavailableReason] = useState<MyttUnavailableReason | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const reloadAfterConnect = useCallback(() => setReloadKey((current) => current + 1), []);
+  useOnMyttConnected(reloadAfterConnect);
 
   useEffect(() => {
     let active = true;
@@ -23,6 +30,7 @@ export function usePlayerCompare() {
     async function load() {
       setComparison(null);
       setError(null);
+      setUnavailableReason(null);
 
       if (!leftNuid || !rightNuid) {
         setLoading(false);
@@ -51,7 +59,13 @@ export function usePlayerCompare() {
       } catch (loadError) {
         if (!active) return;
 
-        setError(loadError instanceof Error ? loadError.message : t('compare.loadError'));
+        const reason = getMyttUnavailableReason(loadError);
+
+        if (reason) {
+          setUnavailableReason(reason);
+        } else {
+          setError(loadError instanceof Error ? loadError.message : t('compare.loadError'));
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -63,7 +77,7 @@ export function usePlayerCompare() {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leftNuid, rightNuid]);
+  }, [leftNuid, rightNuid, reloadKey]);
 
   const leftStats = useMemo(() => (comparison ? buildRecentStats(comparison.left) : null), [comparison]);
   const rightStats = useMemo(() => (comparison ? buildRecentStats(comparison.right) : null), [comparison]);
@@ -100,6 +114,7 @@ export function usePlayerCompare() {
     rightStats,
     loading,
     error,
+    unavailableReason,
     pickerSide,
     setPickerSide,
     selectPlayer,

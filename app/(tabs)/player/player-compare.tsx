@@ -3,6 +3,7 @@ import { EmptyState } from '@/src/components/EmptyState';
 import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { MyttConnectNotice } from '@/src/features/mytt';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
@@ -29,6 +30,7 @@ export default function PlayerCompareScreen() {
     rightStats,
     loading,
     error,
+    unavailableReason,
     pickerSide,
     setPickerSide,
     selectPlayer,
@@ -52,6 +54,12 @@ export default function PlayerCompareScreen() {
           />
 
           {loading ? <SkeletonList count={3} /> : null}
+          {unavailableReason ? (
+              <MyttConnectNotice
+                  reason={unavailableReason}
+                  message={unavailableReason === 'expired' ? t('compare.myttExpired') : t('compare.myttRequired')}
+              />
+          ) : null}
           {error ? <Text style={[typography.body, { color: colors.destructive }]}>{error}</Text> : null}
 
           {!loading && !error && comparison ? (
@@ -63,7 +71,7 @@ export default function PlayerCompareScreen() {
               </>
           ) : null}
 
-          {!loading && !error && !comparison && (!leftNuid || !rightNuid) ? (
+          {!loading && !error && !unavailableReason && !comparison && (!leftNuid || !rightNuid) ? (
               <EmptyState icon="swap-horizontal-outline" title={t('compare.missingNuids')} />
           ) : null}
         </ScrollView>
