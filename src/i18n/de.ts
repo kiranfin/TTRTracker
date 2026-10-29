@@ -216,6 +216,12 @@ export const de = {
     averagePerEntry: 'Ø pro Eintrag',
     gamesPlayed: 'Gespielte Spiele',
     ttrAsOf: 'TTR · Stand {{date}}',
+    ratingSource: {
+      public: 'Öffentlicher Wert',
+      estimated: 'Geschätzt',
+      official: 'Offiziell',
+    },
+    officialUnavailable: 'Verlauf und Statistiken brauchen eine Verbindung zu myTischtennis.',
     chartDelta6m: 'in 6 Monaten',
     chartDelta12m: 'in 12 Monaten',
     chartDelta24m: 'in 2 Jahren',

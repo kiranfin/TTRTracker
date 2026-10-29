@@ -5,6 +5,7 @@ import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { StatGrid, StatStrip } from '@/src/components/StatStrip';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
+import { typography } from '@/src/theme/typography';
 import { parseDateValue } from '@/src/utils/dates';
 import { HistorySection, PlayerHeader, TtrChartCard } from '../../../src/features/player-details/components';
 import { usePlayerDetails } from '../../../src/features/player-details/hooks/usePlayerDetails';
@@ -29,6 +30,8 @@ export default function PlayerDetailsScreen() {
         loading,
         error,
         currentTtr,
+        ttrSource,
+        officialUnavailable,
         qTtr,
         maxTtr,
         monthlyDelta,
@@ -90,6 +93,7 @@ export default function PlayerDetailsScreen() {
                     clubNumber={clubNumber}
                     ttr={currentTtr}
                     ttrDate={history?.ttrDate}
+                    ttrSource={ttrSource}
                     monthlyDelta={monthlyDelta}
                     loading={loading}
                     claimLoading={mePlayerLoading}
@@ -100,7 +104,11 @@ export default function PlayerDetailsScreen() {
                 {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
-                {!loading && !error ? (
+                {!loading && officialUnavailable ? (
+                    <Text style={[typography.body, { color: colors.mutedText }]}>{t('player.officialUnavailable')}</Text>
+                ) : null}
+
+                {!loading && !error && !officialUnavailable ? (
                     <>
                         <StatStrip
                             items={[

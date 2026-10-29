@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
+import { Badge } from '@/src/components/Badge';
 import { ClubLogo } from '@/src/components/ClubLogo';
 import { DeltaPill } from '@/src/components/Delta';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
+import type { PlayerRatingSource } from '@/src/types/tttracker';
 import { numeric, typography } from '@/src/theme/typography';
 import { formatDate } from '@/src/utils/normalizers';
 import { styles } from '../styles';
@@ -16,6 +18,7 @@ type PlayerHeaderProps = {
   clubNumber?: string;
   ttr?: number;
   ttrDate?: string;
+  ttrSource?: PlayerRatingSource;
   monthlyDelta?: number;
   loading: boolean;
   claimLoading?: boolean;
@@ -32,6 +35,7 @@ export function PlayerHeader({
   clubNumber,
   ttr,
   ttrDate,
+  ttrSource,
   monthlyDelta,
   loading,
   claimLoading,
@@ -92,6 +96,9 @@ export function PlayerHeader({
                   {ttrDate ? t('player.ttrAsOf', { date: formatDate(ttrDate) }) : 'TTR'}
                 </Text>
                 <Text style={[numeric.hero, { color: colors.text }]}>{ttr !== undefined ? ttr : '–'}</Text>
+                {ttr !== undefined && ttrSource && ttrSource !== 'official' ? (
+                    <Badge tone="outline">{t(`player.ratingSource.${ttrSource}`)}</Badge>
+                ) : null}
               </View>
 
               {typeof monthlyDelta === 'number' ? (

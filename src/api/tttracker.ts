@@ -5,6 +5,7 @@ import type {
   LeagueAssociation,
   LeagueClassReference,
   LeagueRegion,
+  PlayerRatingResponse,
   PlayerSearchResult,
   PlayerTtrHistoryResponse,
   PlayerTtrResponse,
@@ -71,6 +72,14 @@ export const ttApi = {
         undefined,
         { authenticated: true }
     );
+  },
+
+  // Öffentlicher TTR aus der Vereinsliste, ohne myTischtennis Verbindung.
+  getPlayerRating(nuid: string, organization: string, clubNumber: string) {
+    return apiGet<PlayerRatingResponse>(`/api/players/${segment(nuid)}/rating`, {
+      organization,
+      clubNumber,
+    });
   },
 
   getPlayerTtrHistory(nuid: string) {

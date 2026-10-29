@@ -11,7 +11,12 @@ import {
   setMePlayerName,
   setMePlayerNuid as saveMePlayerNuid,
 } from '@/src/storage/mePlayer';
-import type { NormalizedPlayerTtrHistory, NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
+import type {
+  NormalizedPlayerTtrHistory,
+  NormalizedTtrHistoryEvent,
+  PlayerRating,
+  PlayerRatingSource,
+} from '@/src/types/tttracker';
 import { normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
 import type { ChartRangeId, ClubRouteParams, LeagueOption, PlayerStats } from '../types';
 import {
@@ -25,6 +30,7 @@ import {
   groupEventsByMonth,
   historyEventMatchesSearch,
   isFiniteNumber,
+  isOfficialTtrUnavailable,
   normalizeClubLookupText,
   parseDateTimestamp,
   parseOptionalNumber,
@@ -47,6 +53,8 @@ export function usePlayerDetails() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [officialUnavailable, setOfficialUnavailable] = useState(false);
+  const [publicRating, setPublicRating] = useState<PlayerRating | null>(null);
 
   const [storedMePlayerNuid, setStoredMePlayerNuid] = useState<string | null>(null);
   const [mePlayerLoading, setMePlayerLoading] = useState(false);
@@ -96,16 +104,22 @@ export function usePlayerDetails() {
 
       setLoading(true);
       setError(null);
+      setOfficialUnavailable(false);
       setVisibleCount(PAGE_SIZE);
       setExpandedEventId(null);
       setApiHistoryData(null);
+      setHistory(null);
 
       try {
         const response = await ttApi.getPlayerTtrHistory(nuid);
         setApiHistoryData(getPlayerHistoryData(response));
         setHistory(normalizePlayerTtrHistory(response));
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : t('player.historyLoadError'));
+        if (isOfficialTtrUnavailable(loadError)) {
+          setOfficialUnavailable(true);
+        } else {
+          setError(loadError instanceof Error ? loadError.message : t('player.historyLoadError'));
+        }
       } finally {
         setLoading(false);
       }
@@ -171,6 +185,26 @@ export function usePlayerDetails() {
     };
   }, [routeClubKey, clubName]);
 
+  // Öffentlicher Wert aus der Vereinsliste. Schlägt das fehl, bleibt einfach der Wert aus den Route-Parametern.
+  useEffect(() => {
+    let active = true;
+
+    setPublicRating(null);
+
+    if (!nuid || !clubOrganization || !clubNumber) return;
+
+    ttApi
+        .getPlayerRating(nuid, clubOrganization, clubNumber)
+        .then((response) => {
+          if (active) setPublicRating(response.data.rating);
+        })
+        .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [nuid, clubOrganization, clubNumber]);
+
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
     setExpandedEventId(null);
@@ -216,10 +250,12 @@ export function usePlayerDetails() {
     };
   }, [normalizedCurrentNuid]);
 
-  const currentTtr =
-      parseOptionalNumber(history?.ttr) ??
-      parseOptionalNumber(apiHistoryData?.ttr) ??
-      parseOptionalNumber(params.ttr);
+  const officialTtr = parseOptionalNumber(history?.ttr) ?? parseOptionalNumber(apiHistoryData?.ttr);
+  const currentTtr = officialTtr ?? publicRating?.value ?? parseOptionalNumber(params.ttr);
+
+  // Der Wert aus den Route-Parametern hat keine bekannte Quelle und bekommt deshalb kein Badge.
+  const ttrSource: PlayerRatingSource | undefined =
+      officialTtr !== undefined ? 'official' : publicRating ? publicRating.source : undefined;
 
   const qTtr = parseOptionalNumber(history?.qttr) ?? parseOptionalNumber(apiHistoryData?.qttr);
   const maxTtr = parseOptionalNumber(history?.maxTtr) ?? parseOptionalNumber(apiHistoryData?.maxTtr);
@@ -463,7 +499,9 @@ export function usePlayerDetails() {
     history,
     loading,
     error,
+    officialUnavailable,
     currentTtr,
+    ttrSource,
     qTtr,
     maxTtr,
     monthlyDelta,

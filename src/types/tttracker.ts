@@ -94,6 +94,25 @@ export type PlayerTtrResponse = {
   };
 };
 
+export type PlayerRatingSource = 'public' | 'estimated' | 'official';
+
+export type PlayerRating = {
+  value: number;
+  source: PlayerRatingSource;
+  asOf: string;
+};
+
+export type PlayerRatingResponse = {
+  data: {
+    nuid: string;
+    available: boolean;
+    rating: PlayerRating | null;
+  };
+  meta?: {
+    source?: string;
+  };
+};
+
 export type PlayerTtrHistoryResponse = {
   data: {
     nuid: string;

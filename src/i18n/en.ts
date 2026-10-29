@@ -224,6 +224,12 @@ export const en: TranslationResource = {
     averagePerEntry: 'Avg. per entry',
     gamesPlayed: 'Games played',
     ttrAsOf: 'TTR · as of {{date}}',
+    ratingSource: {
+      public: 'Public value',
+      estimated: 'Estimated',
+      official: 'Official',
+    },
+    officialUnavailable: 'History and stats need a connection to myTischtennis.',
     chartDelta6m: 'in 6 months',
     chartDelta12m: 'in 12 months',
     chartDelta24m: 'in 2 years',
