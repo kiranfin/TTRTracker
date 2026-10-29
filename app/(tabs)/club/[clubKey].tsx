@@ -138,7 +138,13 @@ export default function ClubDetailsScreen() {
                             ) : (
                                 <ListGroup>
                                     {teams.map((team, index) => (
-                                        <ClubTeamRow key={getTeamKey(team, index)} team={team} />
+                                        <ClubTeamRow
+                                            key={getTeamKey(team, index)}
+                                            team={team}
+                                            organization={organization}
+                                            clubNumber={clubNumber}
+                                            logoUrl={info?.logoUrl}
+                                        />
                                     ))}
                                 </ListGroup>
                             )

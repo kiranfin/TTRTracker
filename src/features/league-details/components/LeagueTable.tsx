@@ -101,6 +101,8 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                                         association: league.association ?? '',
                                         groupId: league.groupId ?? '',
                                         leagueSlug: league.leagueSlug,
+                                        clubOrganization: league.association ?? '',
+                                        clubNumber: row.clubId ?? '',
                                     },
                                 })
                             }

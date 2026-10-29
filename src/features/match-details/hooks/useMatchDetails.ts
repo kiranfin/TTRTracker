@@ -98,6 +98,9 @@ export function useMatchDetails() {
   const homeWon = homeMatches !== undefined && guestMatches !== undefined && homeMatches > guestMatches;
   const awayWon = homeMatches !== undefined && guestMatches !== undefined && guestMatches > homeMatches;
 
+  const homeClub = getMeetingClub(meeting, 'home');
+  const awayClub = getMeetingClub(meeting, 'away');
+
   // Die Mannschaftsseite ist nur verlinkbar, wenn die Route Team-ID und Liga-Kontext mitgegeben hat.
   function getTeamLink(side: 'home' | 'away'): TeamLinkContext | null {
     const teamId = getParam(side === 'home' ? params.homeTeamId : params.awayTeamId);
@@ -114,11 +117,9 @@ export function useMatchDetails() {
       groupId,
       season: getParam(params.season),
       leagueSlug: getParam(params.leagueSlug),
+      club: side === 'home' ? homeClub : awayClub,
     };
   }
-
-  const homeClub = getMeetingClub(meeting, 'home');
-  const awayClub = getMeetingClub(meeting, 'away');
 
   const homeTeamLink = getTeamLink('home');
   const awayTeamLink = getTeamLink('away');
@@ -134,6 +135,9 @@ export function useMatchDetails() {
         groupId: link.groupId,
         season: link.season || getCurrentSeason(),
         leagueSlug: link.leagueSlug ?? 'x',
+        clubOrganization: link.club?.organization ?? '',
+        clubNumber: link.club?.clubNumber ?? '',
+        clubLogoUrl: link.club?.logoUrl ?? '',
       },
     });
   }

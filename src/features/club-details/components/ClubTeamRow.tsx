@@ -9,7 +9,17 @@ import type { ClubTeam } from '@/src/types/tttracker';
 import { styles } from '../styles';
 
 // Mannschaft mit Liga. Der Tabellenplatz erscheint nur, wenn ihn die Teamliste schon mitliefert.
-export function ClubTeamRow({ team }: { team: ClubTeam }) {
+export function ClubTeamRow({
+  team,
+  organization,
+  clubNumber,
+  logoUrl,
+}: {
+  team: ClubTeam;
+  organization?: string;
+  clubNumber?: string;
+  logoUrl?: string;
+}) {
   const { colors } = useTheme();
   const { t } = useI18n();
 
@@ -42,6 +52,9 @@ export function ClubTeamRow({ team }: { team: ClubTeam }) {
                         groupId: team.groupId ?? '',
                         season: team.season || getCurrentSeason(),
                         leagueSlug: team.leagueSlug ?? 'x',
+                        clubOrganization: organization ?? '',
+                        clubNumber: clubNumber ?? '',
+                        clubLogoUrl: logoUrl ?? '',
                       },
                     })
                 : undefined

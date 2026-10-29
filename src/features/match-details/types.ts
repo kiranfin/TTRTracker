@@ -116,4 +116,6 @@ export type TeamLinkContext = {
   groupId: string;
   season?: string;
   leagueSlug?: string;
+  // Verein der Mannschaft, für das Logo auf der Mannschaftsseite
+  club?: MeetingClub;
 };

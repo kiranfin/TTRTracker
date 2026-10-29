@@ -6,6 +6,7 @@ import { ttApi } from '@/src/api/tttracker';
 import { ActionButton } from '@/src/components/ActionButton';
 import { Avatar } from '@/src/components/Avatar';
 import { Card } from '@/src/components/Card';
+import { ClubLogo } from '@/src/components/ClubLogo';
 import { Chip, ChipRow } from '@/src/components/Chip';
 import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
@@ -323,7 +324,13 @@ export default function TeamDetailsScreen() {
                 <ScreenHeader />
 
                 <View style={styles.teamHead}>
-                    <Avatar icon="people-outline" shape="square" size={60} tone="accent" />
+                    <ClubLogo
+                        organization={params.clubOrganization || team.association}
+                        clubNumber={params.clubNumber}
+                        uri={params.clubLogoUrl || undefined}
+                        size={60}
+                        fallback={<Avatar icon="people-outline" shape="square" size={60} tone="accent" />}
+                    />
 
                     <View style={styles.teamHeadText}>
                         <Text style={[typography.heading, { color: colors.text }]} numberOfLines={2}>
