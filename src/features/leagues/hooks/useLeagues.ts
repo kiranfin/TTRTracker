@@ -21,7 +21,13 @@ function leagueKey(league: Pick<MyLeague, 'association' | 'groupId'>) {
   return `${league.association}:${league.groupId}`;
 }
 
-export function useLeagues() {
+// "26--27" und "26/27" gelten als gleiche Saison, eine leere Saison als die aktuelle.
+function sameSeason(left: string, right: string) {
+  const clean = (value: string) => (value || getCurrentSeason()).replace(/--/g, '/');
+  return clean(left) === clean(right);
+}
+
+export function useLeagues(season: string) {
   const { t } = useI18n();
 
   const [associations, setAssociations] = useState<LeagueAssociation[]>([]);
@@ -113,7 +119,8 @@ export function useLeagues() {
 
           if (!active) return;
 
-          const leagues = [...result.values()];
+          // Das Backend liefert Vereinsmannschaften nur für die aktuelle Saison, Favoriten tragen ihre eigene.
+          const leagues = [...result.values()].filter((league) => sameSeason(league.season, season));
           setMyLeagues(leagues);
 
           // Platz und Punkte der eigenen Mannschaft bzw. Größe der Liga nachladen
@@ -159,7 +166,8 @@ export function useLeagues() {
         return () => {
           active = false;
         };
-      }, []),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [season]),
   );
 
   function openAssociation(association: LeagueAssociation, season?: string) {

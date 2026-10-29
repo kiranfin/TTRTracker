@@ -52,9 +52,9 @@ function RankBadge({ league, standing }: { league: MyLeague; standing?: LeagueSt
 export default function LeaguesScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
-  const { associations, myLeagues, getStanding, loading, error, loadAssociations, openAssociation, openMyLeague } = useLeagues();
   const seasonOptions = getSeasonOptions();
   const [season, setSeason] = useState(seasonOptions[0]);
+  const { associations, myLeagues, getStanding, loading, error, loadAssociations, openAssociation, openMyLeague } = useLeagues(season);
   const [seasonSheetOpen, setSeasonSheetOpen] = useState(false);
 
   const leagueSubtitle = (league: MyLeague, standing?: LeagueStanding) => {
