@@ -49,6 +49,8 @@ export function usePlayerDetails() {
 
   const [storedMePlayerNuid, setStoredMePlayerNuid] = useState<string | null>(null);
   const [mePlayerLoading, setMePlayerLoading] = useState(false);
+  // Verhindert, dass der "Bist du das?" Hinweis kurz aufblitzt, bevor der Speicher gelesen ist.
+  const [mePlayerChecked, setMePlayerChecked] = useState(false);
 
   const [isFavoritePlayer, setIsFavoritePlayer] = useState(false);
   const [comparePickerOpen, setComparePickerOpen] = useState(false);
@@ -56,8 +58,10 @@ export function usePlayerDetails() {
   const nuid = params.nuid;
   const routeClubKey = params.clubKey?.trim() ?? '';
   const normalizedCurrentNuid = normalizeMePlayerNuid(nuid);
+  const hasMePlayer = normalizeMePlayerNuid(storedMePlayerNuid).length > 0;
   const isMeProfile =
       normalizedCurrentNuid.length > 0 && normalizeMePlayerNuid(storedMePlayerNuid) === normalizedCurrentNuid;
+  const canClaimProfile = mePlayerChecked && !hasMePlayer && normalizedCurrentNuid.length > 0;
   const title = params.title ?? t('player.defaultTitle');
 
   const displayName = history?.personName ?? title;
@@ -178,6 +182,9 @@ export function usePlayerDetails() {
         })
         .catch(() => {
           if (active) setStoredMePlayerNuid(null);
+        })
+        .finally(() => {
+          if (active) setMePlayerChecked(true);
         });
 
     return () => {
@@ -230,7 +237,7 @@ export function usePlayerDetails() {
       await setMePlayerName(displayName);
       setStoredMePlayerNuid(saved);
     } catch {
-      // Keine sichtbare Statusmeldung: Der Button bleibt einfach im bisherigen Zustand.
+      // Keine sichtbare Statusmeldung: Der Hinweis bleibt einfach im bisherigen Zustand.
     } finally {
       setMePlayerLoading(false);
     }
@@ -457,7 +464,9 @@ export function usePlayerDetails() {
     maxTtr,
     monthlyDelta,
     stats,
+    hasMePlayer,
     isMeProfile,
+    canClaimProfile,
     mePlayerLoading,
     isFavoritePlayer,
     effectiveClubKey,

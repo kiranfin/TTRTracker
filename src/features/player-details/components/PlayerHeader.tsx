@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Avatar } from '@/src/components/Avatar';
 import { DeltaPill } from '@/src/components/Delta';
 import { useI18n } from '@/src/i18n/I18nProvider';
@@ -15,11 +15,24 @@ type PlayerHeaderProps = {
   ttrDate?: string;
   monthlyDelta?: number;
   loading: boolean;
+  claimLoading?: boolean;
   onOpenClub?: () => void;
+  onClaimProfile?: () => void;
 };
 
 // Avatar, Name und Vereinslink, darunter der TTR groß mit Stand-Datum und Änderung der letzten 30 Tage.
-export function PlayerHeader({ name, clubName, ttr, ttrDate, monthlyDelta, loading, onOpenClub }: PlayerHeaderProps) {
+// Ist noch gar kein Ich-Profil gesetzt, steht darunter ein Hinweislink zum Festlegen.
+export function PlayerHeader({
+  name,
+  clubName,
+  ttr,
+  ttrDate,
+  monthlyDelta,
+  loading,
+  claimLoading,
+  onOpenClub,
+  onClaimProfile,
+}: PlayerHeaderProps) {
   const { colors } = useTheme();
   const { t } = useI18n();
 
@@ -50,6 +63,21 @@ export function PlayerHeader({ name, clubName, ttr, ttrDate, monthlyDelta, loadi
             </Pressable>
           </View>
         </View>
+
+        {onClaimProfile ? (
+            <Pressable
+                accessibilityRole="button"
+                disabled={claimLoading}
+                onPress={onClaimProfile}
+                hitSlop={{ top: 8, bottom: 8 }}
+                style={({ pressed }) => [styles.claimLink, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Ionicons name="person-outline" size={15} color={colors.mutedText} />
+              <Text style={[typography.meta, { color: colors.mutedText }]}>{t('player.claimQuestion')}</Text>
+              <Text style={[typography.metaStrong, { color: colors.primary }]}>{t('player.claimAction')}</Text>
+              {claimLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+            </Pressable>
+        ) : null}
 
         {!loading ? (
             <View style={styles.ttrRow}>

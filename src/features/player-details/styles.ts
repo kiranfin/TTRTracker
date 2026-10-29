@@ -49,9 +49,12 @@ export const styles = StyleSheet.create({
     ttrDelta: {
         paddingBottom: 8,
     },
-    actionRow: {
+    claimLink: {
         flexDirection: 'row',
-        gap: 8,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+        alignSelf: 'flex-start',
     },
 
     chartCard: {

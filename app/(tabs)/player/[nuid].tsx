@@ -1,5 +1,4 @@
-import { ScrollView, Text, View } from 'react-native';
-import { ActionButton } from '@/src/components/ActionButton';
+import { ScrollView, Text } from 'react-native';
 import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
 import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
@@ -34,7 +33,9 @@ export default function PlayerDetailsScreen() {
         maxTtr,
         monthlyDelta,
         stats,
+        hasMePlayer,
         isMeProfile,
+        canClaimProfile,
         mePlayerLoading,
         isFavoritePlayer,
         effectiveClubKey,
@@ -64,12 +65,19 @@ export default function PlayerDetailsScreen() {
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <ScreenHeader
                     right={
-                        <HeaderIconButton
-                            icon={isFavoritePlayer ? 'star' : 'star-outline'}
-                            color={isFavoritePlayer ? colors.warning : colors.text}
-                            accessibilityLabel={isFavoritePlayer ? t('favorites.removeFavorite') : t('player.addFavorite')}
-                            onPress={() => { toggleFavoritePlayer().catch(() => undefined); }}
-                        />
+                        <>
+                            <HeaderIconButton
+                                icon="swap-horizontal"
+                                accessibilityLabel={hasMePlayer && !isMeProfile ? t('player.compareWithMe') : t('player.compareAction')}
+                                onPress={openCompare}
+                            />
+                            <HeaderIconButton
+                                icon={isFavoritePlayer ? 'star' : 'star-outline'}
+                                color={isFavoritePlayer ? colors.warning : colors.text}
+                                accessibilityLabel={isFavoritePlayer ? t('favorites.removeFavorite') : t('player.addFavorite')}
+                                onPress={() => { toggleFavoritePlayer().catch(() => undefined); }}
+                            />
+                        </>
                     }
                 />
 
@@ -80,24 +88,10 @@ export default function PlayerDetailsScreen() {
                     ttrDate={history?.ttrDate}
                     monthlyDelta={monthlyDelta}
                     loading={loading}
+                    claimLoading={mePlayerLoading}
                     onOpenClub={effectiveClubKey ? openClubDetails : undefined}
+                    onClaimProfile={canClaimProfile ? () => { toggleMeProfile().catch(() => undefined); } : undefined}
                 />
-
-                <View style={styles.actionRow}>
-                    <ActionButton icon="swap-horizontal" label={t('player.compareAction')} variant="primary" onPress={openCompare} />
-                    <ActionButton
-                        icon="business-outline"
-                        label={t('entities.club')}
-                        disabled={!effectiveClubKey}
-                        onPress={openClubDetails}
-                    />
-                    <ActionButton
-                        icon={isMeProfile ? 'checkmark-circle' : 'person-outline'}
-                        label={isMeProfile ? t('player.meActive') : t('player.meAction')}
-                        loading={mePlayerLoading}
-                        onPress={() => { toggleMeProfile().catch(() => undefined); }}
-                    />
-                </View>
 
                 {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
