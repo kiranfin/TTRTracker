@@ -3,10 +3,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ensureApiTargetLoaded, getApiTarget, setApiTarget, type ApiTarget } from '@/src/api/apiTarget';
-import { getApiBaseUrl } from '@/src/api/client';
-import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant } from '@/src/api/mytt';
+import { ApiError, getApiBaseUrl } from '@/src/api/client';
+import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant, saveMyttCookie } from '@/src/api/mytt';
+import { hasLocalMyttSession } from '@/src/api/myttData';
 import { ttApi } from '@/src/api/tttracker';
 import { useAuth } from '@/src/auth/AuthProvider';
+import { confirmCookieUpload } from '@/src/features/mytt/utils/sharing';
+import { getLocalMyttCookie } from '@/src/storage/myttSession';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { clearMeClub, getMeClub, setMeClub as saveMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
@@ -15,6 +18,15 @@ import { clearMePlayerNuid, getMePlayerName, getMePlayerNuid, setMePlayerName, s
 import { useTheme } from '@/src/theme/ThemeProvider';
 import type { MyttGrant, MyttStatusView } from '../types';
 import { DEFAULT_ACCENT, formatClubId, getClubDisplayName, normalizeGrants, normalizeHexColor, normalizeMyttStatus, parseClubIdInput } from '../utils';
+
+function getLocalStatusView(t: ReturnType<typeof useI18n>['t']): MyttStatusView {
+  return {
+    hasSession: true,
+    expired: false,
+    label: t('settings.statusConnected'),
+    detail: t('settings.statusLocalDetail'),
+  };
+}
 
 export function useSettings() {
   const {
@@ -305,8 +317,18 @@ export function useSettings() {
     setMyttMessage(null);
 
     try {
-      const status = await getMyttStatus();
-      setMyttStatus(normalizeMyttStatus(status, t));
+      const local = await hasLocalMyttSession();
+
+      try {
+        const view = normalizeMyttStatus(await getMyttStatus(), t);
+
+        setMyttStatus(local && !view.hasSession ? getLocalStatusView(t) : view);
+      } catch (error) {
+        // Ohne App Konto gibt es keinen Server Status, die Session auf dem Gerät zählt trotzdem.
+        if (!local) throw error;
+
+        setMyttStatus(getLocalStatusView(t));
+      }
     } catch (error) {
       setMyttStatus(null);
       setMyttMessage(error instanceof Error ? error.message : t('settings.statusLoadError'));
@@ -334,10 +356,29 @@ export function useSettings() {
     setGrantMessage(null);
 
     try {
-      await createMyttGrant({
+      const grantParams = {
         granteeUsername: grantUsername.trim(),
-        scopes: ['ttr:read', 'ttr_history:read'],
-      });
+        scopes: ['ttr:read', 'ttr_history:read'] as ('ttr:read' | 'ttr_history:read')[],
+      };
+
+      try {
+        await createMyttGrant(grantParams);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== 'MYTT_SESSION_UPLOAD_REQUIRED') throw error;
+
+        // Der Cookie liegt nur auf dem Gerät. Zum Teilen muss er mit Einwilligung auf den Server.
+        const localCookie = await getLocalMyttCookie();
+
+        if (!localCookie) {
+          setGrantMessage(t('settings.shareNeedsConnect'));
+          return;
+        }
+
+        if (!(await confirmCookieUpload(t))) return;
+
+        await saveMyttCookie(localCookie);
+        await createMyttGrant(grantParams);
+      }
 
       setGrantUsername('');
       setGrantMessage(t('settings.grantCreated'));

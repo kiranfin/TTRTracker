@@ -1,4 +1,7 @@
-import { apiGet } from './client';
+import { buildLocalComparison } from '../features/player-compare/localCompare';
+import { ApiError, apiGet } from './client';
+import { withMyttSession } from './myttData';
+import { myttDirect } from './myttDirect';
 import type {
   ClubSearchResult,
   HealthResponse,
@@ -67,11 +70,12 @@ export const ttApi = {
   },
 
   getPlayerTtr(nuid: string) {
-    return apiGet<PlayerTtrResponse>(
-        `/api/players/${segment(nuid)}/ttr`,
-        undefined,
-        { authenticated: true }
-    );
+    return withMyttSession({
+      key: `ttr:${nuid}`,
+      direct: (cookie) => myttDirect.getPlayerTtr(cookie, nuid),
+      backend: () =>
+          apiGet<PlayerTtrResponse>(`/api/players/${segment(nuid)}/ttr`, undefined, { authenticated: true }),
+    });
   },
 
   // Öffentlicher TTR aus der Vereinsliste, ohne myTischtennis Verbindung.
@@ -83,19 +87,46 @@ export const ttApi = {
   },
 
   getPlayerTtrHistory(nuid: string) {
-    return apiGet<PlayerTtrHistoryResponse>(
-        `/api/players/${segment(nuid)}/ttr-history`,
-        undefined,
-        { authenticated: true }
-    );
+    return withMyttSession({
+      key: `ttr-history:${nuid}`,
+      direct: (cookie) => myttDirect.getPlayerTtrHistory(cookie, nuid),
+      backend: () =>
+          apiGet<PlayerTtrHistoryResponse>(`/api/players/${segment(nuid)}/ttr-history`, undefined, {
+            authenticated: true,
+          }),
+    });
   },
 
   comparePlayers(leftNuid: string, rightNuid: string) {
-    return apiGet<unknown>(
-        `/api/players/${segment(leftNuid)}/compare/${segment(rightNuid)}`,
-        undefined,
-        { authenticated: true }
-    );
+    return withMyttSession<unknown>({
+      key: `compare:${leftNuid}:${rightNuid}`,
+      direct: async (cookie) => {
+        const [leftTtr, rightTtr, leftHistory, rightHistory] = await Promise.all([
+          myttDirect.getPlayerTtr(cookie, leftNuid),
+          myttDirect.getPlayerTtr(cookie, rightNuid),
+          myttDirect.getPlayerTtrHistory(cookie, leftNuid),
+          myttDirect.getPlayerTtrHistory(cookie, rightNuid),
+        ]);
+
+        // Head-to-Head ist optional, ein Fehler dort lässt den Rest des Vergleichs stehen.
+        const headToHead = await myttDirect
+            .getHeadToHead(cookie, rightNuid.replace(/^NU/i, ''))
+            .catch((error) => {
+              if (error instanceof ApiError && error.code === 'MYTT_AUTH_EXPIRED') throw error;
+
+              return null;
+            });
+
+        return {
+          data: buildLocalComparison({ leftNuid, rightNuid, leftTtr, rightTtr, leftHistory, rightHistory, headToHead }),
+          meta: { source: 'device' },
+        };
+      },
+      backend: () =>
+          apiGet<unknown>(`/api/players/${segment(leftNuid)}/compare/${segment(rightNuid)}`, undefined, {
+            authenticated: true,
+          }),
+    });
   },
 
   async getLeaguesByRegion(region: string, season = getCurrentSeason()) {

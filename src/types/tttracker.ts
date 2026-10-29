@@ -119,6 +119,7 @@ export type PlayerTtrHistoryResponse = {
     available: boolean;
     ttr: number | null;
     qttr: number | null;
+    qttrDate?: string | null;
     maxTtr: number | null;
     ttrDate: string | null;
     maxTtrDate: string | null;

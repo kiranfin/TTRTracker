@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import type { WebViewNavigation } from 'react-native-webview';
 
-import { saveMyttCookie } from '@/src/api/mytt';
+import { saveLocalMyttSession } from '@/src/api/myttData';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { notifyMyttConnected } from '../utils/connectionEvents';
+import { syncServerSession } from '../utils/sharing';
 import { MYTT_BASE_URL, cookiesToHeader, getMyttPath, isAuthPath } from '../utils/login';
 
 export type MyttConnectStatus = 'preparing' | 'login' | 'saving' | 'error';
@@ -65,7 +66,9 @@ export function useMyttConnect(returnTo?: string) {
         throw new Error(t('mytt.noCookies'));
       }
 
-      await saveMyttCookie(cookieHeader);
+      // Der Cookie bleibt auf dem Gerät, der Server bekommt ihn nur bei einer aktiven Freigabe.
+      await saveLocalMyttSession(cookieHeader);
+      await syncServerSession(cookieHeader);
 
       notifyMyttConnected();
       finish();
