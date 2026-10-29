@@ -20,7 +20,9 @@ function MatchLine({ row }: { row: MatchRowWithScore }) {
           <Text style={nameStyle(row.winner === 'home')} numberOfLines={2}>
             {row.homePlayer}
           </Text>
-          <Text style={[numeric.row, styles.result, { color: colors.text }]}>{row.result || '-'}</Text>
+          <View style={[styles.resultBox, { backgroundColor: colors.soft }]}>
+            <Text style={[numeric.row, { color: colors.text }]}>{row.result || '-'}</Text>
+          </View>
           <Text style={[nameStyle(row.winner === 'guest'), styles.awayName]} numberOfLines={2}>
             {row.awayPlayer}
           </Text>

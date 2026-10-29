@@ -128,9 +128,12 @@ export const styles = StyleSheet.create({
   awayName: {
     textAlign: 'right',
   },
-  result: {
-    minWidth: 44,
-    textAlign: 'center',
+  resultBox: {
+    minWidth: 52,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   matchMetaRow: {
     flexDirection: 'row',
