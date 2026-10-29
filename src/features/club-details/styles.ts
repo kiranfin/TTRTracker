@@ -172,6 +172,9 @@ export const styles = StyleSheet.create({
         ...font('900'),
     },
     clubHead: {
+        gap: 12,
+    },
+    clubIdentity: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 14,
@@ -179,21 +182,72 @@ export const styles = StyleSheet.create({
     clubHeadText: {
         flex: 1,
         minWidth: 0,
+        gap: 3,
+    },
+    logoTile: {
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        padding: 6,
+        overflow: 'hidden',
+    },
+    logoImage: {
+        flex: 1,
+    },
+    venueLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 4,
+        alignSelf: 'flex-start',
+        maxWidth: '100%',
+        marginTop: 1,
     },
-    clubHeadSubtitle: {
-        fontSize: 14,
+    venueLinkText: {
+        flexShrink: 1,
     },
-    actionRow: {
+    claimLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+        alignSelf: 'flex-start',
+    },
+    infoIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    contactButtons: {
         flexDirection: 'row',
         gap: 8,
     },
-    nextMatchEmpty: {
-        padding: 16,
+    contactButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sheetBody: {
+        gap: 18,
+    },
+    sheetSection: {
+        gap: 8,
+    },
+    sheetNote: {
+        paddingHorizontal: 4,
     },
     rankBlock: {
         alignItems: 'flex-end',
         gap: 1,
+    },
+    rankTile: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     playerTrailing: {
         flexDirection: 'row',

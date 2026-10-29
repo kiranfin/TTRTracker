@@ -8,7 +8,7 @@ import { clearMeClub, getMeClub, setMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import type { ClubTeam } from '@/src/types/tttracker';
 import { normalizeTeams } from '@/src/utils/normalizers';
-import type { ClubApiWithOptionalEndpoints, ClubPlayer, ClubScheduleMatch, ClubTab } from '../types';
+import type { ClubApiWithOptionalEndpoints, ClubInfo, ClubPlayer, ClubScheduleMatch, ClubTab } from '../types';
 import {
   CLUB_FAVORITE_TYPE,
   emptyToUndefined,
@@ -20,9 +20,11 @@ import {
   isValidDateInput,
   loadClubPlayers,
   loadClubSchedule,
+  normalizeClubInfo,
   parseClubKey,
   parseMatchDate,
   startOfDay,
+  summarizeClub,
 } from '../utils';
 
 // all: ganze Saison, upcoming/past: relativ zu heute, custom: frei gewählter Zeitraum
@@ -66,8 +68,10 @@ export function useClubDetails() {
   const [appliedDateStart, setAppliedDateStart] = useState(initialDateRange.dateStart);
   const [appliedDateEnd, setAppliedDateEnd] = useState(initialDateRange.dateEnd);
   const [scheduleFilter, setScheduleFilter] = useState<ScheduleFilter>('all');
+  const [info, setInfo] = useState<ClubInfo | null>(null);
 
   const [savedMeClub, setSavedMeClub] = useState<MeClub | null>(null);
+  const [meClubChecked, setMeClubChecked] = useState(false);
   const [meClubLoading, setMeClubLoading] = useState(false);
   const [favoriteClubLoading, setFavoriteClubLoading] = useState(false);
   const [isFavoriteClub, setIsFavoriteClub] = useState(false);
@@ -84,6 +88,8 @@ export function useClubDetails() {
   );
   const clubFavoriteId = clubFavoriteIds[0] ?? '';
 
+  // Hinweis "Als meinen Verein festlegen" nur, solange noch gar kein Verein gespeichert ist.
+  const canClaimClub = meClubChecked && !savedMeClub;
   const isMyClub =
       Boolean(organization && clubNumber && savedMeClub) &&
       savedMeClub?.organization === organization &&
@@ -183,6 +189,28 @@ export function useClubDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, clubNumber, teams, teamsLoaded, error, scheduleSeason, appliedDateStart, appliedDateEnd]);
 
+  // Vereinsinfos laufen neben Mannschaften und Spielern. Fehlt etwas, zeigt der Kopf einfach weniger.
+  useEffect(() => {
+    let active = true;
+
+    setInfo(null);
+    if (!organization || !clubNumber) return;
+
+    ttApi
+        .getClubInfo(organization, clubNumber, initialSeason, params.clubSlug)
+        .then((response) => {
+          if (active) setInfo(normalizeClubInfo(response));
+        })
+        .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization, clubNumber]);
+
+  const summary = useMemo(() => summarizeClub(teams, players), [teams, players]);
+
   useEffect(() => {
     let active = true;
 
@@ -192,6 +220,9 @@ export function useClubDetails() {
         })
         .catch(() => {
           if (active) setSavedMeClub(null);
+        })
+        .finally(() => {
+          if (active) setMeClubChecked(true);
         });
 
     return () => {
@@ -359,6 +390,9 @@ export function useClubDetails() {
   return {
     params,
     title,
+    info,
+    summary,
+    canClaimClub,
     organization,
     clubNumber,
     activeTab,

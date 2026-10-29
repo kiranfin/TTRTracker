@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
-import { Avatar } from '@/src/components/Avatar';
 import { ListRow } from '@/src/components/ListRow';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { numeric } from '@/src/theme/typography';
@@ -9,15 +8,30 @@ import type { ClubPlayer } from '../types';
 import { hasLastYearNoGame } from '../utils';
 import { styles } from '../styles';
 
-export function ClubPlayerRow({ player }: { player: ClubPlayer }) {
+// Platz im Verein (club_rank aus der andro-Rangliste) statt Avatar. Die ersten drei sind akzentuiert.
+function ClubRankTile({ rank }: { rank?: string }) {
+    const { colors } = useTheme();
+    const top = Number(rank) >= 1 && Number(rank) <= 3;
+
+    return (
+        <View style={[styles.rankTile, { backgroundColor: top ? colors.primarySoft : colors.soft }]}>
+            <Text style={[numeric.row, { color: top ? colors.primary : colors.text }]} numberOfLines={1}>
+                {rank ?? '–'}
+            </Text>
+        </View>
+    );
+}
+
+export function ClubPlayerRow({ player, fallbackRank }: { player: ClubPlayer; fallbackRank?: number }) {
     const { colors } = useTheme();
 
     const subtitle = [player.teamName, player.leagueName].filter(Boolean).join(' · ') || undefined;
     const noGameLastYear = hasLastYearNoGame(player.lastYearNoGame);
+    const rank = player.rank ?? (fallbackRank !== undefined ? String(fallbackRank) : undefined);
 
     return (
         <ListRow
-            leading={<Avatar name={player.name} size={40} />}
+            leading={<ClubRankTile rank={rank} />}
             title={player.name}
             subtitle={subtitle}
             trailing={

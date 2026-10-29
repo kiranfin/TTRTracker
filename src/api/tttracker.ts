@@ -106,6 +106,19 @@ export const ttApi = {
     );
   },
 
+  // Logo, Gründungsjahr, Spiellokale, Kontakt und Vorstand (aufbereitet im Backend).
+  getClubInfo(organization: string, clubNumber: string, season = getCurrentSeason(), clubSlug = 'x') {
+    const query: Record<string, string> = {
+      season: season.replace('/', '--'),
+    };
+
+    if (clubSlug?.trim() && clubSlug.trim() !== 'x') {
+      query.clubSlug = clubSlug.trim();
+    }
+
+    return apiGet<unknown>(`/api/clubs/${segment(organization)}/${segment(clubNumber)}/info`, query);
+  },
+
   getClubPlayers(
       organization: string,
       clubNumber: string,

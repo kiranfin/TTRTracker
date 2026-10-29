@@ -2,7 +2,18 @@ import { ttApi } from '@/src/api/tttracker';
 import type { ClubTeam, ScheduleMatch } from '@/src/types/tttracker';
 import { formatDate, mapScheduleStatus, normalizeSchedule } from '@/src/utils/normalizers';
 import { isFavorite } from '@/src/storage/favorites';
-import type { ClubApiWithOptionalEndpoints, ClubScheduleMatch, RichObject, ClubPlayer, ThemeColors, ScheduleDateGroup } from './types';
+import { Linking, Platform } from 'react-native';
+import type {
+    ClubAddress,
+    ClubApiWithOptionalEndpoints,
+    ClubInfo,
+    ClubOfficial,
+    ClubPlayer,
+    ClubScheduleMatch,
+    RichObject,
+    ScheduleDateGroup,
+    ThemeColors,
+} from './types';
 import { getCurrentSeason, splitLocalDateTime } from '@/src/utils/dates';
 
 export const TEAM_HOME_KEYS = [
@@ -985,4 +996,114 @@ export function getTimeValue(value?: string) {
     }
 
     return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function asRichObject(value: unknown): RichObject {
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as RichObject) : {};
+}
+
+function cleanText(value: unknown) {
+    const text = valueToString(value)?.trim();
+    return text ? text : undefined;
+}
+
+function normalizeClubAddress(value: unknown): ClubAddress {
+    const row = asRichObject(value);
+
+    return {
+        label: cleanText(row.label),
+        name: cleanText(row.name),
+        street: cleanText(row.street),
+        zipcode: cleanText(row.zipcode),
+        city: cleanText(row.city),
+        website: cleanText(row.website),
+        note: cleanText(row.note),
+        email: cleanText(row.email),
+        phone: cleanText(row.phone),
+    };
+}
+
+// Antwort von /api/clubs/:org/:nr/info, das Backend liefert die Felder schon aufbereitet.
+export function normalizeClubInfo(response: unknown): ClubInfo {
+    const root = asRichObject(response);
+    const data = asRichObject(root.data ?? root);
+    const foundationYear = toNumber(data.foundationYear);
+
+    return {
+        clubName: cleanText(data.clubName),
+        logoUrl: cleanText(data.logoUrl),
+        region: cleanText(data.region),
+        foundationYear: foundationYear && foundationYear > 1800 ? foundationYear : undefined,
+        organizationName: cleanText(data.organizationName),
+        contact: data.contact ? normalizeClubAddress(data.contact) : undefined,
+        venues: Array.isArray(data.venues) ? data.venues.map(normalizeClubAddress) : [],
+        officials: (Array.isArray(data.officials) ? data.officials : [])
+            .map((entry): ClubOfficial | null => {
+                const row = asRichObject(entry);
+                const name = cleanText(row.name);
+
+                return name
+                    ? { role: cleanText(row.role), name, email: cleanText(row.email), phone: cleanText(row.phone) }
+                    : null;
+            })
+            .filter((official) => official !== null),
+    };
+}
+
+// click-tt schreibt Kontakte als "Nachname, Vorname"
+export function formatPersonName(value?: string) {
+    if (!value) return undefined;
+
+    const parts = value.split(',').map((part) => part.trim()).filter(Boolean);
+    return parts.length === 2 ? `${parts[1]} ${parts[0]}` : value;
+}
+
+// "Abteilungsleiter*in/1. Vorsitzende*r" darf nach dem Schrägstrich umbrechen.
+export function formatOfficialRole(value?: string) {
+    return value?.replace(/\s*\/\s*/g, ' / ');
+}
+
+export function formatAddress(address: ClubAddress) {
+    const cityLine = [address.zipcode, address.city].filter(Boolean).join(' ');
+    return [address.street, cityLine].filter(Boolean).join(', ') || undefined;
+}
+
+export function buildMapsUrl(address: ClubAddress) {
+    const query = [address.name, formatAddress(address)].filter(Boolean).join(', ');
+    if (!query) return undefined;
+
+    const encoded = encodeURIComponent(query);
+
+    return Platform.OS === 'ios'
+        ? `https://maps.apple.com/?q=${encoded}`
+        : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+}
+
+export function toPhoneUrl(phone: string) {
+    return `tel:${phone.replace(/[^\d+]/g, '')}`;
+}
+
+export function openExternalUrl(url?: string) {
+    if (!url) return;
+    Linking.openURL(url).catch(() => undefined);
+}
+
+export function toWebsiteUrl(value: string) {
+    return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+// Kennzahlen für den Kopf: Tabellenführer unter den Mannschaften, TTR Schnitt und Bestwert der Spieler.
+export function summarizeClub(teams: ClubTeam[], players: ClubPlayer[]) {
+    const leaders = teams.filter((team) => toNumber(team.tableRank) === 1).length;
+    const ratings = players
+        .map((player) => toNumber(player.ttr))
+        .filter((value): value is number => value !== undefined && value > 0);
+
+    return {
+        teamCount: teams.length,
+        leaders,
+        playerCount: players.length,
+        averageTtr: ratings.length > 0 ? Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length) : undefined,
+        topTtr: ratings.length > 0 ? Math.max(...ratings) : undefined,
+    };
 }

@@ -1,14 +1,16 @@
+import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { ActionButton } from '@/src/components/ActionButton';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
 import { Screen } from '@/src/components/Screen';
-import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { SegmentedTabs } from '@/src/components/SegmentedTabs';
+import { StatStrip } from '@/src/components/StatStrip';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import {
     ClubHeader,
+    ClubInfoSheet,
     ClubPlayerRow,
     ClubScheduleTab,
     ClubTeamRow,
@@ -23,10 +25,14 @@ export default function ClubDetailsScreen() {
     const { colors } = useTheme();
     const { t } = useI18n();
     const club = useClubDetails();
+    const [infoOpen, setInfoOpen] = useState(false);
 
     const {
         params,
         title,
+        info,
+        summary,
+        canClaimClub,
         organization,
         clubNumber,
         activeTab,
@@ -45,42 +51,73 @@ export default function ClubDetailsScreen() {
         toggleFavoriteClub,
     } = club;
 
-    const subtitle = [params.state, organization, clubNumber ? t('club.idLabel', { clubNumber }) : undefined]
+    const meta = [
+        info?.region ?? params.state,
+        organization,
+        info?.foundationYear ? t('club.sinceValue', { year: info.foundationYear }) : undefined,
+    ]
         .filter(Boolean)
         .join(' · ');
 
     return (
         <Screen>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <ScreenHeader />
+                <ScreenHeader
+                    right={
+                        <>
+                            <HeaderIconButton
+                                icon="information-circle-outline"
+                                accessibilityLabel={t('club.infoTitle')}
+                                onPress={() => setInfoOpen(true)}
+                            />
+                            <HeaderIconButton
+                                icon={isMyClub ? 'home' : 'home-outline'}
+                                color={isMyClub ? colors.primary : colors.text}
+                                accessibilityLabel={isMyClub ? t('club.removeMyClub') : t('club.setMyClub')}
+                                onPress={() => { if (!meClubLoading) toggleMyClub().catch(() => undefined); }}
+                            />
+                            <HeaderIconButton
+                                icon={isFavoriteClub ? 'star' : 'star-outline'}
+                                color={isFavoriteClub ? colors.warning : colors.text}
+                                accessibilityLabel={isFavoriteClub ? t('favorites.removeFavorite') : t('club.addFavorite')}
+                                onPress={() => { if (!favoriteClubLoading) toggleFavoriteClub().catch(() => undefined); }}
+                            />
+                        </>
+                    }
+                />
 
-                <ClubHeader title={title} subtitle={subtitle} />
-
-                <View style={styles.actionRow}>
-                    <ActionButton
-                        layout="inline"
-                        icon={isMyClub ? 'checkmark-circle' : 'checkmark'}
-                        label={t('settings.myClub')}
-                        variant={isMyClub ? 'primary' : 'secondary'}
-                        loading={meClubLoading}
-                        onPress={() => { toggleMyClub().catch(() => undefined); }}
-                    />
-
-                    <ActionButton
-                        layout="inline"
-                        icon={isFavoriteClub ? 'star' : 'star-outline'}
-                        label={t('club.favoriteAction')}
-                        variant={isFavoriteClub ? 'active' : 'secondary'}
-                        loading={favoriteClubLoading}
-                        onPress={() => { toggleFavoriteClub().catch(() => undefined); }}
-                    />
-                </View>
+                <ClubHeader
+                    title={info?.clubName ?? title}
+                    meta={meta}
+                    logoUrl={info?.logoUrl}
+                    venue={info?.venues[0]}
+                    venueCount={info?.venues.length ?? 0}
+                    claimLoading={meClubLoading}
+                    onOpenInfo={() => setInfoOpen(true)}
+                    onClaimClub={canClaimClub ? () => { toggleMyClub().catch(() => undefined); } : undefined}
+                />
 
                 {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
                 {!loading && !error ? (
                     <>
+                        <StatStrip
+                            items={[
+                                {
+                                    label: t('club.teamsTab'),
+                                    value: String(summary.teamCount),
+                                    helper: summary.leaders > 0 ? t('club.leadersValue', { count: summary.leaders }) : undefined,
+                                },
+                                { label: t('club.playersTab'), value: summary.playerCount > 0 ? String(summary.playerCount) : '–' },
+                                {
+                                    label: t('club.averageTtr'),
+                                    value: summary.averageTtr !== undefined ? String(summary.averageTtr) : '–',
+                                    helper: summary.topTtr !== undefined ? t('club.topTtrValue', { value: summary.topTtr }) : undefined,
+                                },
+                            ]}
+                        />
+
                         <NextMatchCard match={nextMatch} />
 
                         <SegmentedTabs
@@ -122,7 +159,7 @@ export default function ClubDetailsScreen() {
                                 {players.length > 0 ? (
                                     <ListGroup>
                                         {players.map((player, index) => (
-                                            <ClubPlayerRow key={getPlayerKey(player, index)} player={player} />
+                                            <ClubPlayerRow key={getPlayerKey(player, index)} player={player} fallbackRank={index + 1} />
                                         ))}
                                     </ListGroup>
                                 ) : null}
@@ -133,6 +170,15 @@ export default function ClubDetailsScreen() {
                     </>
                 ) : null}
             </ScrollView>
+
+            <ClubInfoSheet
+                visible={infoOpen}
+                onClose={() => setInfoOpen(false)}
+                title={info?.clubName ?? title}
+                info={info}
+                organization={organization}
+                clubNumber={clubNumber}
+            />
         </Screen>
     );
 }

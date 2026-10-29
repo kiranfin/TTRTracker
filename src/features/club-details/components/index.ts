@@ -1,6 +1,8 @@
 export { CalendarPickerModal } from './CalendarPickerModal';
 export { DateFilterButton } from './DateFilterButton';
 export { ClubHeader } from './ClubHeader';
+export { ClubInfoSheet } from './ClubInfoSheet';
+export { ClubLogo } from './ClubLogo';
 export { NextMatchCard } from './NextMatchCard';
 export { ClubTeamRow } from './ClubTeamRow';
 export { ClubPlayerRow } from './ClubPlayerRow';
