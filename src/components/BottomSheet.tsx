@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardOverlap } from '../hooks/useKeyboardOverlap';
 import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
 import { font } from '@/src/theme/typography';
@@ -17,12 +19,31 @@ export function BottomSheet({ visible, title, onClose, children, headerRight }: 
   const { colors } = useTheme();
   const { t } = useI18n();
 
+  const insets = useSafeAreaInsets();
+  const { ref, overlap } = useKeyboardOverlap();
+
   return (
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+      <Modal
+          visible={visible}
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          navigationBarTranslucent
+          onRequestClose={onClose}
+      >
+        <View ref={ref} style={[styles.root, { paddingBottom: overlap }]}>
           <Pressable style={styles.backdrop} onPress={onClose} />
 
-          <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View
+              style={[
+                styles.sheet,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  paddingBottom: 20 + (overlap > 0 ? 0 : insets.bottom),
+                },
+              ]}
+          >
             <View style={styles.handleWrap}>
               <View style={[styles.handle, { backgroundColor: colors.border }]} />
             </View>
@@ -54,7 +75,7 @@ export function BottomSheet({ visible, title, onClose, children, headerRight }: 
               {children}
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
   );
 }
@@ -75,7 +96,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 20,
   },
   handleWrap: {
     alignItems: 'center',

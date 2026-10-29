@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import {
   ImageBackground,
-  KeyboardAvoidingView,
   Platform,
   StatusBar,
   StyleProp,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useKeyboardOverlap } from '../hooks/useKeyboardOverlap';
 import { useTheme } from '../theme/ThemeProvider';
 
 type ScreenProps = {
@@ -22,6 +22,7 @@ type ScreenProps = {
 export function Screen({ children, style, contentStyle }: ScreenProps) {
   const { colors, mode, backgroundImageUri } = useTheme();
   const insets = useSafeAreaInsets();
+  const { ref, overlap } = useKeyboardOverlap();
 
   const androidStatusBarHeight =
       Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
@@ -43,12 +44,9 @@ export function Screen({ children, style, contentStyle }: ScreenProps) {
             style,
           ]}
       >
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.keyboardView}
-        >
+        <View ref={ref} style={[styles.keyboardView, { paddingBottom: overlap }]}>
           <View style={[styles.content, contentStyle]}>{children}</View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
   );
 
