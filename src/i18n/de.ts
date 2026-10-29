@@ -222,7 +222,6 @@ export const de = {
     noMatchDetails: 'Für diesen Historieneintrag liefert das Backend keine einzelnen Matchdetails.',
     ownPlayer: 'Eigener Spieler',
     unknownOpponent: 'Unbekannter Gegner',
-    againstOpponent: 'gegen {{opponent}}',
     meShort: 'Ich',
     peak: 'Peak',
     history: 'Historie',

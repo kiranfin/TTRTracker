@@ -230,7 +230,6 @@ export const en: TranslationResource = {
     noMatchDetails: 'The backend does not provide individual match details for this history entry.',
     ownPlayer: 'Own player',
     unknownOpponent: 'Unknown opponent',
-    againstOpponent: 'against {{opponent}}',
     meShort: 'Me',
     peak: 'Peak',
     history: 'History',

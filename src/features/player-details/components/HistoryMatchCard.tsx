@@ -18,7 +18,7 @@ export function HistoryMatchCard({ match }: { match: NormalizedTtrHistoryMatch }
       <View style={[styles.matchDetailCard, { backgroundColor: colors.soft }]}>
         <View style={styles.matchDetailMain}>
           <Text style={[typography.bodyStrong, styles.matchDetailName, { color: colors.text }]} numberOfLines={1}>
-            {t('player.againstOpponent', { opponent: match.otherPlayerName ?? t('player.unknownOpponent') })}
+            {match.otherPlayerName ?? t('player.unknownOpponent')}
             {match.otherTtr !== undefined ? (
                 <Text style={[typography.body, { color: colors.mutedText }]}>{`  ${match.otherTtr}`}</Text>
             ) : null}
