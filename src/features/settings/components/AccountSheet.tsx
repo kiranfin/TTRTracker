@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import { BottomSheet } from '@/src/components/BottomSheet';
 import { Button } from '@/src/components/Button';
 import { useTheme } from '@/src/theme/ThemeProvider';
+import { typography } from '@/src/theme/typography';
 import type { SettingsController } from '../hooks/useSettings';
 import { styles } from '../styles';
 import { MessageText } from './MessageText';
@@ -23,13 +24,27 @@ export function AccountSheet({ settings, visible, onClose }: SheetProps) {
     setUsername,
     password,
     setPassword,
+    email,
+    setEmailField,
+    emailInput,
+    setEmailInput,
+    emailMessage,
     authMessage,
     authLoading,
     canSubmitAuth,
     handleLogin,
     handleRegister,
+    handleSaveEmail,
+    openForgotPassword,
+    openEnterResetCode,
     handleLogout,
   } = settings;
+
+  // Die Reset Screens liegen über den Tabs, das Sheet muss vorher zu.
+  function openResetScreen(open: () => void) {
+    onClose();
+    open();
+  }
 
   return (
       <BottomSheet visible={visible} title={t('settings.account')} onClose={onClose}>
@@ -54,6 +69,15 @@ export function AccountSheet({ settings, visible, onClose }: SheetProps) {
                     onChangeText={setPassword}
                     placeholder={t('settings.passwordPlaceholder')}
                     secureTextEntry
+                    autoCapitalize="none"
+                />
+
+                {/* Nur für die Registrierung, ohne E-Mail gibt es später keinen Passwort Reset. */}
+                <SettingsInput
+                    value={email}
+                    onChangeText={setEmailField}
+                    placeholder={t('settings.emailPlaceholderOptional')}
+                    keyboardType="email-address"
                     autoCapitalize="none"
                 />
 
@@ -82,11 +106,61 @@ export function AccountSheet({ settings, visible, onClose }: SheetProps) {
                 {!canSubmitAuth ? (
                     <Text style={[styles.backendText, { color: colors.mutedText }]}>{t('settings.authHint')}</Text>
                 ) : null}
+
+                <View style={styles.twoGrid}>
+                  <Button
+                      variant="ghost"
+                      icon="help-circle-outline"
+                      onPress={() => openResetScreen(openForgotPassword)}
+                      style={styles.halfButton}
+                  >
+                    {t('settings.forgotPassword')}
+                  </Button>
+
+                  <Button
+                      variant="ghost"
+                      icon="key-outline"
+                      onPress={() => openResetScreen(openEnterResetCode)}
+                      style={styles.halfButton}
+                  >
+                    {t('resetPassword.haveCode')}
+                  </Button>
+                </View>
               </>
           ) : (
-              <Button variant="outline" icon="log-out-outline" loading={authLoading === 'logout'} onPress={handleLogout}>
-                {t('settings.logout')}
-              </Button>
+              <>
+                <Text style={[typography.bodyStrong, { color: colors.text }]}>{t('settings.email')}</Text>
+
+                <Text style={[styles.backendText, { color: colors.mutedText }]}>
+                  {t('settings.emailDescription')}
+                </Text>
+
+                <SettingsInput
+                    value={emailInput}
+                    onChangeText={setEmailInput}
+                    placeholder={t('settings.emailPlaceholder')}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
+
+                <Button
+                    variant="primary"
+                    icon="save-outline"
+                    loading={authLoading === 'setEmail'}
+                    onPress={handleSaveEmail}
+                >
+                  {t('settings.saveEmail')}
+                </Button>
+
+                <MessageText
+                    message={emailMessage}
+                    tone={emailMessage === t('settings.emailSaved') ? 'positive' : 'negative'}
+                />
+
+                <Button variant="outline" icon="log-out-outline" loading={authLoading === 'logout'} onPress={handleLogout}>
+                  {t('settings.logout')}
+                </Button>
+              </>
           )}
 
           <MessageText message={authMessage} />

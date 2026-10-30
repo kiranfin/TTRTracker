@@ -10,7 +10,7 @@ import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import { MyttConnectNotice } from '../../src/features/mytt';
 import { useOnboardingRedirect } from '../../src/features/onboarding/useOnboarding';
-import { ClubCard, FindYourselfCard, HomeHeader, MeHeroCard, RecentHistoryRow } from '../../src/features/home/components';
+import { ClubCard, FindYourselfCard, HomeEventsCard, HomeHeader, MeHeroCard, RecentHistoryRow } from '../../src/features/home/components';
 import { useHome } from '../../src/features/home/hooks/useHome';
 import { styles } from '../../src/features/home/styles';
 
@@ -43,8 +43,14 @@ export default function HomeScreen() {
     clubError,
     selectMePlayer,
     reloadMe,
+    eventsWidgetEnabled,
+    upcomingEvents,
+    eventsLoading,
+    eventsError,
     openMeProfile,
     openMyClub,
+    openAllEvents,
+    openEvent,
   } = useHome();
 
   return (
@@ -112,6 +118,16 @@ export default function HomeScreen() {
           ) : (
               <FindYourselfCard onPress={() => setPickerOpen(true)} />
           )}
+
+          {eventsWidgetEnabled ? (
+              <HomeEventsCard
+                  events={upcomingEvents}
+                  loading={eventsLoading}
+                  error={eventsError}
+                  onOpenAll={openAllEvents}
+                  onOpenEvent={openEvent}
+              />
+          ) : null}
         </ScrollView>
 
         <PlayerPickerSheet

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 
 import { Avatar } from '@/src/components/Avatar';
 import { ClubLogo } from '@/src/components/ClubLogo';
@@ -93,6 +93,8 @@ export default function SettingsScreen() {
     savedMeName,
     savedMeClub,
     backgroundImageUri,
+    eventsWidgetEnabled,
+    handleToggleEventsWidget,
     authLoading,
     handleLogout,
     handleSelectMePlayer,
@@ -275,7 +277,21 @@ export default function SettingsScreen() {
                   trailing={<RowValue>{backgroundImageUri ? t('settings.backgroundCustom') : t('settings.backgroundNone')}</RowValue>}
                   onPress={() => setSheet('background')}
               />
+
+              <View style={styles.inlineRow}>
+                <IconTile icon="calendar-outline" />
+                <Text style={[typography.body, styles.inlineTitle, { color: colors.text }]}>{t('settings.eventsWidget')}</Text>
+                <Switch
+                    value={eventsWidgetEnabled}
+                    onValueChange={(next) => {
+                      handleToggleEventsWidget(next).catch(() => undefined);
+                    }}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor="#ffffff"
+                />
+              </View>
             </ListGroup>
+            <Text style={[typography.caption, { color: colors.mutedText }]}>{t('settings.eventsWidgetDescription')}</Text>
           </View>
 
           <View style={styles.group}>

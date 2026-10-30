@@ -11,6 +11,7 @@ import { useAuth } from '@/src/auth/AuthProvider';
 import { confirmCookieUpload } from '@/src/features/mytt/utils/sharing';
 import { getLocalMyttCookie } from '@/src/storage/myttSession';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { getEventsWidgetEnabled, setEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { clearMeClub, getMeClub, setMeClub as saveMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import type { NormalizedClub } from '@/src/types/tttracker';
@@ -41,7 +42,7 @@ export function useSettings() {
   } = useTheme();
 
   const { language, setLanguage, t } = useI18n();
-  const { user, isAuthenticated, login, register, logout } = useAuth();
+  const { user, isAuthenticated, login, register, setEmail, logout } = useAuth();
 
   const [health, setHealth] = useState<string | null>(null);
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
@@ -69,10 +70,18 @@ export function useSettings() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmailField] = useState('');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState<
-      'login' | 'register' | 'logout' | null
+      'login' | 'register' | 'logout' | 'setEmail' | null
   >(null);
+
+  const [emailInput, setEmailInput] = useState(user?.email ?? '');
+  const [emailMessage, setEmailMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEmailInput(user?.email ?? '');
+  }, [user?.email]);
 
   const [myttStatus, setMyttStatus] = useState<MyttStatusView | null>(null);
   const [myttMessage, setMyttMessage] = useState<string | null>(null);
@@ -95,6 +104,8 @@ export function useSettings() {
 
   const [backgroundMessage, setBackgroundMessage] = useState<string | null>(null);
   const [backgroundLoading, setBackgroundLoading] = useState<'pick' | 'clear' | null>(null);
+
+  const [eventsWidgetEnabled, setEventsWidgetEnabledState] = useState(false);
 
   const [draftAccent, setDraftAccent] = useState(() => normalizeHexColor(accent));
 
@@ -192,10 +203,11 @@ export function useSettings() {
 
         async function loadLocalProfileSettings() {
           try {
-            const [storedNuid, storedClub, storedName] = await Promise.all([
+            const [storedNuid, storedClub, storedName, storedEventsWidget] = await Promise.all([
               getMePlayerNuid(),
               getMeClub(),
               getMePlayerName(),
+              getEventsWidgetEnabled(),
             ]);
 
             if (!active) return;
@@ -206,6 +218,8 @@ export function useSettings() {
             setSavedMeClub(storedClub);
             setClubIdInput(formatClubId(storedClub));
             setClubNameInput(getClubDisplayName(storedClub));
+
+            setEventsWidgetEnabledState(storedEventsWidget);
           } catch {
             if (!active) return;
 
@@ -221,6 +235,16 @@ export function useSettings() {
         };
       }, []),
   );
+
+  async function handleToggleEventsWidget(next: boolean) {
+    setEventsWidgetEnabledState(next);
+
+    try {
+      await setEventsWidgetEnabled(next);
+    } catch {
+      setEventsWidgetEnabledState(!next);
+    }
+  }
 
   async function checkHealth() {
     setChecking(true);
@@ -282,6 +306,7 @@ export function useSettings() {
       const registeredUser = await register({
         username: username.trim(),
         password,
+        email: email.trim() || undefined,
       });
 
       setPassword('');
@@ -291,6 +316,29 @@ export function useSettings() {
     } finally {
       setAuthLoading(null);
     }
+  }
+
+  async function handleSaveEmail() {
+    setAuthLoading('setEmail');
+    setEmailMessage(null);
+
+    try {
+      const updatedUser = await setEmail(emailInput.trim());
+      setEmailInput(updatedUser.email ?? '');
+      setEmailMessage(t('settings.emailSaved'));
+    } catch (error) {
+      setEmailMessage(error instanceof Error ? error.message : t('settings.emailSaveError'));
+    } finally {
+      setAuthLoading(null);
+    }
+  }
+
+  function openForgotPassword() {
+    router.push('/request-password-reset');
+  }
+
+  function openEnterResetCode() {
+    router.push('/reset-password');
   }
 
   async function handleLogout() {
@@ -571,6 +619,11 @@ export function useSettings() {
     setUsername,
     password,
     setPassword,
+    email,
+    setEmailField,
+    emailInput,
+    setEmailInput,
+    emailMessage,
     authMessage,
     authLoading,
     myttStatus,
@@ -593,6 +646,8 @@ export function useSettings() {
     meClubLoading,
     backgroundMessage,
     backgroundLoading,
+    eventsWidgetEnabled,
+    handleToggleEventsWidget,
     draftAccent,
     handlePreviewAccent,
     handleApplyAccent,
@@ -602,6 +657,9 @@ export function useSettings() {
     checkHealth,
     handleLogin,
     handleRegister,
+    handleSaveEmail,
+    openForgotPassword,
+    openEnterResetCode,
     handleLogout,
     handleCheckMyttStatus,
     handleLoadGrants,

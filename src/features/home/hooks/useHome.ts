@@ -1,14 +1,18 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { eventsApi } from '@/src/api/events';
 import { ttApi } from '@/src/api/tttracker';
 import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
+import { getUpcomingEvents } from '@/src/features/events/utils';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { estimateToHistory } from '../../player-details/estimate';
+import { getEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import { getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
+import type { EventSummary } from '@/src/types/events';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
 import type { HomeClubMatch } from '../types';
@@ -30,6 +34,11 @@ export function useHome() {
   const [clubUpcomingMatches, setClubUpcomingMatches] = useState<HomeClubMatch[]>([]);
   const [clubLoading, setClubLoading] = useState(false);
   const [clubError, setClubError] = useState<string | null>(null);
+
+  const [eventsWidgetEnabled, setEventsWidgetEnabled] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<EventSummary[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
 
   useFocusEffect(
       useCallback(() => {
@@ -140,6 +149,55 @@ export function useHome() {
         }
 
         loadStoredClub().catch(() => undefined);
+
+        return () => {
+          active = false;
+        };
+      }, []),
+  );
+
+  useFocusEffect(
+      useCallback(() => {
+        let active = true;
+
+        async function loadEventsWidget() {
+          try {
+            const enabled = await getEventsWidgetEnabled();
+
+            if (!active) return;
+
+            setEventsWidgetEnabled(enabled);
+
+            if (!enabled) {
+              setUpcomingEvents([]);
+              setEventsError(null);
+              setEventsLoading(false);
+              return;
+            }
+
+            setEventsLoading(true);
+            setEventsError(null);
+
+            const events = await eventsApi.list();
+
+            if (!active) return;
+
+            setUpcomingEvents(getUpcomingEvents(events, 3));
+          } catch (error) {
+            if (!active) return;
+
+            setUpcomingEvents([]);
+            setEventsError(
+                error instanceof Error ? error.message : t('events.loadError'),
+            );
+          } finally {
+            if (active) {
+              setEventsLoading(false);
+            }
+          }
+        }
+
+        loadEventsWidget().catch(() => undefined);
 
         return () => {
           active = false;
@@ -281,6 +339,14 @@ export function useHome() {
     });
   }
 
+  function openAllEvents() {
+    router.push('/events');
+  }
+
+  function openEvent(event: EventSummary) {
+    router.push({ pathname: '/event/[id]', params: { id: event.id } });
+  }
+
   function openMyClub() {
     if (!meClub) {
       router.push('/search');
@@ -323,7 +389,13 @@ export function useHome() {
     clubError,
     selectMePlayer,
     reloadMe,
+    eventsWidgetEnabled,
+    upcomingEvents,
+    eventsLoading,
+    eventsError,
     openMeProfile,
     openMyClub,
+    openAllEvents,
+    openEvent,
   };
 }
