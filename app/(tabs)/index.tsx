@@ -8,6 +8,8 @@ import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
+import { MyttConnectNotice } from '../../src/features/mytt';
+import { useOnboardingRedirect } from '../../src/features/onboarding/useOnboarding';
 import { ClubCard, FindYourselfCard, HomeHeader, MeHeroCard, RecentHistoryRow } from '../../src/features/home/components';
 import { useHome } from '../../src/features/home/hooks/useHome';
 import { styles } from '../../src/features/home/styles';
@@ -16,6 +18,8 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  useOnboardingRedirect();
 
   const {
     meNuid,
@@ -31,6 +35,7 @@ export default function HomeScreen() {
     winRate,
     meLoading,
     meError,
+    meUnavailableReason,
     meClub,
     clubCompletedMatches,
     clubUpcomingMatches,
@@ -61,6 +66,13 @@ export default function HomeScreen() {
                     onOpenProfile={openMeProfile}
                     onRetry={reloadMe}
                 />
+
+                {!meLoading && meUnavailableReason ? (
+                    <MyttConnectNotice
+                        reason={meUnavailableReason}
+                        message={meUnavailableReason === 'expired' ? t('home.myttExpired') : t('home.myttNotice')}
+                    />
+                ) : null}
 
                 {!meLoading && !meError ? (
                     <View style={styles.section}>

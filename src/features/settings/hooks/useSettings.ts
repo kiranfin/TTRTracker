@@ -319,6 +319,12 @@ export function useSettings() {
     try {
       const local = await hasLocalMyttSession();
 
+      // Ohne App Konto gibt es keinen Server Status, dann zählt nur die Session auf dem Gerät.
+      if (!isAuthenticated) {
+        setMyttStatus(local ? getLocalStatusView(t) : normalizeMyttStatus({}, t));
+        return;
+      }
+
       try {
         const view = normalizeMyttStatus(await getMyttStatus(), t);
 
@@ -422,13 +428,14 @@ export function useSettings() {
 
   // Status und Freigaben direkt laden, damit die Zeilen in den Einstellungen sie anzeigen können.
   useEffect(() => {
+    // Die Verbindung zu myTischtennis braucht kein Konto, Freigaben schon.
+    handleCheckMyttStatus().catch(() => undefined);
+
     if (!isAuthenticated) {
-      setMyttStatus(null);
       setGrants([]);
       return;
     }
 
-    handleCheckMyttStatus().catch(() => undefined);
     handleLoadGrants().catch(() => undefined);
     // Nur beim An- und Abmelden neu laden
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -179,19 +179,18 @@ export default function SettingsScreen() {
                   trailing={<RowValue>{isAuthenticated && user ? user.username : t('settings.notLoggedIn')}</RowValue>}
                   onPress={() => setSheet('account')}
               />
-              {isAuthenticated ? (
-                  <ListRow
-                      leading={<IconTile icon="link-outline" />}
-                      title="myTischtennis"
-                      trailing={
-                        <StatusValue
-                            label={myttConnected ? t('settings.connected') : t('settings.notConnected')}
-                            tone={myttStatus ? (myttConnected ? 'ok' : 'off') : 'neutral'}
-                        />
-                      }
-                      onPress={() => setSheet('mytt')}
-                  />
-              ) : null}
+              <ListRow
+                  leading={<IconTile icon="link-outline" />}
+                  title="myTischtennis"
+                  trailing={
+                    <StatusValue
+                        label={myttConnected ? t('settings.connected') : t('settings.notConnected')}
+                        tone={myttStatus ? (myttConnected ? 'ok' : 'off') : 'neutral'}
+                    />
+                  }
+                  onPress={() => setSheet('mytt')}
+              />
+              {/* Freigaben brauchen ein App-Konto, die Verbindung zu myTischtennis selbst nicht. */}
               {isAuthenticated ? (
                   <ListRow
                       leading={<IconTile icon="people-outline" />}
@@ -205,6 +204,9 @@ export default function SettingsScreen() {
                   />
               ) : null}
             </ListGroup>
+            {!isAuthenticated ? (
+                <Text style={[typography.caption, { color: colors.mutedText }]}>{t('settings.accountOptionalHint')}</Text>
+            ) : null}
           </View>
 
           <View style={styles.group}>

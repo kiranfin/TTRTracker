@@ -2,7 +2,10 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
+import { useOnMyttConnected } from '@/src/features/mytt';
+import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { estimateToHistory } from '../../player-details/estimate';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import { getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
@@ -18,6 +21,7 @@ export function useHome() {
   const [meApiHistoryData, setMeApiHistoryData] = useState<Record<string, unknown> | null>(null);
   const [meLoading, setMeLoading] = useState(false);
   const [meError, setMeError] = useState<string | null>(null);
+  const [meUnavailableReason, setMeUnavailableReason] = useState<MyttUnavailableReason | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [meClub, setMeClub] = useState<MeClub | null>(null);
@@ -33,6 +37,7 @@ export function useHome() {
         async function loadMe() {
           setMeLoading(true);
           setMeError(null);
+          setMeUnavailableReason(null);
 
           try {
             const storedNuid = await getMePlayerNuid();
@@ -58,6 +63,16 @@ export function useHome() {
 
             setMeHistory(null);
             setMeApiHistoryData(null);
+
+            const reason = getMyttUnavailableReason(error);
+
+            if (reason) {
+              // Ohne myTischtennis Verbindung zeigt die Startseite den geschätzten Wert und einen Hinweis.
+              setMeUnavailableReason(reason);
+              await loadEstimateFallback();
+              return;
+            }
+
             setMeError(
                 error instanceof Error
                     ? error.message
@@ -67,6 +82,23 @@ export function useHome() {
             if (active) {
               setMeLoading(false);
             }
+          }
+        }
+
+        // Der Verein kommt aus dem gespeicherten Ich-Verein, der Spieler hat meist denselben.
+        async function loadEstimateFallback() {
+          try {
+            const [storedNuid, storedClub] = await Promise.all([getMePlayerNuid(), getMeClub()]);
+
+            if (!storedNuid || !storedClub) return;
+
+            const response = await ttApi.getPlayerTtrEstimate(storedNuid, storedClub.organization, storedClub.clubNumber);
+
+            if (!active || response.data.events.length === 0) return;
+
+            setMeHistory(estimateToHistory(response.data));
+          } catch {
+            // Ohne Schätzung bleibt nur der Hinweis.
           }
         }
 
@@ -211,6 +243,8 @@ export function useHome() {
     setReloadKey((current) => current + 1);
   }
 
+  useOnMyttConnected(reloadMe);
+
   async function selectMePlayer(nuid: string) {
     await setMePlayerNuid(nuid);
     reloadMe();
@@ -266,6 +300,7 @@ export function useHome() {
     winRate,
     meLoading,
     meError,
+    meUnavailableReason,
     meClub,
     clubCompletedMatches,
     clubUpcomingMatches,
