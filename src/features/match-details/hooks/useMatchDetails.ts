@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { describeApiError } from '@/src/utils/apiErrors';
+import { getResponseFreshness, type Freshness } from '@/src/utils/staleness';
 import type { MeetingDetails, TeamLinkContext } from '../types';
 import { useMatchPreview } from './useMatchPreview';
 import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getMeetingClub, getParam, normalizeMeetingRows, toNumber, unwrapMeetingResponse } from '../utils';
@@ -15,6 +17,7 @@ export function useMatchDetails() {
   const meetingId = getParam(params.meetingId);
 
   const [meeting, setMeeting] = useState<MeetingDetails | null>(null);
+  const [freshness, setFreshness] = useState<Freshness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,11 +44,12 @@ export function useMatchDetails() {
 
         if (active) {
           setMeeting(nextMeeting);
+          setFreshness(getResponseFreshness(response));
         }
       } catch (loadError) {
         if (active) {
           setMeeting(null);
-          setError(loadError instanceof Error ? loadError.message : t('match.liveLoadError'));
+          setError(describeApiError(loadError, t, 'match.liveLoadError'));
         }
       } finally {
         if (active) {
@@ -157,6 +161,7 @@ export function useMatchDetails() {
 
   return {
     meeting,
+    freshness,
     loading,
     error,
     meetingId,

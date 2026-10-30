@@ -15,7 +15,7 @@ import type {
     ThemeColors,
 } from './types';
 import { getCurrentSeason, splitLocalDateTime } from '@/src/utils/dates';
-import { getStaleSince, type ResponseMeta } from '@/src/utils/staleness';
+import { getFreshness, type ResponseMeta } from '@/src/utils/staleness';
 
 export const TEAM_HOME_KEYS = [
     'team_home',
@@ -82,7 +82,7 @@ export async function loadClubPlayers(
 
     return {
         players: normalizeClubPlayers(response),
-        staleSince: getStaleSince((response as { meta?: ResponseMeta } | null)?.meta),
+        freshness: getFreshness((response as { meta?: ResponseMeta } | null)?.meta),
     };
 }
 
@@ -118,14 +118,17 @@ export async function loadClubSchedule(
                     clubTeamName: match.clubTeamName ?? findMatchedTeamName(match, teamNames),
                 }));
 
-        return sortSchedule(
-            dedupeSchedule(
-                filterMatchesByDate(fallbackMatches, options.dateStart, options.dateEnd),
+        return {
+            matches: sortSchedule(
+                dedupeSchedule(
+                    filterMatchesByDate(fallbackMatches, options.dateStart, options.dateEnd),
+                ),
             ),
-        );
+            freshness: getFreshness((response as { meta?: ResponseMeta } | null)?.meta),
+        };
     }
 
-    return loadClubScheduleFromTeamLeagues(teams, options);
+    return { matches: await loadClubScheduleFromTeamLeagues(teams, options), freshness: null };
 }
 
 export async function loadClubScheduleFromTeamLeagues(

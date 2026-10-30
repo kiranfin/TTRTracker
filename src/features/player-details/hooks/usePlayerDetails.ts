@@ -19,11 +19,13 @@ import type {
   PlayerTtrEstimate,
   PlayerRatingSource,
 } from '@/src/types/tttracker';
-import { estimateToHistory } from '../estimate';
+import { estimateToHistory, TTR_ESTIMATE_ENABLED } from '../estimate';
+import { sharedFreshness, sharedToHistory } from '../shared';
 import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
-import { getStaleSince } from '@/src/utils/staleness';
+import { describeApiError } from '@/src/utils/apiErrors';
+import { getFreshness, type Freshness } from '@/src/utils/staleness';
 import type { ChartRangeId, ClubRouteParams, LeagueOption, PlayerStats } from '../types';
 import {
   CHART_RANGES,
@@ -64,9 +66,11 @@ export function usePlayerDetails() {
   const [reloadKey, setReloadKey] = useState(0);
   const [publicRating, setPublicRating] = useState<PlayerRating | null>(null);
   // Stand je Quelle, wenn sie aus einem älteren Stand kommt (sonst null).
-  const [historyStaleSince, setHistoryStaleSince] = useState<number | null>(null);
-  const [ratingStaleSince, setRatingStaleSince] = useState<number | null>(null);
-  const [estimateStaleSince, setEstimateStaleSince] = useState<number | null>(null);
+  const [historyFreshness, setHistoryFreshness] = useState<Freshness | null>(null);
+  // Von wem der angezeigte Verlauf geteilt wurde (Snapshot einer Freigabe), sonst null.
+  const [sharedBy, setSharedBy] = useState<{ username: string | null } | null>(null);
+  const [ratingFreshness, setRatingFreshness] = useState<Freshness | null>(null);
+  const [estimateFreshness, setEstimateFreshness] = useState<Freshness | null>(null);
 
   const [storedMePlayerNuid, setStoredMePlayerNuid] = useState<string | null>(null);
   const [mePlayerLoading, setMePlayerLoading] = useState(false);
@@ -136,20 +140,32 @@ export function usePlayerDetails() {
       setExpandedEventId(null);
       setApiHistoryData(null);
       setOfficialHistory(null);
-      setHistoryStaleSince(null);
+      setHistoryFreshness(null);
+      setSharedBy(null);
 
       try {
         const response = await ttApi.getPlayerTtrHistory(nuid);
         setApiHistoryData(getPlayerHistoryData(response));
         setOfficialHistory(normalizePlayerTtrHistory(response));
-        setHistoryStaleSince(getStaleSince(response.meta));
+        setHistoryFreshness(getFreshness(response.meta));
       } catch (loadError) {
         const reason = getMyttUnavailableReason(loadError);
 
         if (reason) {
-          setUnavailableReason(reason);
+          // Ohne eigene Verbindung kann jemand den Stand mit dir teilen (Freigabe).
+          const shared = await ttApi.getSharedPlayer(nuid).catch(() => null);
+          const sharedHistory = shared ? sharedToHistory(shared) : null;
+
+          if (shared && sharedHistory) {
+            setApiHistoryData(getPlayerHistoryData(sharedHistory));
+            setOfficialHistory(normalizePlayerTtrHistory(sharedHistory));
+            setHistoryFreshness(sharedFreshness(shared));
+            setSharedBy(shared.data.owner);
+          } else {
+            setUnavailableReason(reason);
+          }
         } else {
-          setError(loadError instanceof Error ? loadError.message : t('player.historyLoadError'));
+          setError(describeApiError(loadError, t, 'player.historyLoadError'));
         }
       } finally {
         setLoading(false);
@@ -221,7 +237,7 @@ export function usePlayerDetails() {
     let active = true;
 
     setPublicRating(null);
-    setRatingStaleSince(null);
+    setRatingFreshness(null);
 
     if (!nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
 
@@ -231,7 +247,7 @@ export function usePlayerDetails() {
           if (!active) return;
 
           setPublicRating(response.data.rating);
-          setRatingStaleSince(getStaleSince(response.meta, response.data.rating?.asOf));
+          setRatingFreshness(getFreshness(response.meta, response.data.rating?.asOf));
         })
         .catch(() => undefined);
 
@@ -241,13 +257,14 @@ export function usePlayerDetails() {
   }, [nuid, clubOrganization, clubNumber, clubName, lookupName]);
 
   // Ohne myTischtennis Verbindung wird der Verlauf aus öffentlichen Spielberichten geschätzt.
+  // Vorerst aus: dann bleibt der öffentliche Wert (publicRating) aus dem Effekt darüber.
   useEffect(() => {
     let active = true;
 
     setEstimate(null);
-    setEstimateStaleSince(null);
+    setEstimateFreshness(null);
 
-    if (!unavailableReason || !nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
+    if (!TTR_ESTIMATE_ENABLED || !unavailableReason || !nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
 
     ttApi
         .getPlayerTtrEstimate(nuid, { organization: clubOrganization, clubNumber, clubName, name: lookupName })
@@ -255,7 +272,7 @@ export function usePlayerDetails() {
           if (!active) return;
 
           setEstimate(response.data);
-          setEstimateStaleSince(getStaleSince(response.meta, response.data.publicRating?.asOf));
+          setEstimateFreshness(getFreshness(response.meta, response.data.publicRating?.asOf));
         })
         .catch(() => undefined);
 
@@ -318,13 +335,13 @@ export function usePlayerDetails() {
       officialTtr !== undefined ? 'official' : fallbackRating ? fallbackRating.source : undefined;
 
   // Hinweis nur für die Quelle, deren Wert gerade angezeigt wird.
-  const staleSince =
+  const freshness: Freshness | null =
       officialTtr !== undefined
-          ? historyStaleSince
+          ? historyFreshness
           : estimate?.rating
-              ? estimateStaleSince
+              ? estimateFreshness
               : publicRating
-                  ? ratingStaleSince
+                  ? ratingFreshness
                   : null;
 
   const qTtr = parseOptionalNumber(history?.qttr) ?? parseOptionalNumber(apiHistoryData?.qttr);
@@ -575,7 +592,8 @@ export function usePlayerDetails() {
     unavailableReason,
     currentTtr,
     ttrSource,
-    staleSince,
+    freshness,
+    sharedBy,
     qTtr,
     maxTtr,
     monthlyDelta,

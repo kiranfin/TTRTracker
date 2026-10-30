@@ -5,6 +5,7 @@ import { eventsApi } from '@/src/api/events';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { EventDetail } from '@/src/types/events';
 import { formatEventDayLabel, formatEventTimeRange } from '../utils';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 export function useEventDetail() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -29,7 +30,7 @@ export function useEventDetail() {
       setEvent(await eventsApi.detail(id));
     } catch (loadError) {
       setEvent(null);
-      setError(loadError instanceof Error ? loadError.message : t('events.loadError'));
+      setError(describeApiError(loadError, t, 'events.loadError'));
     } finally {
       setLoading(false);
     }

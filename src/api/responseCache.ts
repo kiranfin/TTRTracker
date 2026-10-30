@@ -1,8 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Zwischenspeicher für GET Antworten des Backends. Ein Tab Wechsel innerhalb der Frische Zeit löst keine
-// Anfrage mehr aus. Bremst das Backend (429, 5xx, kein Netz), liefert der Speicher den letzten Stand als
-// "stale", dann zeigt der vorhandene StaleNotice den Hinweis.
+// Zwischenspeicher für GET Antworten des Backends, mit stale-while-revalidate:
+// - frischer Eintrag: sofort zurück, keine Anfrage
+// - abgelaufener Eintrag (bis 7 Tage): sofort zurück, im Hintergrund neu laden. Kommt die Antwort, erfahren
+//   es Listener (subscribeApiUpdates), z.B. Screens, die dann ihre Daten neu lesen
+// - nichts im Speicher: auf das Backend warten
+// Bremst das Backend (429, 5xx, kein Netz), liefert der Speicher den letzten Stand als "stale".
 
 const INDEX_KEY = 'tttracker.apiCache.index';
 const ENTRY_KEY_PREFIX = 'tttracker.apiCache.entry.';
@@ -15,28 +18,35 @@ const STALE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_PAUSE_MS = 30 * 60 * 1000;
 // Größere Antworten bleiben nur im Arbeitsspeicher, AsyncStorage tut sich mit sehr großen Einträgen schwer.
 const MAX_PERSISTED_CHARS = 500_000;
+// Nach einer fehlgeschlagenen Aktualisierung im Hintergrund so lange nicht erneut versuchen.
+const REFRESH_RETRY_MS = 60 * 1000;
 
 const SECOND_MS = 1000;
 const MINUTE_MS = 60 * SECOND_MS;
-const DAY_MS = 24 * 60 * MINUTE_MS;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
 
 type FreshMs = number | ((response: unknown) => number);
 
-// Frische Zeiten, angelehnt an CACHE_TTL im Backend. Was nicht in der Tabelle steht (z.B. /health), wird
-// nicht zwischengespeichert.
-const FRESHNESS_RULES: [RegExp, FreshMs][] = [
-  [/^\/api\/search\//, 5 * MINUTE_MS],
-  [/^\/api\/players\/[^/]+\/rating$/, 15 * MINUTE_MS],
-  // Eine unvollständige Schätzung (pending) ist nie frisch, damit die nächste Etappe geladen wird.
-  [/^\/api\/players\/[^/]+\/ttr-estimate$/, (response) => (getEstimatePending(response) > 0 ? 0 : 15 * MINUTE_MS)],
-  [/^\/api\/clubs\/[^/]+\/[^/]+\/(teams|players|info)$/, 30 * MINUTE_MS],
-  [/^\/api\/clubs\/[^/]+\/[^/]+\/schedule$/, 30 * MINUTE_MS],
-  [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/table$/, 10 * MINUTE_MS],
-  [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/schedule$/, 30 * MINUTE_MS],
-  [/^\/api\/teams\/.+\/(schedule|simple-schedule)$/, 30 * MINUTE_MS],
-  [/^\/api\/teams\/.+\/(infos|balances|players)$/, 30 * MINUTE_MS],
+// Frische Zeiten wie die Standardwerte der Policies im Backend (src/policies.ts), nie kürzer als dort nötig.
+// Das Backend verlängert sie nach Spielplan noch, die App kennt den Spielplan hier nicht und bleibt bei der
+// kurzen Variante. Sie bestimmt nur, wie oft im Hintergrund nachgefragt wird, angezeigt wird sofort.
+// Was nicht in der Tabelle steht (z.B. /health), wird nicht zwischengespeichert.
+// Das dritte Feld schaltet stale-while-revalidate ab (laufende Spiele müssen beim Öffnen stimmen).
+const FRESHNESS_RULES: [RegExp, FreshMs, boolean?][] = [
+  [/^\/api\/search\//, DAY_MS],
+  [/^\/api\/players\/[^/]+\/rating$/, HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/teams$/, HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/players$/, HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/info$/, 12 * HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/schedule$/, HOUR_MS],
+  [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/table$/, 15 * MINUTE_MS],
+  [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/schedule$/, HOUR_MS],
+  [/^\/api\/teams\/[^/]+\/players$/, 10 * MINUTE_MS],
+  [/^\/api\/teams\/.+\/infos$/, 15 * MINUTE_MS],
+  [/^\/api\/teams\/.+\/(schedule|simple-schedule|balances)$/, 5 * MINUTE_MS],
   [/^\/api\/events(\/[^/]+)?$/, 30 * MINUTE_MS],
-  [/^\/api\/meetings\/[^/]+\/live$/, getMeetingFreshMs],
+  [/^\/api\/meetings\/[^/]+\/live$/, getMeetingFreshMs, false],
 ];
 
 type Entry = {
@@ -55,6 +65,14 @@ export type ResponseCacheStorage = {
   multiRemove(keys: string[]): Promise<void>;
 };
 
+/** Ein Eintrag wurde im Hintergrund aktualisiert. `path` ohne Basis URL, `params` die Query Parameter. */
+export type ApiUpdateEvent = {
+  path: string;
+  params?: Record<string, string | number | undefined>;
+};
+
+export type ApiUpdateListener = (event: ApiUpdateEvent) => void;
+
 export type CachedGetRequest<T> = {
   baseUrl: string;
   path: string;
@@ -68,16 +86,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
       : null;
 }
 
-function getEstimatePending(response: unknown) {
-  const coverage = asRecord(asRecord(asRecord(response)?.data)?.coverage);
-
-  return typeof coverage?.pending === 'number' ? coverage.pending : 0;
-}
-
 function getMeetingFreshMs(response: unknown) {
   const data = asRecord(asRecord(response)?.data);
 
-  if (data?.live === true) return 30 * SECOND_MS;
+  if (data?.live === true) return MINUTE_MS;
 
   return data?.is_completed === true ? 7 * DAY_MS : 2 * MINUTE_MS;
 }
@@ -95,6 +107,10 @@ function getFreshMs(path: string, response: unknown) {
 
 function isCacheable(path: string) {
   return FRESHNESS_RULES.some(([pattern]) => pattern.test(path));
+}
+
+function allowsRevalidate(path: string) {
+  return FRESHNESS_RULES.find(([pattern]) => pattern.test(path))?.[2] !== false;
 }
 
 function buildKey(baseUrl: string, path: string, params?: Record<string, string | number | undefined>) {
@@ -186,6 +202,9 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
   const invalidated = new Set<string>();
   const dirty = new Set<string>();
   const removed = new Set<string>();
+  const listeners = new Set<ApiUpdateListener>();
+  // Nach einer fehlgeschlagenen Aktualisierung im Hintergrund nicht bei jedem Zugriff erneut versuchen.
+  const refreshRetryAt = new Map<string, number>();
 
   let indexLoaded: Promise<void> | null = null;
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -304,45 +323,21 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
     scheduleFlush();
   }
 
-  async function cachedGet<T>(request: CachedGetRequest<T>): Promise<T> {
-    const { baseUrl, path, params, load } = request;
+  // Lädt und speichert. Gleichzeitige Aufrufe mit demselben Key teilen sich eine Anfrage.
+  function startLoad<T>(key: string, request: CachedGetRequest<T>, fallback: Entry | null): Promise<T> {
+    const { path, load } = request;
 
-    if (!isCacheable(path)) {
-      return load();
-    }
-
-    const key = buildKey(baseUrl, path, params);
-    let entry: Entry | null = null;
-
-    try {
-      await loadIndex();
-      entry = await readEntry(key);
-    } catch {
-      entry = null;
-    }
-
-    const age = entry ? now() - entry.savedAt : Infinity;
-    // Als Notnagel taugt der Eintrag nur, solange er nicht zu alt ist.
-    const fallback = entry && age <= STALE_MAX_AGE_MS ? entry : null;
-
-    // 1. Frischer Eintrag: sofort zurück.
-    if (entry && !invalidated.has(key) && age < getFreshMs(path, entry.data)) {
-      return entry.data as T;
-    }
-
-    // Das Backend hat uns gerade ein 429 gemeldet: bis zum Ende der Pause nicht erneut fragen.
-    if (fallback && now() < pausedUntil) {
-      return toStaleResponse(fallback) as T;
-    }
-
-    // 2. Läuft schon eine Anfrage mit demselben Key, dranhängen.
     const running = inFlight.get(key);
 
     if (running) {
-      return running as Promise<T>;
+      // Die laufende Anfrage kann eine Aktualisierung im Hintergrund sein, die ohne Notnagel gestartet wurde.
+      return (running as Promise<T>).catch((error) => {
+        if (fallback && isTransientError(error)) return toStaleResponse(fallback) as T;
+
+        throw error;
+      });
     }
 
-    // 3. Laden und speichern, 4. bei vorübergehendem Fehler den alten Stand liefern.
     const promise = (async () => {
       try {
         const data = await load();
@@ -376,6 +371,87 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
     promise.then(clear, clear);
 
     return promise;
+  }
+
+  function refreshInBackground<T>(key: string, request: CachedGetRequest<T>) {
+    if (inFlight.has(key)) return;
+
+    const before = memory.get(key)?.savedAt;
+
+    // Ohne Notnagel: ein Fehler wirft, statt einen alten Stand zu liefern. Der alte Eintrag bleibt ohnehin.
+    startLoad(key, request, null)
+        .then(() => {
+          // Nur melden, wenn wirklich ein neuer Stand gespeichert wurde.
+          if (memory.get(key)?.savedAt !== before) {
+            refreshRetryAt.delete(key);
+            listeners.forEach((listener) => {
+              try {
+                listener({ path: request.path, params: request.params });
+              } catch {
+                // Ein fehlerhafter Listener stört die anderen nicht.
+              }
+            });
+          }
+        })
+        .catch(() => {
+          refreshRetryAt.set(key, now() + REFRESH_RETRY_MS);
+        });
+  }
+
+  async function cachedGet<T>(request: CachedGetRequest<T>): Promise<T> {
+    const { baseUrl, path, params, load } = request;
+
+    if (!isCacheable(path)) {
+      return load();
+    }
+
+    const key = buildKey(baseUrl, path, params);
+    let entry: Entry | null = null;
+
+    try {
+      await loadIndex();
+      entry = await readEntry(key);
+    } catch {
+      entry = null;
+    }
+
+    const age = entry ? now() - entry.savedAt : Infinity;
+    // Als Notnagel taugt der Eintrag nur, solange er nicht zu alt ist.
+    const fallback = entry && age <= STALE_MAX_AGE_MS ? entry : null;
+
+    const isFresh = entry && !invalidated.has(key) && age < getFreshMs(path, entry.data);
+
+    // 1. Frischer Eintrag: sofort zurück.
+    if (entry && isFresh) {
+      return entry.data as T;
+    }
+
+    // Das Backend hat uns gerade ein 429 gemeldet: bis zum Ende der Pause nicht erneut fragen.
+    if (fallback && now() < pausedUntil) {
+      return toStaleResponse(fallback) as T;
+    }
+
+    // Abgelaufener Eintrag: sofort zurück und im Hintergrund neu laden (stale-while-revalidate).
+    // Nach "Erneut versuchen" (invalidate) und bei laufenden Spielen wird dagegen gewartet.
+    if (fallback && !invalidated.has(key) && allowsRevalidate(path)) {
+      if (now() >= (refreshRetryAt.get(key) ?? 0)) {
+        refreshInBackground(key, request);
+      }
+
+      return fallback.data as T;
+    }
+
+    // 2. Laden und speichern (hängt sich an eine laufende Anfrage), 3. bei vorübergehendem Fehler den alten Stand liefern.
+    return startLoad(key, request, fallback);
+  }
+
+  /** Meldet sich für Aktualisierungen im Hintergrund an. Liefert die Funktion zum Abmelden. */
+  function subscribe(listener: ApiUpdateListener) {
+    listeners.add(listener);
+
+    return () => {
+      listeners.delete(listener);
+    };
   }
 
   /**
@@ -417,13 +493,18 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
     await flush();
   }
 
-  return { cachedGet, invalidate, clear, flush };
+  return { cachedGet, invalidate, clear, flush, subscribe };
 }
 
 const defaultCache = createResponseCache({ storage: AsyncStorage });
 
 export function cachedGet<T>(request: CachedGetRequest<T>) {
   return defaultCache.cachedGet(request);
+}
+
+/** Meldet, wenn ein Eintrag im Hintergrund aktualisiert wurde. Liefert die Funktion zum Abmelden. */
+export function subscribeApiUpdates(listener: ApiUpdateListener) {
+  return defaultCache.subscribe(listener);
 }
 
 export function invalidateApiCache(prefix?: string) {

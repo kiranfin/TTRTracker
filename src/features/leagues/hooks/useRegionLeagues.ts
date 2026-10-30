@@ -6,6 +6,7 @@ import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '@/src/storage/favorites';
 import type { LeagueClassReference, LeagueRegion } from '@/src/types/tttracker';
 import { getCurrentSeason } from '@/src/utils/dates';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 // Aktuelle Saison (Juli bis Juni), z. B. "26/27".
 export const DEFAULT_SEASON = getCurrentSeason();
@@ -88,7 +89,7 @@ export function useRegionLeagues() {
       setRegions(await ttApi.getLeagueRegions(association, season));
     } catch (loadError) {
       setRegions([]);
-      setError(loadError instanceof Error ? loadError.message : t('region.loadRegionsError'));
+      setError(describeApiError(loadError, t, 'region.loadRegionsError'));
     } finally {
       setLoadingRegions(false);
     }
@@ -115,7 +116,7 @@ export function useRegionLeagues() {
       );
     } catch (loadError) {
       setClasses([]);
-      setError(loadError instanceof Error ? loadError.message : t('region.loadClassesError'));
+      setError(describeApiError(loadError, t, 'region.loadClassesError'));
     } finally {
       setLoadingClasses(false);
     }

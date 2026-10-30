@@ -1,4 +1,5 @@
 import { ScrollView, Text } from 'react-native';
+import { DataFreshness } from '@/src/components/DataFreshness';
 import { EmptyState } from '@/src/components/EmptyState';
 import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
@@ -15,6 +16,7 @@ export default function MatchDetailsScreen() {
 
   const {
     meeting,
+    freshness,
     preview,
     loading,
     error,
@@ -59,6 +61,8 @@ export default function MatchDetailsScreen() {
           />
 
           {!loading && !error && locationText ? <InfoPill icon="location-outline" text={locationText} /> : null}
+
+          {!loading && !error ? <DataFreshness freshness={freshness} /> : null}
 
           {loading ? <SkeletonList count={3} /> : null}
 

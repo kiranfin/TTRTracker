@@ -45,17 +45,20 @@ Before running or building the app, ensure that the backend is configured, deplo
 
 ## Why a Backend Is Required
 
-The app does not communicate directly with myTischtennis from the frontend. Instead, it utilizes a custom backend as a defensive proxy layer. This is crucial because the myTischtennis interface used by the project is unofficial and should not be accessed directly, aggressively, or systematically from the mobile client.
+Public data (search, clubs, leagues, tables, schedules, match reports) never comes straight from myTischtennis. The app asks the backend, which acts as a defensive proxy: it caches, spreads requests over time and keeps to a fixed request budget. The myTischtennis interface used by the project is unofficial and must not be hit directly, aggressively or systematically from many phones.
+
+Personal data that needs a myTischtennis login (your own TTR and history) is different. It is fetched by the phone itself with the login stored on the device, and the login never goes to the backend. If you share your rating with another app user, the phone uploads the last data it got (a snapshot, at most once an hour, with your consent) and the backend hands it to the people you shared it with.
 
 The backend is responsible for:
 
 - Providing stable API endpoints for the mobile app
-- Forwarding selected requests to the underlying data source
-- Adding short-lived caching
-- Applying rate-limit protection
-- Handling errors consistently
-- Keeping authentication/session-related logic outside of the mobile app
+- Caching public data and refreshing it by match schedule, in the background
+- Staying within a fixed budget of requests to myTischtennis
+- Handling errors consistently, so the app can show the last known data with its age
+- Storing shared snapshots for the people you shared them with
 - Avoiding systematic crawling or permanent mirroring of external data
+
+The app also keeps its own copy of every answer. It shows the stored data at once ("As of 5 minutes ago") and refreshes it in the background.
 
 ## Requirements
 

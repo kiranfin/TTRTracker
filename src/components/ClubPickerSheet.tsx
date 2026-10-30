@@ -12,6 +12,7 @@ import { ListGroup } from './ListGroup';
 import { ListRow } from './ListRow';
 import { SearchInput } from './SearchInput';
 import { SkeletonList } from './SkeletonRow';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 type ClubPickerSheetProps = {
   visible: boolean;
@@ -82,7 +83,7 @@ export function ClubPickerSheet({ visible, onClose, onSelect, title }: ClubPicke
             if (requestId !== requestCounter.current) return;
 
             setClubs([]);
-            setError(searchError instanceof Error ? searchError.message : t('search.failed'));
+            setError(describeApiError(searchError, t, 'search.failed'));
           })
           .finally(() => {
             if (requestId === requestCounter.current) setLoading(false);

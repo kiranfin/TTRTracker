@@ -1,5 +1,6 @@
 import { buildLocalComparison } from '../features/player-compare/localCompare';
 import { ApiError, apiGet } from './client';
+import { getLocalMyttCookie } from '../storage/myttSession';
 import { withMyttSession } from './myttData';
 import { myttDirect } from './myttDirect';
 import type {
@@ -13,6 +14,7 @@ import type {
   PlayerTtrEstimateResponse,
   PlayerTtrHistoryResponse,
   PlayerTtrResponse,
+  SharedPlayerResponse,
 } from '../types/tttracker';
 import { getCurrentSeason } from '../utils/dates';
 
@@ -53,6 +55,66 @@ function segment(value: string) {
   return encodeURIComponent(value);
 }
 
+// Eine Seite des Vergleichs aus dem Snapshot, den jemand mit dir teilt. null, wenn nichts geteilt wird.
+async function loadSharedSide(nuid: string) {
+  const shared = await ttApi.getSharedPlayer(nuid).catch(() => null);
+  const data = shared?.data;
+
+  if (!data || (!data.ttr && !data.history)) return null;
+
+  const fetchedAt = Math.min(
+      ...[data.ttr?.fetchedAt, data.history?.fetchedAt].map((value) => Date.parse(value ?? '')).filter(Number.isFinite),
+  );
+
+  const ttr: PlayerTtrResponse = {
+    data: data.ttr ?? { nuid, available: false, ttr: data.history?.ttr ?? null, error: null },
+    meta: { source: 'snapshot', fetchedAt: data.ttr?.fetchedAt },
+  };
+
+  // Ohne Freigabe für den Verlauf bleibt dieser Teil leer, der Rest des Vergleichs steht.
+  const history: PlayerTtrHistoryResponse = {
+    data: data.history ?? {
+      nuid,
+      available: false,
+      ttr: data.ttr?.ttr ?? null,
+      qttr: null,
+      maxTtr: null,
+      ttrDate: null,
+      maxTtrDate: null,
+      clubName: null,
+      personName: null,
+      events: [],
+      error: 'NOT_SHARED',
+    },
+    meta: { source: 'snapshot', fetchedAt: data.history?.fetchedAt },
+  };
+
+  return { ttr, history, fetchedAt };
+}
+
+// Vergleich ohne eigene myTischtennis Verbindung: beide Seiten müssen jemand mit dir teilen.
+// Head-to-Head gibt es nur mit eigenem Login, deshalb bleibt er leer.
+async function compareFromSnapshots(leftNuid: string, rightNuid: string) {
+  const [left, right] = await Promise.all([loadSharedSide(leftNuid), loadSharedSide(rightNuid)]);
+
+  if (!left || !right) {
+    throw new ApiError('Für diesen Vergleich fehlt eine myTischtennis-Verbindung.', 401, 'MYTT_ACCOUNT_REQUIRED');
+  }
+
+  return {
+    data: buildLocalComparison({
+      leftNuid,
+      rightNuid,
+      leftTtr: left.ttr,
+      rightTtr: right.ttr,
+      leftHistory: left.history,
+      rightHistory: right.history,
+      headToHead: null,
+    }),
+    meta: { source: 'snapshot', fetchedAt: new Date(Math.min(left.fetchedAt, right.fetchedAt)).toISOString() },
+  };
+}
+
 export const ttApi = {
   health() {
     return apiGet<HealthResponse>('/health');
@@ -78,12 +140,12 @@ export const ttApi = {
     return normalizeList<ClubSearchResult>(response);
   },
 
+  // Aktueller TTR mit myTischtennis Login: holt nur das Gerät (kein Cookie: MYTT_ACCOUNT_REQUIRED).
   getPlayerTtr(nuid: string) {
     return withMyttSession({
       key: `ttr:${nuid}`,
+      snapshot: { kind: 'ttr', nuid },
       direct: (cookie) => myttDirect.getPlayerTtr(cookie, nuid),
-      backend: () =>
-          apiGet<PlayerTtrResponse>(`/api/players/${segment(nuid)}/ttr`, undefined, { authenticated: true }),
     });
   },
 
@@ -97,18 +159,28 @@ export const ttApi = {
     return apiGet<PlayerTtrEstimateResponse>(`/api/players/${segment(nuid)}/ttr-estimate`, lookup);
   },
 
+  // Verlauf mit myTischtennis Login: holt nur das Gerät (kein Cookie: MYTT_ACCOUNT_REQUIRED).
   getPlayerTtrHistory(nuid: string) {
     return withMyttSession({
       key: `ttr-history:${nuid}`,
+      snapshot: { kind: 'history', nuid },
       direct: (cookie) => myttDirect.getPlayerTtrHistory(cookie, nuid),
-      backend: () =>
-          apiGet<PlayerTtrHistoryResponse>(`/api/players/${segment(nuid)}/ttr-history`, undefined, {
-            authenticated: true,
-          }),
     });
   },
 
-  comparePlayers(leftNuid: string, rightNuid: string) {
+  // Was jemand mit dir teilt: Snapshot des Besitzers (Stand, Besitzername), je nach Freigabe mit TTR und Verlauf.
+  getSharedPlayer(nuid: string) {
+    return apiGet<SharedPlayerResponse>(`/api/shared/players/${segment(nuid)}`, undefined, {
+      authenticated: true,
+    });
+  },
+
+  async comparePlayers(leftNuid: string, rightNuid: string) {
+    // Ohne eigene Verbindung vergleichen die Snapshots, die andere mit dir teilen (ohne Head-to-Head).
+    if (!(await getLocalMyttCookie())) {
+      return compareFromSnapshots(leftNuid, rightNuid);
+    }
+
     return withMyttSession<unknown>({
       key: `compare:${leftNuid}:${rightNuid}`,
       direct: async (cookie) => {
@@ -133,10 +205,6 @@ export const ttApi = {
           meta: { source: 'device' },
         };
       },
-      backend: () =>
-          apiGet<unknown>(`/api/players/${segment(leftNuid)}/compare/${segment(rightNuid)}`, undefined, {
-            authenticated: true,
-          }),
     });
   },
 

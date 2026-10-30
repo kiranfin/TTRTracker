@@ -97,7 +97,8 @@ export const myttDirect = {
 
         return {
             data: { nuid, available: error === null && ttr !== null, ttr, error },
-            meta: { source: 'device' },
+            meta: { source: 'device', fetchedAt: new Date().toISOString() },
+            raw: result,
         };
     },
 
@@ -120,7 +121,8 @@ export const myttDirect = {
                 events: Array.isArray(result.event) ? result.event : [],
                 error,
             },
-            meta: { source: 'device' },
+            meta: { source: 'device', fetchedAt: new Date().toISOString() },
+            raw: result,
         };
     },
 

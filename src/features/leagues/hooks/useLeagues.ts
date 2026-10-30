@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
+import { useApiUpdates } from '@/src/hooks/useApiUpdates';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { getFavorites } from '@/src/storage/favorites';
 import { getMeClub } from '@/src/storage/meClub';
@@ -9,6 +10,7 @@ import type { LeagueAssociation } from '@/src/types/tttracker';
 import { getCurrentSeason } from '@/src/utils/dates';
 import { normalizeTable, normalizeTeams } from '@/src/utils/normalizers';
 import type { LeagueStanding, MyLeague } from '../types';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 // Höchstens so viele Tabellen laden, damit der Ligen-Tab das Backend nicht flutet.
 const MAX_STANDINGS = 6;
@@ -44,7 +46,7 @@ export function useLeagues(season: string) {
       setAssociations(await ttApi.getLeagueAssociations());
     } catch (loadError) {
       setAssociations([]);
-      setError(loadError instanceof Error ? loadError.message : t('leagues.loadError'));
+      setError(describeApiError(loadError, t, 'leagues.loadError'));
     } finally {
       setLoading(false);
     }
@@ -55,120 +57,131 @@ export function useLeagues(season: string) {
     loadAssociations().catch(() => undefined);
   }, [loadAssociations]);
 
-  // "Deine Ligen": Liga-Favoriten plus die Ligen der Mannschaften des gespeicherten Vereins
+  // "Deine Ligen": Liga-Favoriten plus die Ligen der Mannschaften des gespeicherten Vereins.
+  // Die Antworten kommen aus dem Zwischenspeicher der App: bei frischen Einträgen geht keine Anfrage raus,
+  // bei abgelaufenen wird sofort der letzte Stand gezeigt und im Hintergrund aktualisiert.
+  const loadMyLeagues = useCallback(async (isActive: () => boolean) => {
+    const result = new Map<string, MyLeague>();
+
+    try {
+      const favorites = await getFavorites();
+
+      for (const item of favorites) {
+        if (item.type !== 'league') continue;
+
+        const association = item.params?.association ?? '';
+        const groupId = item.params?.groupId ?? item.id;
+
+        if (!association || !groupId) continue;
+
+        result.set(leagueKey({ association, groupId }), {
+          id: item.id,
+          title: item.params?.title ?? item.title,
+          association,
+          groupId,
+          season: item.params?.season ?? '',
+          leagueSlug: item.params?.leagueSlug,
+          source: 'favorite',
+        });
+      }
+    } catch {
+      // Ohne Favoriten gibt es nur die Vereinsligen.
+    }
+
+    try {
+      const club = await getMeClub();
+
+      if (club) {
+        const teams = normalizeTeams(await ttApi.getClubTeams(club.organization, club.clubNumber));
+
+        for (const team of teams) {
+          if (!team.association || !team.groupId) continue;
+
+          const key = leagueKey({ association: team.association, groupId: team.groupId });
+          if (result.has(key)) continue;
+
+          result.set(key, {
+            id: key,
+            title: team.leagueName,
+            association: team.association,
+            groupId: team.groupId,
+            season: team.season ?? '',
+            leagueSlug: team.leagueSlug,
+            source: 'club',
+            teamName: team.teamName,
+            teamId: team.teamId,
+          });
+        }
+      }
+    } catch {
+      // Vereinsligen sind eine Zugabe, ein Fehler soll die Verbandsliste nicht blockieren.
+    }
+
+    if (!isActive()) return;
+
+    // Das Backend liefert Vereinsmannschaften nur für die aktuelle Saison, Favoriten tragen ihre eigene.
+    const leagues = [...result.values()].filter((league) => sameSeason(league.season, season));
+    setMyLeagues(leagues);
+
+    // Platz und Punkte der eigenen Mannschaft bzw. Größe der Liga nachladen
+    const next: Record<string, LeagueStanding> = {};
+
+    await Promise.all(
+        leagues.slice(0, MAX_STANDINGS).map(async (league) => {
+          try {
+            const rows = normalizeTable(
+                await ttApi.getLeagueTable(
+                    league.association,
+                    league.season || getCurrentSeason(),
+                    league.groupId,
+                    league.leagueSlug ?? 'x',
+                    'gesamt',
+                ),
+            );
+
+            // Die Teamliste des Vereins nennt die Mannschaft nur "Erwachsene II", die Tabelle
+            // "TTV Pleidelsheim II". Die Team-ID passt dagegen immer.
+            const own =
+                (league.teamId ? rows.find((row) => row.id === league.teamId) : undefined) ??
+                (league.teamName
+                    ? rows.find((row) => normalizeTeamName(row.teamName) === normalizeTeamName(league.teamName))
+                    : undefined);
+
+            next[leagueKey(league)] = {
+              size: rows.length,
+              rank: own?.position,
+              points: own?.points ?? (own?.pointsWon && own?.pointsLost ? `${own.pointsWon}:${own.pointsLost}` : undefined),
+            };
+          } catch {
+            // Ohne Tabelle bleibt die Zeile einfach ohne Platz.
+          }
+        }),
+    );
+
+    if (isActive()) setStandings(next);
+  }, [season]);
+
   useFocusEffect(
       useCallback(() => {
         let active = true;
 
-        async function loadMyLeagues() {
-          const result = new Map<string, MyLeague>();
-
-          try {
-            const favorites = await getFavorites();
-
-            for (const item of favorites) {
-              if (item.type !== 'league') continue;
-
-              const association = item.params?.association ?? '';
-              const groupId = item.params?.groupId ?? item.id;
-
-              if (!association || !groupId) continue;
-
-              result.set(leagueKey({ association, groupId }), {
-                id: item.id,
-                title: item.params?.title ?? item.title,
-                association,
-                groupId,
-                season: item.params?.season ?? '',
-                leagueSlug: item.params?.leagueSlug,
-                source: 'favorite',
-              });
-            }
-          } catch {
-            // Ohne Favoriten gibt es nur die Vereinsligen.
-          }
-
-          try {
-            const club = await getMeClub();
-
-            if (club) {
-              const teams = normalizeTeams(await ttApi.getClubTeams(club.organization, club.clubNumber));
-
-              for (const team of teams) {
-                if (!team.association || !team.groupId) continue;
-
-                const key = leagueKey({ association: team.association, groupId: team.groupId });
-                if (result.has(key)) continue;
-
-                result.set(key, {
-                  id: key,
-                  title: team.leagueName,
-                  association: team.association,
-                  groupId: team.groupId,
-                  season: team.season ?? '',
-                  leagueSlug: team.leagueSlug,
-                  source: 'club',
-                  teamName: team.teamName,
-                  teamId: team.teamId,
-                });
-              }
-            }
-          } catch {
-            // Vereinsligen sind eine Zugabe, ein Fehler soll die Verbandsliste nicht blockieren.
-          }
-
-          if (!active) return;
-
-          // Das Backend liefert Vereinsmannschaften nur für die aktuelle Saison, Favoriten tragen ihre eigene.
-          const leagues = [...result.values()].filter((league) => sameSeason(league.season, season));
-          setMyLeagues(leagues);
-
-          // Platz und Punkte der eigenen Mannschaft bzw. Größe der Liga nachladen
-          const next: Record<string, LeagueStanding> = {};
-
-          await Promise.all(
-              leagues.slice(0, MAX_STANDINGS).map(async (league) => {
-                try {
-                  const rows = normalizeTable(
-                      await ttApi.getLeagueTable(
-                          league.association,
-                          league.season || getCurrentSeason(),
-                          league.groupId,
-                          league.leagueSlug ?? 'x',
-                          'gesamt',
-                      ),
-                  );
-
-                  // Die Teamliste des Vereins nennt die Mannschaft nur "Erwachsene II", die Tabelle
-                  // "TTV Pleidelsheim II". Die Team-ID passt dagegen immer.
-                  const own =
-                      (league.teamId ? rows.find((row) => row.id === league.teamId) : undefined) ??
-                      (league.teamName
-                          ? rows.find((row) => normalizeTeamName(row.teamName) === normalizeTeamName(league.teamName))
-                          : undefined);
-
-                  next[leagueKey(league)] = {
-                    size: rows.length,
-                    rank: own?.position,
-                    points: own?.points ?? (own?.pointsWon && own?.pointsLost ? `${own.pointsWon}:${own.pointsLost}` : undefined),
-                  };
-                } catch {
-                  // Ohne Tabelle bleibt die Zeile einfach ohne Platz.
-                }
-              }),
-          );
-
-          if (active) setStandings(next);
-        }
-
-        loadMyLeagues().catch(() => undefined);
+        loadMyLeagues(() => active).catch(() => undefined);
 
         return () => {
           active = false;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [season]),
+      }, [loadMyLeagues]),
   );
+
+  // Wurden Tabellen oder Vereinsmannschaften im Hintergrund aktualisiert, die Liste still neu aufbauen.
+  const isMyLeagueData = useCallback(
+      (path: string) => /^\/api\/clubs\/[^/]+\/[^/]+\/teams$/.test(path) || /^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/table$/.test(path),
+      [],
+  );
+
+  useApiUpdates(isMyLeagueData, () => {
+    loadMyLeagues(() => true).catch(() => undefined);
+  });
 
   function openAssociation(association: LeagueAssociation, season?: string) {
     router.push({

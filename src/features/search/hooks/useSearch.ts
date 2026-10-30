@@ -10,11 +10,10 @@ import type { NormalizedClub, NormalizedPlayer } from '@/src/types/tttracker';
 import { normalizeClub, normalizePlayer } from '@/src/utils/normalizers';
 import type { SearchFilter } from '../types';
 import { uniqueById } from '../utils';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 export const SEARCH_DEBOUNCE_MS = 400;
 export const SEARCH_MIN_CHARACTERS = 2;
-// So viele Treffer bekommen in der Übersicht ihren TTR nachgeladen (ein Request pro Spieler)
-const INITIAL_TTR_LOOKUPS = 4;
 
 export function useSearch() {
   const { t } = useI18n();
@@ -30,12 +29,6 @@ export function useSearch() {
 
   // Jede Suche bekommt eine Nummer, damit späte Antworten alter Eingaben verworfen werden.
   const requestCounter = useRef(0);
-  const ttrRequested = useRef<Set<string>>(new Set());
-  const playersRef = useRef<NormalizedPlayer[]>([]);
-  const filterRef = useRef<SearchFilter>(filter);
-
-  playersRef.current = players;
-  filterRef.current = filter;
 
   const loadFavorites = useCallback(async () => {
     const favorites = await getFavorites();
@@ -49,37 +42,9 @@ export function useSearch() {
       }, [loadFavorites]),
   );
 
-  const enrichTtr = useCallback((items: NormalizedPlayer[], requestId: number) => {
-    for (const player of items) {
-      const nuid = player.internalId;
-
-      if (!nuid || ttrRequested.current.has(nuid)) continue;
-
-      ttrRequested.current.add(nuid);
-
-      ttApi
-          .getPlayerTtr(nuid)
-          .then((response) => {
-            if (requestId !== requestCounter.current) return;
-
-            // Das Backend reicht den Wert von myTischtennis durch, der kann auch als Text kommen.
-            const rawTtr = response.data.ttr as unknown;
-            const ttr = typeof rawTtr === 'string' && rawTtr.trim() ? Number(rawTtr) : rawTtr;
-            if (typeof ttr !== 'number' || !Number.isFinite(ttr)) return;
-
-            setPlayers((previous) =>
-                previous.map((candidate) => (candidate.internalId === nuid ? { ...candidate, ttr } : candidate)),
-            );
-          })
-          .catch(() => undefined);
-    }
-  }, []);
-
   useEffect(() => {
     const text = query.trim();
     const requestId = ++requestCounter.current;
-
-    ttrRequested.current = new Set();
 
     if (text.length < SEARCH_MIN_CHARACTERS) {
       setPlayers([]);
@@ -110,11 +75,8 @@ export function useSearch() {
             setClubs(normalizedClubs);
             setSearchedQuery(text);
 
-            // In "Spieler" sind alle Treffer sichtbar, sonst nur die ersten
-            enrichTtr(
-                filterRef.current === 'players' ? normalizedPlayers : normalizedPlayers.slice(0, INITIAL_TTR_LOOKUPS),
-                requestId,
-            );
+            // Der TTR kommt nur, wenn die Suche ihn schon mitliefert. Pro Treffer nachladen wäre ein
+            // Request je Spieler, der öffentliche Wert wird erst beim Öffnen des Profils geholt.
           })
           .catch((searchError) => {
             if (requestId !== requestCounter.current) return;
@@ -122,7 +84,7 @@ export function useSearch() {
             setPlayers([]);
             setClubs([]);
             setSearchedQuery(text);
-            setError(searchError instanceof Error ? searchError.message : t('search.failed'));
+            setError(describeApiError(searchError, t, 'search.failed'));
           })
           .finally(() => {
             if (requestId === requestCounter.current) setLoading(false);
@@ -132,13 +94,6 @@ export function useSearch() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
-
-  // Wer auf "Spieler" wechselt, sieht alle Treffer, also werden auch die übrigen TTR-Werte geladen.
-  useEffect(() => {
-    if (filter !== 'players') return;
-
-    enrichTtr(playersRef.current, requestCounter.current);
-  }, [enrichTtr, filter, players.length]);
 
   function findClubForPlayer(player: NormalizedPlayer) {
     const playerClubName = player.clubName.trim().toLowerCase();

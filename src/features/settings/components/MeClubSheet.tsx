@@ -18,6 +18,7 @@ import { styles } from '../styles';
 import { formatClubId, getClubDisplayName } from '../utils';
 import { MessageText } from './MessageText';
 import { SettingsInput } from './SettingsInput';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 type SheetProps = {
   settings: SettingsController;
@@ -101,7 +102,7 @@ export function MeClubSheet({ settings, visible, onClose }: SheetProps) {
             if (requestId !== requestCounter.current) return;
 
             setClubs([]);
-            setError(searchError instanceof Error ? searchError.message : t('search.failed'));
+            setError(describeApiError(searchError, t, 'search.failed'));
           })
           .finally(() => {
             if (requestId === requestCounter.current) setLoading(false);
