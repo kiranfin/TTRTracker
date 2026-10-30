@@ -540,7 +540,10 @@ export function useSettings() {
       pathname: '/(tabs)/player/[nuid]',
       params: {
         nuid: savedMeNuid,
-        title: t('home.profileFallback'),
+        title: savedMeName ?? t('home.profileFallback'),
+        clubName: savedMeClub?.clubName ?? savedMeClub?.title ?? '',
+        organization: savedMeClub?.organization ?? '',
+        clubNumber: savedMeClub?.clubNumber ?? '',
       },
     });
   }

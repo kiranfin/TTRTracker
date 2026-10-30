@@ -80,7 +80,7 @@ export function usePlayerDetails() {
   const isMeProfile =
       normalizedCurrentNuid.length > 0 && normalizeMePlayerNuid(storedMePlayerNuid) === normalizedCurrentNuid;
   const canClaimProfile = mePlayerChecked && !hasMePlayer && normalizedCurrentNuid.length > 0;
-  const title = params.title ?? t('player.defaultTitle');
+  const title = params.title ?? params.name ?? t('player.defaultTitle');
 
   // Ohne offiziellen Verlauf zeigt das Profil den aus öffentlichen Spielberichten geschätzten.
   const estimatedHistory = useMemo(() => (estimate && estimate.events.length > 0 ? estimateToHistory(estimate) : null), [estimate]);
@@ -88,6 +88,8 @@ export function usePlayerDetails() {
   const historyIsEstimated = officialHistory === null && estimatedHistory !== null;
 
   const displayName = history?.personName ?? title;
+  // Name für die Vereinssuche im Backend, nur wenn es ein echter Name und kein Platzhalter ist.
+  const lookupName = officialHistory?.personName ?? params.title ?? params.name ?? undefined;
   const clubName = history?.clubName ?? params.clubName;
 
   const routeClubRouteParams: ClubRouteParams | null = routeClubKey
@@ -207,10 +209,10 @@ export function usePlayerDetails() {
 
     setPublicRating(null);
 
-    if (!nuid || !clubOrganization || !clubNumber) return;
+    if (!nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
 
     ttApi
-        .getPlayerRating(nuid, clubOrganization, clubNumber)
+        .getPlayerRating(nuid, { organization: clubOrganization, clubNumber, clubName, name: lookupName })
         .then((response) => {
           if (active) setPublicRating(response.data.rating);
         })
@@ -219,7 +221,7 @@ export function usePlayerDetails() {
     return () => {
       active = false;
     };
-  }, [nuid, clubOrganization, clubNumber]);
+  }, [nuid, clubOrganization, clubNumber, clubName, lookupName]);
 
   // Ohne myTischtennis Verbindung wird der Verlauf aus öffentlichen Spielberichten geschätzt.
   useEffect(() => {
@@ -227,10 +229,10 @@ export function usePlayerDetails() {
 
     setEstimate(null);
 
-    if (!unavailableReason || !nuid || !clubOrganization || !clubNumber) return;
+    if (!unavailableReason || !nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
 
     ttApi
-        .getPlayerTtrEstimate(nuid, clubOrganization, clubNumber)
+        .getPlayerTtrEstimate(nuid, { organization: clubOrganization, clubNumber, clubName, name: lookupName })
         .then((response) => {
           if (active) setEstimate(response.data);
         })
@@ -239,7 +241,7 @@ export function usePlayerDetails() {
     return () => {
       active = false;
     };
-  }, [nuid, clubOrganization, clubNumber, unavailableReason]);
+  }, [nuid, clubOrganization, clubNumber, clubName, lookupName, unavailableReason]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);

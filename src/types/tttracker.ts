@@ -107,6 +107,7 @@ export type PlayerRatingResponse = {
     nuid: string;
     available: boolean;
     rating: PlayerRating | null;
+    club?: { organization: string; clubNumber: string; clubName: string } | null;
   };
   meta?: {
     source?: string;

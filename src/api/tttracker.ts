@@ -41,6 +41,14 @@ function normalizeList<T>(response: unknown): T[] {
   return array ? (array as T[]) : [];
 }
 
+// Wie das Backend den Verein des Spielers findet: direkt über Verband und Vereinsnummer oder über den Namen.
+export type PlayerLookup = {
+  organization?: string;
+  clubNumber?: string;
+  clubName?: string;
+  name?: string;
+};
+
 function segment(value: string) {
   return encodeURIComponent(value);
 }
@@ -80,19 +88,13 @@ export const ttApi = {
   },
 
   // Öffentlicher TTR aus der Vereinsliste, ohne myTischtennis Verbindung.
-  getPlayerRating(nuid: string, organization: string, clubNumber: string) {
-    return apiGet<PlayerRatingResponse>(`/api/players/${segment(nuid)}/rating`, {
-      organization,
-      clubNumber,
-    });
+  getPlayerRating(nuid: string, lookup: PlayerLookup) {
+    return apiGet<PlayerRatingResponse>(`/api/players/${segment(nuid)}/rating`, lookup);
   },
 
   // Geschätzter TTR und Verlauf aus öffentlichen Spielberichten, ohne myTischtennis Verbindung.
-  getPlayerTtrEstimate(nuid: string, organization: string, clubNumber: string) {
-    return apiGet<PlayerTtrEstimateResponse>(`/api/players/${segment(nuid)}/ttr-estimate`, {
-      organization,
-      clubNumber,
-    });
+  getPlayerTtrEstimate(nuid: string, lookup: PlayerLookup) {
+    return apiGet<PlayerTtrEstimateResponse>(`/api/players/${segment(nuid)}/ttr-estimate`, lookup);
   },
 
   getPlayerTtrHistory(nuid: string) {

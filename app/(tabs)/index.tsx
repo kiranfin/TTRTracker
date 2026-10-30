@@ -118,7 +118,7 @@ export default function HomeScreen() {
             visible={pickerOpen}
             title={t('picker.meTitle')}
             onClose={() => setPickerOpen(false)}
-            onSelect={(selection) => selectMePlayer(selection.nuid)}
+            onSelect={(selection) => selectMePlayer(selection.nuid, selection.name)}
         />
       </Screen>
   );

@@ -8,7 +8,7 @@ import { useI18n } from '@/src/i18n/I18nProvider';
 import { estimateToHistory } from '../../player-details/estimate';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
-import { getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
+import { getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
 import type { HomeClubMatch } from '../types';
@@ -21,6 +21,7 @@ export function useHome() {
   const [meApiHistoryData, setMeApiHistoryData] = useState<Record<string, unknown> | null>(null);
   const [meLoading, setMeLoading] = useState(false);
   const [meError, setMeError] = useState<string | null>(null);
+  const [meStoredName, setMeStoredName] = useState<string | null>(null);
   const [meUnavailableReason, setMeUnavailableReason] = useState<MyttUnavailableReason | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -45,6 +46,7 @@ export function useHome() {
             if (!active) return;
 
             setMeNuid(storedNuid);
+            setMeStoredName(await getMePlayerName());
 
             if (!storedNuid) {
               setMeHistory(null);
@@ -88,13 +90,22 @@ export function useHome() {
         // Der Verein kommt aus dem gespeicherten Ich-Verein, der Spieler hat meist denselben.
         async function loadEstimateFallback() {
           try {
-            const [storedNuid, storedClub] = await Promise.all([getMePlayerNuid(), getMeClub()]);
+            const [storedNuid, storedClub, storedName] = await Promise.all([
+              getMePlayerNuid(),
+              getMeClub(),
+              getMePlayerName(),
+            ]);
 
-            if (!storedNuid || !storedClub) return;
+            if (!storedNuid || (!storedClub && !storedName)) return;
 
-            const response = await ttApi.getPlayerTtrEstimate(storedNuid, storedClub.organization, storedClub.clubNumber);
+            const response = await ttApi.getPlayerTtrEstimate(storedNuid, {
+              organization: storedClub?.organization,
+              clubNumber: storedClub?.clubNumber,
+              clubName: storedClub?.clubName ?? storedClub?.title,
+              name: storedName ?? undefined,
+            });
 
-            if (!active || response.data.events.length === 0) return;
+            if (!active || !response.data.available) return;
 
             setMeHistory(estimateToHistory(response.data));
           } catch {
@@ -136,7 +147,7 @@ export function useHome() {
       }, []),
   );
 
-  const displayName = formatPersonName(meHistory?.personName) || t('home.profileFallback');
+  const displayName = formatPersonName(meHistory?.personName) || meStoredName || t('home.profileFallback');
   const firstName = meHistory?.personName ? getFirstName(meHistory.personName) : '';
 
   // Namen merken, damit die Einstellungen ihn ohne eigenen Request zeigen können.
@@ -245,8 +256,9 @@ export function useHome() {
 
   useOnMyttConnected(reloadMe);
 
-  async function selectMePlayer(nuid: string) {
+  async function selectMePlayer(nuid: string, name?: string) {
     await setMePlayerNuid(nuid);
+    await setMePlayerName(name);
     reloadMe();
   }
 
@@ -261,7 +273,10 @@ export function useHome() {
       params: {
         nuid: meNuid,
         title: displayName,
-        clubName: clubName ?? '',
+        clubName: clubName ?? meClub?.clubName ?? meClub?.title ?? '',
+        // Mit gespeichertem Verein findet das Profil den öffentlichen TTR auch ohne myTischtennis.
+        organization: meClub?.organization ?? '',
+        clubNumber: meClub?.clubNumber ?? '',
       },
     });
   }
