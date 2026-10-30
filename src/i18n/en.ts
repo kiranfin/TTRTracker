@@ -570,7 +570,9 @@ export const en: TranslationResource = {
   },
   mytt: {
     title: 'Connect myTischtennis',
-    loginHint: 'Log in to myTischtennis. The connection is saved automatically afterwards.',
+    loginHint: 'Log in to myTischtennis. The connection is saved automatically afterwards. If nothing happens, tap "I am logged in" below.',
+    finish: 'I am logged in',
+    notLoggedIn: 'The login was not recognized. Please log in to myTischtennis first.',
     noCookies: 'No myTischtennis cookies found. Please log in again.',
     saveError: 'myTischtennis connection could not be saved.',
     saving: 'Saving connection...',

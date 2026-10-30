@@ -7,7 +7,7 @@ import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import { useMyttConnect } from '../hooks/useMyttConnect';
-import { MYTT_LOGIN_URL } from '../utils/login';
+import { CONSENT_BANNER_FIX_SCRIPT, MYTT_LOGIN_URL } from '../utils/login';
 
 type MyttConnectViewProps = {
   returnTo?: string;
@@ -17,7 +17,7 @@ type MyttConnectViewProps = {
 export function MyttConnectView({ returnTo }: MyttConnectViewProps) {
   const { colors } = useTheme();
   const { t } = useI18n();
-  const { status, message, attempt, onNavigationStateChange, retry } = useMyttConnect(returnTo);
+  const { status, message, attempt, onNavigationStateChange, saveNow, retry } = useMyttConnect(returnTo);
 
   const busy = status === 'preparing' || status === 'saving';
 
@@ -37,6 +37,7 @@ export function MyttConnectView({ returnTo }: MyttConnectViewProps) {
                     thirdPartyCookiesEnabled
                     javaScriptEnabled
                     domStorageEnabled
+                    injectedJavaScriptBeforeContentLoaded={CONSENT_BANNER_FIX_SCRIPT}
                     onNavigationStateChange={onNavigationStateChange}
                     style={styles.webView}
                 />
@@ -60,6 +61,10 @@ export function MyttConnectView({ returnTo }: MyttConnectViewProps) {
                 </View>
             ) : null}
           </View>
+
+          <Button variant="outline" icon="checkmark-circle-outline" disabled={status !== 'login'} onPress={saveNow}>
+            {t('mytt.finish')}
+          </Button>
         </View>
       </Screen>
   );

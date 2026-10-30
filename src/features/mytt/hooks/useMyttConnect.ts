@@ -4,11 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import type { WebViewNavigation } from 'react-native-webview';
 
+import { ApiError } from '@/src/api/client';
 import { saveLocalMyttSession } from '@/src/api/myttData';
+import { myttDirect } from '@/src/api/myttDirect';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { getMePlayerNuid } from '@/src/storage/mePlayer';
 import { notifyMyttConnected } from '../utils/connectionEvents';
 import { syncServerSession } from '../utils/sharing';
-import { MYTT_BASE_URL, cookiesToHeader, getMyttPath, isAuthPath } from '../utils/login';
+import { MYTT_BASE_URL, cookiesToHeader, getMyttPath, hasUnauthenticatedStatus, isAuthPath } from '../utils/login';
 
 export type MyttConnectStatus = 'preparing' | 'login' | 'saving' | 'error';
 
@@ -54,6 +57,26 @@ export function useMyttConnect(returnTo?: string) {
     router.replace((returnTo || '/') as Parameters<typeof router.replace>[0]);
   }
 
+  // Prüft den Cookie mit einem echten Aufruf für das Ich-Profil, damit ein Cookie ohne Anmeldung nicht als
+  // Verbindung gespeichert wird. Ohne Ich-Profil gibt es nichts zum Prüfen, dann zählt der Cookie.
+  async function assertLoggedIn(cookieHeader: string) {
+    const meNuid = await getMePlayerNuid();
+
+    if (!meNuid) return;
+
+    try {
+      const response = await myttDirect.getPlayerTtr(cookieHeader, meNuid);
+
+      if (response.data.error) throw new ApiError('not logged in', 401, 'MYTT_AUTH_EXPIRED');
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'MYTT_AUTH_EXPIRED') {
+        throw new Error(t('mytt.notLoggedIn'));
+      }
+
+      // Andere Fehler (Netz, Störung bei myTischtennis) sagen nichts über die Anmeldung.
+    }
+  }
+
   async function completeLogin() {
     handled.current = true;
     setStatus('saving');
@@ -65,6 +88,8 @@ export function useMyttConnect(returnTo?: string) {
       if (cookieHeader.length < 5) {
         throw new Error(t('mytt.noCookies'));
       }
+
+      await assertLoggedIn(cookieHeader);
 
       // Der Cookie bleibt auf dem Gerät, der Server bekommt ihn nur bei einer aktiven Freigabe.
       await saveLocalMyttSession(cookieHeader);
@@ -86,7 +111,7 @@ export function useMyttConnect(returnTo?: string) {
 
     if (path === null) return;
 
-    if (isAuthPath(path)) {
+    if (isAuthPath(path) || hasUnauthenticatedStatus(state.url)) {
       sawLoginPage.current = true;
       return;
     }
@@ -96,9 +121,16 @@ export function useMyttConnect(returnTo?: string) {
     }
   }
 
+  // Sicherheitsnetz, falls die automatische Erkennung den Login nicht bemerkt hat.
+  function saveNow() {
+    if (handled.current) return;
+
+    completeLogin().catch(() => undefined);
+  }
+
   function retry() {
     setAttempt((current) => current + 1);
   }
 
-  return { status, message, attempt, onNavigationStateChange, retry };
+  return { status, message, attempt, onNavigationStateChange, saveNow, retry };
 }

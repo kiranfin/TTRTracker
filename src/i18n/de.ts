@@ -562,7 +562,9 @@ export const de = {
   },
   mytt: {
     title: 'myTischtennis verbinden',
-    loginHint: 'Melde dich bei myTischtennis an. Die Verbindung wird danach automatisch gespeichert.',
+    loginHint: 'Melde dich bei myTischtennis an. Die Verbindung wird danach automatisch gespeichert. Falls nichts passiert, tippe unten auf „Ich bin angemeldet“.',
+    finish: 'Ich bin angemeldet',
+    notLoggedIn: 'Die Anmeldung wurde nicht erkannt. Bitte melde dich zuerst bei myTischtennis an.',
     noCookies: 'Keine myTischtennis-Cookies gefunden. Bitte erneut anmelden.',
     saveError: 'myTischtennis-Verbindung konnte nicht gespeichert werden.',
     saving: 'Verbindung wird gespeichert...',
