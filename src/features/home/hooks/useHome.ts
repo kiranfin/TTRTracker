@@ -8,7 +8,7 @@ import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { getUpcomingEvents } from '@/src/features/events/utils';
 import { useI18n } from '@/src/i18n/I18nProvider';
-import { estimateToHistory } from '../../player-details/estimate';
+import { publicRatingToHistory } from '../../player-details/estimate';
 import { getEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
@@ -88,14 +88,14 @@ export function useHome() {
             const reason = getMyttUnavailableReason(error);
 
             if (reason) {
-              // Ohne myTischtennis Verbindung zeigt die Startseite den geschätzten Wert und einen Hinweis.
+              // Ohne myTischtennis Verbindung zeigt die Startseite den öffentlichen Wert und einen Hinweis.
               setMeUnavailableReason(reason);
-              await loadEstimateFallback();
+              await loadPublicRatingFallback();
               return;
             }
 
             // myTischtennis bremst (429) oder hängt: lieber der letzte bekannte Stand mit Hinweis als ein Fehler.
-            if ((await loadSnapshotFallback()) || (await loadEstimateFallback())) return;
+            if ((await loadSnapshotFallback()) || (await loadPublicRatingFallback())) return;
 
             if (!active) return;
 
@@ -124,8 +124,8 @@ export function useHome() {
           return true;
         }
 
-        // Der Verein kommt aus dem gespeicherten Ich-Verein, der Spieler hat meist denselben.
-        async function loadEstimateFallback() {
+        // Öffentlicher TTR aus der Andro Rangliste. Der Verein kommt aus dem gespeicherten Ich-Verein, der Spieler hat meist denselben.
+        async function loadPublicRatingFallback() {
           try {
             const [storedNuid, storedClub, storedName] = await Promise.all([
               getMePlayerNuid(),
@@ -135,21 +135,21 @@ export function useHome() {
 
             if (!storedNuid || (!storedClub && !storedName)) return false;
 
-            const response = await ttApi.getPlayerTtrEstimate(storedNuid, {
+            const response = await ttApi.getPlayerRating(storedNuid, {
               organization: storedClub?.organization,
               clubNumber: storedClub?.clubNumber,
               clubName: storedClub?.clubName ?? storedClub?.title,
               name: storedName ?? undefined,
             });
 
-            if (!active || !response.data.available) return false;
+            if (!active || !response.data.rating) return false;
 
-            setMeHistory(estimateToHistory(response.data));
-            setMeStaleSince(getStaleSince(response.meta, response.data.publicRating?.asOf));
+            setMeHistory(publicRatingToHistory(storedNuid, response.data.rating));
+            setMeStaleSince(getStaleSince(response.meta, response.data.rating.asOf));
 
             return true;
           } catch {
-            // Ohne Schätzung bleibt nur der Hinweis.
+            // Ohne öffentlichen Wert bleibt nur der Hinweis.
             return false;
           }
         }

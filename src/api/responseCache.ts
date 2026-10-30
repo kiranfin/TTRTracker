@@ -27,8 +27,6 @@ type FreshMs = number | ((response: unknown) => number);
 const FRESHNESS_RULES: [RegExp, FreshMs][] = [
   [/^\/api\/search\//, 5 * MINUTE_MS],
   [/^\/api\/players\/[^/]+\/rating$/, 15 * MINUTE_MS],
-  // Eine unvollständige Schätzung (pending) ist nie frisch, damit die nächste Etappe geladen wird.
-  [/^\/api\/players\/[^/]+\/ttr-estimate$/, (response) => (getEstimatePending(response) > 0 ? 0 : 15 * MINUTE_MS)],
   [/^\/api\/clubs\/[^/]+\/[^/]+\/(teams|players|info)$/, 30 * MINUTE_MS],
   [/^\/api\/clubs\/[^/]+\/[^/]+\/schedule$/, 30 * MINUTE_MS],
   [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/table$/, 10 * MINUTE_MS],
@@ -66,12 +64,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : null;
-}
-
-function getEstimatePending(response: unknown) {
-  const coverage = asRecord(asRecord(asRecord(response)?.data)?.coverage);
-
-  return typeof coverage?.pending === 'number' ? coverage.pending : 0;
 }
 
 function getMeetingFreshMs(response: unknown) {

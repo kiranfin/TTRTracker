@@ -3,8 +3,24 @@ import type {
   NormalizedPlayerTtrHistory,
   NormalizedTtrHistoryEvent,
   NormalizedTtrHistoryMatch,
+  PlayerRating,
   PlayerTtrEstimate,
 } from '@/src/types/tttracker';
+
+// Die Schätzung erzeugt im Backend viele myTischtennis Requests und ist dort vorerst abgeschaltet
+// (TTR_ESTIMATE_ENABLED). Solange bleibt der öffentliche TTR aus der Andro Rangliste der Fallback.
+export const TTR_ESTIMATE_ENABLED = false;
+
+// Nur der öffentliche Wert, ohne Verlauf.
+export function publicRatingToHistory(nuid: string, rating: PlayerRating): NormalizedPlayerTtrHistory {
+  return {
+    nuid,
+    available: false,
+    ttr: rating.value,
+    ttrDate: rating.asOf,
+    events: [],
+  };
+}
 
 function toMatch(single: EstimatedTtrEvent, index: number): NormalizedTtrHistoryMatch {
   return {

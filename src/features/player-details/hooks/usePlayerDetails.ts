@@ -19,7 +19,7 @@ import type {
   PlayerTtrEstimate,
   PlayerRatingSource,
 } from '@/src/types/tttracker';
-import { estimateToHistory } from '../estimate';
+import { estimateToHistory, TTR_ESTIMATE_ENABLED } from '../estimate';
 import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
@@ -241,13 +241,14 @@ export function usePlayerDetails() {
   }, [nuid, clubOrganization, clubNumber, clubName, lookupName]);
 
   // Ohne myTischtennis Verbindung wird der Verlauf aus öffentlichen Spielberichten geschätzt.
+  // Vorerst aus: dann bleibt der öffentliche Wert (publicRating) aus dem Effekt darüber.
   useEffect(() => {
     let active = true;
 
     setEstimate(null);
     setEstimateStaleSince(null);
 
-    if (!unavailableReason || !nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
+    if (!TTR_ESTIMATE_ENABLED || !unavailableReason || !nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
 
     ttApi
         .getPlayerTtrEstimate(nuid, { organization: clubOrganization, clubNumber, clubName, name: lookupName })
