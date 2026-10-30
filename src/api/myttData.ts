@@ -11,6 +11,9 @@ const cache = new Map<string, { value: unknown; expiresAt: number }>();
 // einem App Neustart reicht ein einzelner Aufruf, um es erneut festzustellen.
 let localSessionExpired = false;
 
+// Nach einem 429 von myTischtennis fragt das Gerät bis dahin nicht selbst, sondern nur das Backend.
+let directPausedUntil = 0;
+
 export async function saveLocalMyttSession(cookie: string) {
     await saveLocalMyttCookie(cookie);
     localSessionExpired = false;
@@ -31,6 +34,25 @@ export async function hasLocalMyttSession() {
 
 function isExpiredError(error: unknown) {
     return error instanceof ApiError && error.code === 'MYTT_AUTH_EXPIRED';
+}
+
+function isRateLimitedError(error: unknown): error is ApiError {
+    return error instanceof ApiError && error.code === 'MYTT_RATE_LIMITED';
+}
+
+function getRetryAfterMs(error: ApiError) {
+    const value = (error.details as { retryAfterMs?: unknown } | undefined)?.retryAfterMs;
+
+    return typeof value === 'number' ? value : 0;
+}
+
+// Das Backend fragt myTischtennis von seiner eigenen IP. Hat es keine Session für den User, bleibt es beim 429.
+async function backendWhileRateLimited<T>(backend: () => Promise<T>, rateLimitError: ApiError): Promise<T> {
+    try {
+        return await backend();
+    } catch {
+        throw rateLimitError;
+    }
 }
 
 /**
@@ -56,6 +78,13 @@ export async function withMyttSession<T>(params: {
 
         if (cached && cached.expiresAt > Date.now()) return cached.value as T;
 
+        if (Date.now() < directPausedUntil) {
+            return backendWhileRateLimited(
+                params.backend,
+                new ApiError('myTischtennis ist gerade rate-limited. Bitte später erneut versuchen.', 429, 'MYTT_RATE_LIMITED'),
+            );
+        }
+
         try {
             const value = await params.direct(cookie);
 
@@ -63,6 +92,11 @@ export async function withMyttSession<T>(params: {
 
             return value;
         } catch (error) {
+            if (isRateLimitedError(error)) {
+                directPausedUntil = Date.now() + getRetryAfterMs(error);
+                return backendWhileRateLimited(params.backend, error);
+            }
+
             if (!isExpiredError(error)) throw error;
 
             localSessionExpired = true;
