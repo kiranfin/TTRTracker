@@ -22,6 +22,7 @@ import { estimateToHistory } from '../estimate';
 import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
+import { getStaleSince } from '@/src/utils/staleness';
 import type { ChartRangeId, ClubRouteParams, LeagueOption, PlayerStats } from '../types';
 import {
   CHART_RANGES,
@@ -61,6 +62,10 @@ export function usePlayerDetails() {
   // Wird nach einem Login erhöht, damit der offizielle Verlauf neu geladen wird.
   const [reloadKey, setReloadKey] = useState(0);
   const [publicRating, setPublicRating] = useState<PlayerRating | null>(null);
+  // Stand je Quelle, wenn sie aus einem älteren Stand kommt (sonst null).
+  const [historyStaleSince, setHistoryStaleSince] = useState<number | null>(null);
+  const [ratingStaleSince, setRatingStaleSince] = useState<number | null>(null);
+  const [estimateStaleSince, setEstimateStaleSince] = useState<number | null>(null);
 
   const [storedMePlayerNuid, setStoredMePlayerNuid] = useState<string | null>(null);
   const [mePlayerLoading, setMePlayerLoading] = useState(false);
@@ -125,11 +130,13 @@ export function usePlayerDetails() {
       setExpandedEventId(null);
       setApiHistoryData(null);
       setOfficialHistory(null);
+      setHistoryStaleSince(null);
 
       try {
         const response = await ttApi.getPlayerTtrHistory(nuid);
         setApiHistoryData(getPlayerHistoryData(response));
         setOfficialHistory(normalizePlayerTtrHistory(response));
+        setHistoryStaleSince(getStaleSince(response.meta));
       } catch (loadError) {
         const reason = getMyttUnavailableReason(loadError);
 
@@ -208,13 +215,17 @@ export function usePlayerDetails() {
     let active = true;
 
     setPublicRating(null);
+    setRatingStaleSince(null);
 
     if (!nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
 
     ttApi
         .getPlayerRating(nuid, { organization: clubOrganization, clubNumber, clubName, name: lookupName })
         .then((response) => {
-          if (active) setPublicRating(response.data.rating);
+          if (!active) return;
+
+          setPublicRating(response.data.rating);
+          setRatingStaleSince(getStaleSince(response.meta, response.data.rating?.asOf));
         })
         .catch(() => undefined);
 
@@ -228,13 +239,17 @@ export function usePlayerDetails() {
     let active = true;
 
     setEstimate(null);
+    setEstimateStaleSince(null);
 
     if (!unavailableReason || !nuid || (!(clubOrganization && clubNumber) && !lookupName)) return;
 
     ttApi
         .getPlayerTtrEstimate(nuid, { organization: clubOrganization, clubNumber, clubName, name: lookupName })
         .then((response) => {
-          if (active) setEstimate(response.data);
+          if (!active) return;
+
+          setEstimate(response.data);
+          setEstimateStaleSince(getStaleSince(response.meta, response.data.publicRating?.asOf));
         })
         .catch(() => undefined);
 
@@ -295,6 +310,16 @@ export function usePlayerDetails() {
   // Der Wert aus den Route-Parametern hat keine bekannte Quelle und bekommt deshalb kein Badge.
   const ttrSource: PlayerRatingSource | undefined =
       officialTtr !== undefined ? 'official' : fallbackRating ? fallbackRating.source : undefined;
+
+  // Hinweis nur für die Quelle, deren Wert gerade angezeigt wird.
+  const staleSince =
+      officialTtr !== undefined
+          ? historyStaleSince
+          : estimate?.rating
+              ? estimateStaleSince
+              : publicRating
+                  ? ratingStaleSince
+                  : null;
 
   const qTtr = parseOptionalNumber(history?.qttr) ?? parseOptionalNumber(apiHistoryData?.qttr);
   const maxTtr = parseOptionalNumber(history?.maxTtr) ?? parseOptionalNumber(apiHistoryData?.maxTtr);
@@ -543,6 +568,7 @@ export function usePlayerDetails() {
     unavailableReason,
     currentTtr,
     ttrSource,
+    staleSince,
     qTtr,
     maxTtr,
     monthlyDelta,

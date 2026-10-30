@@ -12,9 +12,11 @@ import { getEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import { getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
+import { getMeSnapshot, setMeSnapshot } from '@/src/storage/meSnapshot';
 import type { EventSummary } from '@/src/types/events';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
+import { getStaleSince } from '@/src/utils/staleness';
 import type { HomeClubMatch } from '../types';
 import { compareMatchesNewestFirst, compareMatchesOldestFirst, formatPersonName, getCurrentBackendSeason, getDefaultSeasonDateRange, getFirstName, getPlayerHistoryData, getTtrDeltaSince, getTtrSeries, getWinRatePercent, isCompletedClubMatch, isUpcomingClubMatch, normalizeHomeClubSchedule, parseOptionalNumber } from '../utils';
 
@@ -27,6 +29,8 @@ export function useHome() {
   const [meError, setMeError] = useState<string | null>(null);
   const [meStoredName, setMeStoredName] = useState<string | null>(null);
   const [meUnavailableReason, setMeUnavailableReason] = useState<MyttUnavailableReason | null>(null);
+  // Stand der angezeigten Werte, wenn sie aus einem älteren Stand kommen (sonst null).
+  const [meStaleSince, setMeStaleSince] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [meClub, setMeClub] = useState<MeClub | null>(null);
@@ -48,6 +52,7 @@ export function useHome() {
           setMeLoading(true);
           setMeError(null);
           setMeUnavailableReason(null);
+          setMeStaleSince(null);
 
           try {
             const storedNuid = await getMePlayerNuid();
@@ -67,8 +72,12 @@ export function useHome() {
 
             if (!active) return;
 
+            const staleSince = getStaleSince(response.meta);
+
             setMeApiHistoryData(getPlayerHistoryData(response));
             setMeHistory(normalizePlayerTtrHistory(response));
+            setMeStaleSince(staleSince);
+            setMeSnapshot(storedNuid, response, staleSince ?? Date.now()).catch(() => undefined);
           } catch (error) {
             if (!active) return;
 
@@ -84,6 +93,11 @@ export function useHome() {
               return;
             }
 
+            // myTischtennis bremst (429) oder hängt: lieber der letzte bekannte Stand mit Hinweis als ein Fehler.
+            if ((await loadSnapshotFallback()) || (await loadEstimateFallback())) return;
+
+            if (!active) return;
+
             setMeError(
                 error instanceof Error
                     ? error.message
@@ -96,6 +110,19 @@ export function useHome() {
           }
         }
 
+        async function loadSnapshotFallback() {
+          const storedNuid = await getMePlayerNuid();
+          const snapshot = storedNuid ? await getMeSnapshot(storedNuid) : null;
+
+          if (!active || !snapshot) return false;
+
+          setMeApiHistoryData(getPlayerHistoryData(snapshot.response));
+          setMeHistory(normalizePlayerTtrHistory(snapshot.response));
+          setMeStaleSince(snapshot.savedAt);
+
+          return true;
+        }
+
         // Der Verein kommt aus dem gespeicherten Ich-Verein, der Spieler hat meist denselben.
         async function loadEstimateFallback() {
           try {
@@ -105,7 +132,7 @@ export function useHome() {
               getMePlayerName(),
             ]);
 
-            if (!storedNuid || (!storedClub && !storedName)) return;
+            if (!storedNuid || (!storedClub && !storedName)) return false;
 
             const response = await ttApi.getPlayerTtrEstimate(storedNuid, {
               organization: storedClub?.organization,
@@ -114,11 +141,15 @@ export function useHome() {
               name: storedName ?? undefined,
             });
 
-            if (!active || !response.data.available) return;
+            if (!active || !response.data.available) return false;
 
             setMeHistory(estimateToHistory(response.data));
+            setMeStaleSince(getStaleSince(response.meta, response.data.publicRating?.asOf));
+
+            return true;
           } catch {
             // Ohne Schätzung bleibt nur der Hinweis.
+            return false;
           }
         }
 
@@ -382,6 +413,7 @@ export function useHome() {
     meLoading,
     meError,
     meUnavailableReason,
+    meStaleSince,
     meClub,
     clubCompletedMatches,
     clubUpcomingMatches,

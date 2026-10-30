@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Button } from '@/src/components/Button';
 import { DeltaPill } from '@/src/components/Delta';
 import { Sparkline } from '@/src/components/Sparkline';
+import { StaleNotice } from '@/src/components/StaleNotice';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { numeric, typography } from '@/src/theme/typography';
@@ -20,6 +21,7 @@ type MeHeroCardProps = {
   series: number[];
   loading: boolean;
   error: string | null;
+  staleSince?: number | null;
   onOpenProfile: () => void;
   onRetry: () => void;
 };
@@ -34,6 +36,7 @@ export function MeHeroCard({
                              series,
                              loading,
                              error,
+                             staleSince = null,
                              onOpenProfile,
                              onRetry,
                            }: MeHeroCardProps) {
@@ -96,6 +99,8 @@ export function MeHeroCard({
                     </View>
                 ))}
               </View>
+
+              <StaleNotice since={staleSince} onPrimary />
             </>
         )}
       </Pressable>

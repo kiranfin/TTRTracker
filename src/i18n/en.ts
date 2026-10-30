@@ -22,6 +22,13 @@ export const en: TranslationResource = {
     viewAll: 'View all',
     reset: 'Reset',
     remove: 'Remove',
+    staleNotice: 'As of {{age}}. myTischtennis is not responding right now, values may be outdated.',
+    ageMinute: '1 minute ago',
+    ageMinutes: '{{count}} minutes ago',
+    ageHour: '1 hour ago',
+    ageHours: '{{count}} hours ago',
+    ageDay: '1 day ago',
+    ageDays: '{{count}} days ago',
   },
   tabs: {
     home: 'Home',

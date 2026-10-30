@@ -14,6 +14,13 @@ export const de = {
     viewAll: 'Alle ansehen',
     reset: 'Zurücksetzen',
     remove: 'Entfernen',
+    staleNotice: 'Stand {{age}}. myTischtennis antwortet gerade nicht, die Werte können veraltet sein.',
+    ageMinute: 'vor 1 Minute',
+    ageMinutes: 'vor {{count}} Minuten',
+    ageHour: 'vor 1 Stunde',
+    ageHours: 'vor {{count}} Stunden',
+    ageDay: 'vor 1 Tag',
+    ageDays: 'vor {{count}} Tagen',
   },
   tabs: {
     home: 'Start',

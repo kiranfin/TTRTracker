@@ -62,6 +62,8 @@ export function useClubDetails() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playersError, setPlayersError] = useState<string | null>(null);
+  // Stand der Rangliste, wenn sie aus einem älteren Stand kommt (sonst null).
+  const [playersStaleSince, setPlayersStaleSince] = useState<number | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [dateStartDraft, setDateStartDraft] = useState(initialDateRange.dateStart);
   const [dateEndDraft, setDateEndDraft] = useState(initialDateRange.dateEnd);
@@ -125,6 +127,7 @@ export function useClubDetails() {
       setScheduleError(null);
       setTeams([]);
       setPlayers([]);
+      setPlayersStaleSince(null);
       setScheduleMatches([]);
 
       try {
@@ -138,7 +141,8 @@ export function useClubDetails() {
 
         try {
           const playersResult = await loadClubPlayers(clubApi, organization, clubNumber, clubNameForPlayers);
-          setPlayers(playersResult);
+          setPlayers(playersResult.players);
+          setPlayersStaleSince(playersResult.staleSince);
         } catch (playersLoadError) {
           setPlayers([]);
           setPlayersError(playersLoadError instanceof Error ? playersLoadError.message : t('club.playersLoadError'));
@@ -402,6 +406,7 @@ export function useClubDetails() {
     loading,
     error,
     playersError,
+    playersStaleSince,
     scheduleError,
     scheduleLoading,
     scheduleSeason,

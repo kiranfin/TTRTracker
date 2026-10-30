@@ -5,6 +5,7 @@ import { ListGroup } from '@/src/components/ListGroup';
 import { Screen } from '@/src/components/Screen';
 import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { SegmentedTabs } from '@/src/components/SegmentedTabs';
+import { StaleNotice } from '@/src/components/StaleNotice';
 import { StatStrip } from '@/src/components/StatStrip';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
@@ -42,6 +43,7 @@ export default function ClubDetailsScreen() {
         loading,
         error,
         playersError,
+        playersStaleSince,
         nextMatch,
         isMyClub,
         meClubLoading,
@@ -152,6 +154,8 @@ export default function ClubDetailsScreen() {
 
                         {activeTab === 'players' ? (
                             <View style={styles.stack}>
+                                {players.length > 0 ? <StaleNotice since={playersStaleSince} /> : null}
+
                                 {playersError ? (
                                     <Text style={[styles.error, { color: colors.destructive }]}>{playersError}</Text>
                                 ) : null}

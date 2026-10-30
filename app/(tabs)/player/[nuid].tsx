@@ -12,6 +12,7 @@ import { HistorySection, PlayerHeader, TtrChartCard } from '../../../src/feature
 import { usePlayerDetails } from '../../../src/features/player-details/hooks/usePlayerDetails';
 import { styles } from '../../../src/features/player-details/styles';
 import { SkeletonList } from '@/src/components/SkeletonRow';
+import { StaleNotice } from '@/src/components/StaleNotice';
 import {
     formatOptionalNumber,
     formatSignedAverage,
@@ -33,6 +34,7 @@ export default function PlayerDetailsScreen() {
         error,
         currentTtr,
         ttrSource,
+        staleSince,
         unavailableReason,
         qTtr,
         maxTtr,
@@ -102,6 +104,8 @@ export default function PlayerDetailsScreen() {
                     onOpenClub={effectiveClubKey ? openClubDetails : undefined}
                     onClaimProfile={canClaimProfile ? () => { toggleMeProfile().catch(() => undefined); } : undefined}
                 />
+
+                {!loading ? <StaleNotice since={staleSince} /> : null}
 
                 {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}

@@ -15,6 +15,7 @@ import type {
     ThemeColors,
 } from './types';
 import { getCurrentSeason, splitLocalDateTime } from '@/src/utils/dates';
+import { getStaleSince, type ResponseMeta } from '@/src/utils/staleness';
 
 export const TEAM_HOME_KEYS = [
     'team_home',
@@ -79,7 +80,10 @@ export async function loadClubPlayers(
         emptyToUndefined(clubName),
     );
 
-    return normalizeClubPlayers(response);
+    return {
+        players: normalizeClubPlayers(response),
+        staleSince: getStaleSince((response as { meta?: ResponseMeta } | null)?.meta),
+    };
 }
 
 export async function loadClubSchedule(

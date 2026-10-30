@@ -1,3 +1,5 @@
+import type { ResponseMeta } from '../utils/staleness';
+
 export type FavoriteType = 'player' | 'club' | 'league';
 
 export type FavoriteItem = {
@@ -89,9 +91,7 @@ export type PlayerTtrResponse = {
     ttr: number | null;
     error?: unknown | null;
   };
-  meta?: {
-    source?: string;
-  };
+  meta?: ResponseMeta;
 };
 
 export type PlayerRatingSource = 'public' | 'estimated' | 'official';
@@ -109,9 +109,7 @@ export type PlayerRatingResponse = {
     rating: PlayerRating | null;
     club?: { organization: string; clubNumber: string; clubName: string } | null;
   };
-  meta?: {
-    source?: string;
-  };
+  meta?: ResponseMeta;
 };
 
 export type EstimatedTtrEvent = {
@@ -149,9 +147,7 @@ export type PlayerTtrEstimate = {
 
 export type PlayerTtrEstimateResponse = {
   data: PlayerTtrEstimate;
-  meta?: {
-    source?: string;
-  };
+  meta?: ResponseMeta;
 };
 
 export type PlayerTtrHistoryResponse = {
@@ -169,9 +165,7 @@ export type PlayerTtrHistoryResponse = {
     events: unknown[];
     error?: unknown | null;
   };
-  meta?: {
-    source?: string;
-  };
+  meta?: ResponseMeta;
 };
 
 export type NormalizedTtrHistoryMatch = {
