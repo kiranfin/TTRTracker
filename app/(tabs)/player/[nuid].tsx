@@ -6,6 +6,7 @@ import { StatGrid, StatStrip } from '@/src/components/StatStrip';
 import { MyttConnectNotice } from '@/src/features/mytt';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
+import { typography } from '@/src/theme/typography';
 import { parseDateValue } from '@/src/utils/dates';
 import { HistorySection, PlayerHeader, TtrChartCard } from '../../../src/features/player-details/components';
 import { usePlayerDetails } from '../../../src/features/player-details/hooks/usePlayerDetails';
@@ -27,6 +28,7 @@ export default function PlayerDetailsScreen() {
         displayName,
         clubName,
         history,
+        historyIsEstimated,
         loading,
         error,
         currentTtr,
@@ -111,8 +113,12 @@ export default function PlayerDetailsScreen() {
                     />
                 ) : null}
 
-                {!loading && !error && !unavailableReason ? (
+                {!loading && !error && (!unavailableReason || historyIsEstimated) ? (
                     <>
+                        {historyIsEstimated ? (
+                            <Text style={[typography.meta, { color: colors.mutedText }]}>{t('player.estimatedHistory')}</Text>
+                        ) : null}
+
                         <StatStrip
                             items={[
                                 { label: t('home.qTtr'), value: formatOptionalNumber(qTtr) },

@@ -15,8 +15,10 @@ import type {
   NormalizedPlayerTtrHistory,
   NormalizedTtrHistoryEvent,
   PlayerRating,
+  PlayerTtrEstimate,
   PlayerRatingSource,
 } from '@/src/types/tttracker';
+import { estimateToHistory } from '../estimate';
 import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { normalizeClub, normalizePlayerTtrHistory } from '@/src/utils/normalizers';
@@ -42,7 +44,8 @@ export function usePlayerDetails() {
   const params = useLocalSearchParams<Record<string, string>>();
   const { t } = useI18n();
 
-  const [history, setHistory] = useState<NormalizedPlayerTtrHistory | null>(null);
+  const [officialHistory, setOfficialHistory] = useState<NormalizedPlayerTtrHistory | null>(null);
+  const [estimate, setEstimate] = useState<PlayerTtrEstimate | null>(null);
   const [apiHistoryData, setApiHistoryData] = useState<Record<string, unknown> | null>(null);
   const [resolvedClubRouteParams, setResolvedClubRouteParams] = useState<ClubRouteParams | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
@@ -79,6 +82,11 @@ export function usePlayerDetails() {
   const canClaimProfile = mePlayerChecked && !hasMePlayer && normalizedCurrentNuid.length > 0;
   const title = params.title ?? t('player.defaultTitle');
 
+  // Ohne offiziellen Verlauf zeigt das Profil den aus öffentlichen Spielberichten geschätzten.
+  const estimatedHistory = useMemo(() => (estimate && estimate.events.length > 0 ? estimateToHistory(estimate) : null), [estimate]);
+  const history = officialHistory ?? estimatedHistory;
+  const historyIsEstimated = officialHistory === null && estimatedHistory !== null;
+
   const displayName = history?.personName ?? title;
   const clubName = history?.clubName ?? params.clubName;
 
@@ -114,12 +122,12 @@ export function usePlayerDetails() {
       setVisibleCount(PAGE_SIZE);
       setExpandedEventId(null);
       setApiHistoryData(null);
-      setHistory(null);
+      setOfficialHistory(null);
 
       try {
         const response = await ttApi.getPlayerTtrHistory(nuid);
         setApiHistoryData(getPlayerHistoryData(response));
-        setHistory(normalizePlayerTtrHistory(response));
+        setOfficialHistory(normalizePlayerTtrHistory(response));
       } catch (loadError) {
         const reason = getMyttUnavailableReason(loadError);
 
@@ -213,6 +221,26 @@ export function usePlayerDetails() {
     };
   }, [nuid, clubOrganization, clubNumber]);
 
+  // Ohne myTischtennis Verbindung wird der Verlauf aus öffentlichen Spielberichten geschätzt.
+  useEffect(() => {
+    let active = true;
+
+    setEstimate(null);
+
+    if (!unavailableReason || !nuid || !clubOrganization || !clubNumber) return;
+
+    ttApi
+        .getPlayerTtrEstimate(nuid, clubOrganization, clubNumber)
+        .then((response) => {
+          if (active) setEstimate(response.data);
+        })
+        .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [nuid, clubOrganization, clubNumber, unavailableReason]);
+
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
     setExpandedEventId(null);
@@ -258,12 +286,13 @@ export function usePlayerDetails() {
     };
   }, [normalizedCurrentNuid]);
 
-  const officialTtr = parseOptionalNumber(history?.ttr) ?? parseOptionalNumber(apiHistoryData?.ttr);
-  const currentTtr = officialTtr ?? publicRating?.value ?? parseOptionalNumber(params.ttr);
+  const officialTtr = parseOptionalNumber(officialHistory?.ttr) ?? parseOptionalNumber(apiHistoryData?.ttr);
+  const fallbackRating = estimate?.rating ?? publicRating;
+  const currentTtr = officialTtr ?? fallbackRating?.value ?? parseOptionalNumber(params.ttr);
 
   // Der Wert aus den Route-Parametern hat keine bekannte Quelle und bekommt deshalb kein Badge.
   const ttrSource: PlayerRatingSource | undefined =
-      officialTtr !== undefined ? 'official' : publicRating ? publicRating.source : undefined;
+      officialTtr !== undefined ? 'official' : fallbackRating ? fallbackRating.source : undefined;
 
   const qTtr = parseOptionalNumber(history?.qttr) ?? parseOptionalNumber(apiHistoryData?.qttr);
   const maxTtr = parseOptionalNumber(history?.maxTtr) ?? parseOptionalNumber(apiHistoryData?.maxTtr);
@@ -505,6 +534,7 @@ export function usePlayerDetails() {
     displayName,
     clubName,
     history,
+    historyIsEstimated,
     loading,
     error,
     officialUnavailable: unavailableReason !== null,

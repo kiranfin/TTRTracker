@@ -222,6 +222,7 @@ export const de = {
       official: 'Offiziell',
     },
     officialExpired: 'Deine myTischtennis-Verbindung ist abgelaufen. Verlauf und Statistiken sind erst nach einer neuen Anmeldung wieder sichtbar.',
+    estimatedHistory: 'Geschätzter Verlauf aus öffentlichen Spielberichten. Die Gegnerwerte sind aktuelle Werte, die Zahlen sind deshalb eine Näherung.',
     officialUnavailable: 'Verlauf und Statistiken brauchen eine Verbindung zu myTischtennis.',
     chartDelta6m: 'in 6 Monaten',
     chartDelta12m: 'in 12 Monaten',

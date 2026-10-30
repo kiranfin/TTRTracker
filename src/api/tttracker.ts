@@ -10,6 +10,7 @@ import type {
   LeagueRegion,
   PlayerRatingResponse,
   PlayerSearchResult,
+  PlayerTtrEstimateResponse,
   PlayerTtrHistoryResponse,
   PlayerTtrResponse,
 } from '../types/tttracker';
@@ -81,6 +82,14 @@ export const ttApi = {
   // Öffentlicher TTR aus der Vereinsliste, ohne myTischtennis Verbindung.
   getPlayerRating(nuid: string, organization: string, clubNumber: string) {
     return apiGet<PlayerRatingResponse>(`/api/players/${segment(nuid)}/rating`, {
+      organization,
+      clubNumber,
+    });
+  },
+
+  // Geschätzter TTR und Verlauf aus öffentlichen Spielberichten, ohne myTischtennis Verbindung.
+  getPlayerTtrEstimate(nuid: string, organization: string, clubNumber: string) {
+    return apiGet<PlayerTtrEstimateResponse>(`/api/players/${segment(nuid)}/ttr-estimate`, {
       organization,
       clubNumber,
     });

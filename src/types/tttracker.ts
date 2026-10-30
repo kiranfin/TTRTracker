@@ -113,6 +113,46 @@ export type PlayerRatingResponse = {
   };
 };
 
+export type EstimatedTtrEvent = {
+  meetingId: string;
+  date: string | null;
+  teamHome: string | null;
+  teamGuest: string | null;
+  won: boolean;
+  setsOwn: number;
+  setsOther: number;
+  opponentName: string;
+  opponentTtr: number;
+  ttrBefore: number;
+  ttrAfter: number;
+  delta: number;
+};
+
+export type PlayerTtrEstimate = {
+  nuid: string;
+  available: boolean;
+  publicRating: PlayerRating | null;
+  rating: PlayerRating | null;
+  // Ältestes Einzel zuerst.
+  events: EstimatedTtrEvent[];
+  coverage: {
+    meetingsTotal: number;
+    meetingsScanned: number;
+    singlesFound: number;
+    singlesRated: number;
+    singlesUnrated: number;
+    truncated: boolean;
+  };
+  assumptions: { k: number; lagDays: number };
+};
+
+export type PlayerTtrEstimateResponse = {
+  data: PlayerTtrEstimate;
+  meta?: {
+    source?: string;
+  };
+};
+
 export type PlayerTtrHistoryResponse = {
   data: {
     nuid: string;

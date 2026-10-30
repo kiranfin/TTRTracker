@@ -230,6 +230,7 @@ export const en: TranslationResource = {
       official: 'Official',
     },
     officialExpired: 'Your myTischtennis connection has expired. History and stats are visible again after you log in again.',
+    estimatedHistory: 'Estimated history from public match reports. Opponent ratings are their current values, so the numbers are an approximation.',
     officialUnavailable: 'History and stats need a connection to myTischtennis.',
     chartDelta6m: 'in 6 months',
     chartDelta12m: 'in 12 months',
