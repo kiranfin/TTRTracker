@@ -12,6 +12,7 @@ import {
     loginAppUser,
     logoutAppUser,
     registerAppUser,
+    setUserEmail,
     type AppUser,
 } from '../api/auth';
 import { subscribeApiTarget } from '../api/apiTarget';
@@ -29,7 +30,8 @@ type AuthContextValue = {
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (params: { username: string; password: string }) => Promise<AppUser>;
-    register: (params: { username: string; password: string }) => Promise<AppUser>;
+    register: (params: { username: string; password: string; email?: string }) => Promise<AppUser>;
+    setEmail: (email: string) => Promise<AppUser>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<AppUser | null>;
 };
@@ -95,10 +97,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return loggedInUser;
     }, []);
 
-    const register = useCallback(async (params: { username: string; password: string }) => {
-        const registeredUser = await registerAppUser(params);
-        setUser(registeredUser);
-        return registeredUser;
+    const register = useCallback(
+        async (params: { username: string; password: string; email?: string }) => {
+            const registeredUser = await registerAppUser(params);
+            setUser(registeredUser);
+            return registeredUser;
+        },
+        []
+    );
+
+    const setEmail = useCallback(async (email: string) => {
+        const updatedUser = await setUserEmail({ email });
+        setUser(updatedUser);
+        return updatedUser;
     }, []);
 
     const logout = useCallback(async () => {
@@ -113,10 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isAuthenticated: Boolean(user),
             login,
             register,
+            setEmail,
             logout,
             refreshUser,
         }),
-        [user, isLoading, login, register, logout, refreshUser]
+        [user, isLoading, login, register, setEmail, logout, refreshUser]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

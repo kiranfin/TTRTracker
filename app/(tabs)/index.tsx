@@ -1,15 +1,25 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { ListGroup } from '@/src/components/ListGroup';
+import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
+import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { ShortcutCard, MeQuickStatsCard, ClubQuickStatsCard } from '../../src/features/home/components';
+import { typography } from '@/src/theme/typography';
+import { MyttConnectNotice } from '../../src/features/mytt';
+import { useOnboardingRedirect } from '../../src/features/onboarding/useOnboarding';
+import { ClubCard, FindYourselfCard, HomeEventsCard, HomeHeader, MeHeroCard, RecentHistoryRow } from '../../src/features/home/components';
 import { useHome } from '../../src/features/home/hooks/useHome';
 import { styles } from '../../src/features/home/styles';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  useOnboardingRedirect();
 
   const {
     meNuid,
@@ -20,78 +30,112 @@ export default function HomeScreen() {
     qTtr,
     maxTtr,
     recentEvents,
+    ttrSeries,
+    ttrDelta30,
+    winRate,
     meLoading,
     meError,
+    meUnavailableReason,
     meClub,
     clubCompletedMatches,
+    clubUpcomingMatches,
     clubLoading,
     clubError,
+    selectMePlayer,
+    reloadMe,
+    eventsWidgetEnabled,
+    upcomingEvents,
+    eventsLoading,
+    eventsError,
     openMeProfile,
     openMyClub,
+    openAllEvents,
+    openEvent,
   } = useHome();
 
   return (
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.topArea}>
-            <View style={styles.hero}>
-              <Text style={[styles.heroTitle, { color: colors.text }]}>
-                {t('home.welcome')}{firstName ? ` ${firstName}` : ''}
-              </Text>
-            </View>
+          <HomeHeader firstName={firstName} displayName={displayName} hasProfile={Boolean(meNuid)} />
 
-            <View style={styles.shortcutGrid}>
-              <ShortcutCard
-                  title={t('tabs.search')}
-                  icon="search"
-                  iconBg="#dbeafe"
-                  iconColor="#2563eb"
-                  onPress={() => router.push('/search')}
+          {meNuid ? (
+              <>
+                <MeHeroCard
+                    currentTtr={currentTtr}
+                    qTtr={qTtr}
+                    maxTtr={maxTtr}
+                    winRate={winRate}
+                    delta30={ttrDelta30}
+                    series={ttrSeries}
+                    loading={meLoading}
+                    error={meError}
+                    onOpenProfile={openMeProfile}
+                    onRetry={reloadMe}
+                />
+
+                {!meLoading && meUnavailableReason ? (
+                    <MyttConnectNotice
+                        reason={meUnavailableReason}
+                        message={meUnavailableReason === 'expired' ? t('home.myttExpired') : t('home.myttNotice')}
+                    />
+                ) : null}
+
+                {!meLoading && !meError ? (
+                    <View style={styles.section}>
+                      <SectionHeader
+                          title={t('home.recentMatches')}
+                          actionLabel={t('common.viewAll')}
+                          onActionPress={openMeProfile}
+                      />
+
+                      {recentEvents.length > 0 ? (
+                          <ListGroup>
+                            {recentEvents.map((event) => (
+                                <RecentHistoryRow key={event.id} event={event} onOpenProfile={openMeProfile} />
+                            ))}
+                          </ListGroup>
+                      ) : (
+                          <Text style={[typography.body, { color: colors.mutedText }]}>
+                            {t('home.noHistoryEntries')}
+                          </Text>
+                      )}
+                    </View>
+                ) : null}
+
+                <ClubCard
+                    clubName={meClub?.title ?? meClub?.clubName ?? clubName}
+                    organization={meClub?.organization}
+                    clubNumber={meClub?.clubNumber}
+                    hasSavedClub={Boolean(meClub)}
+                    upcoming={clubUpcomingMatches}
+                    results={clubCompletedMatches}
+                    loading={clubLoading}
+                    error={clubError}
+                    onOpenClub={openMyClub}
+                    onOpenSearch={() => router.push('/search')}
+                />
+              </>
+          ) : (
+              <FindYourselfCard onPress={() => setPickerOpen(true)} />
+          )}
+
+          {eventsWidgetEnabled ? (
+              <HomeEventsCard
+                  events={upcomingEvents}
+                  loading={eventsLoading}
+                  error={eventsError}
+                  onOpenAll={openAllEvents}
+                  onOpenEvent={openEvent}
               />
-
-              <ShortcutCard
-                  title={t('tabs.leagues')}
-                  icon="trophy"
-                  iconBg="#f3e8ff"
-                  iconColor="#9333ea"
-                  onPress={() => router.push('/leagues')}
-              />
-
-              <ShortcutCard
-                  title={t('tabs.favorites')}
-                  icon="star"
-                  iconBg="#fef3c7"
-                  iconColor="#d97706"
-                  onPress={() => router.push('/favorites')}
-              />
-            </View>
-          </View>
-
-          <MeQuickStatsCard
-              meNuid={meNuid}
-              displayName={displayName}
-              clubName={clubName}
-              currentTtr={currentTtr}
-              qTtr={qTtr}
-              maxTtr={maxTtr}
-              recentEvents={recentEvents}
-              loading={meLoading}
-              error={meError}
-              onOpenProfile={openMeProfile}
-              onOpenSettings={() => router.push('/settings')}
-          />
-
-          <ClubQuickStatsCard
-              meNuid={meNuid}
-              clubName={meClub?.title ?? meClub?.clubName ?? clubName}
-              hasSavedClub={Boolean(meClub)}
-              matches={clubCompletedMatches}
-              loading={clubLoading}
-              error={clubError}
-              onOpenClub={openMyClub}
-              onOpenSearch={() => router.push('/search')}
-          />
+          ) : null}
         </ScrollView>
+
+        <PlayerPickerSheet
+            visible={pickerOpen}
+            title={t('picker.meTitle')}
+            onClose={() => setPickerOpen(false)}
+            onSelect={(selection) => selectMePlayer(selection.nuid, selection.name)}
+        />
       </Screen>
   );
 }

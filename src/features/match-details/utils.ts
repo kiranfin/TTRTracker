@@ -1,5 +1,22 @@
 import { useI18n } from '@/src/i18n/I18nProvider';
-import type { MeetingDetails, MatchRow, RawMeetingMatch, RawPlayer } from './types';
+import { buildClubLogoUrl } from '@/src/storage/clubLogos';
+import type { MeetingClub, MeetingDetails, MatchRow, MatchRowWithScore, RawMeetingMatch, RawPlayer } from './types';
+
+// Verein einer Seite für das Logo. Der Verband kommt aus der Club URI, weil in DTTB Ligen fed_nickname
+// der Liga gehört und nicht dem Verein.
+export function getMeetingClub(meeting: MeetingDetails | null, side: 'home' | 'away'): MeetingClub {
+  if (!meeting) return {};
+
+  const home = side === 'home';
+  const uri = (home ? meeting.team_home_club_uri : meeting.team_guest_club_uri) ?? '';
+  const fromUri = uri.match(/federations\/([^/]+)\/clubs\/(\d+)/);
+
+  return {
+    organization: fromUri?.[1] ?? meeting.fed_nickname ?? undefined,
+    clubNumber: fromUri?.[2] ?? (home ? meeting.team_home_club_nr : meeting.team_guest_club_nr) ?? undefined,
+    logoUrl: buildClubLogoUrl(home ? meeting.home_image_url : meeting.guest_image_url),
+  };
+}
 
 export function normalizeMeetingRows(meeting: MeetingDetails | null, t: ReturnType<typeof useI18n>['t']): MatchRow[] {
   const matches = Array.isArray(meeting?.match) ? meeting.match : [];
@@ -197,4 +214,16 @@ export function formatStatus(meeting: MeetingDetails | null, t: ReturnType<typeo
   }
 
   return t('status.scheduled');
+}
+
+export function addRunningScore(rows: MatchRow[]): MatchRowWithScore[] {
+  let home = 0;
+  let guest = 0;
+
+  return rows.map((row) => {
+    if (row.winner === 'home') home += 1;
+    if (row.winner === 'guest') guest += 1;
+
+    return { ...row, runningScore: `${home}:${guest}` };
+  });
 }

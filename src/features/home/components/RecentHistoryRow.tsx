@@ -1,45 +1,48 @@
-import { Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { DateBlock } from '@/src/components/DateBlock';
+import { DeltaText } from '@/src/components/Delta';
+import { ListRow } from '@/src/components/ListRow';
 import { useI18n } from '@/src/i18n/I18nProvider';
-import { useTheme } from '@/src/theme/ThemeProvider';
 import type { NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
-import { formatDate } from '@/src/utils/normalizers';
-import { getEventTtr, formatSignedNumber } from '../utils';
-import { styles } from '../styles';
+import { getEventMeetingId, getEventWinLoss } from '../../player-details/utils';
 
-export function RecentHistoryRow({ event }: { event: NormalizedTtrHistoryEvent }) {
-  const { colors } = useTheme();
+// Ein Eintrag der letzten Spiele: Datum links, Gegner und Bilanz in der Mitte, TTR-Änderung rechts.
+// Mit Spielbericht öffnet die Zeile diesen, sonst das eigene Profil.
+export function RecentHistoryRow({
+                                   event,
+                                   onOpenProfile,
+                                 }: {
+  event: NormalizedTtrHistoryEvent;
+  onOpenProfile: () => void;
+}) {
   const { t } = useI18n();
+  const meetingId = getEventMeetingId(event);
+  const winLoss = getEventWinLoss(event);
+  const hasRecord = winLoss.won + winLoss.lost > 0;
 
-  const delta = event.delta;
-  const deltaColor =
-      typeof delta === 'number' && delta > 0
-          ? '#16a34a'
-          : typeof delta === 'number' && delta < 0
-              ? colors.destructive
-              : colors.mutedText;
+  const subtitle = [
+    event.leagueName,
+    hasRecord ? t('home.singlesRecord', { won: winLoss.won, lost: winLoss.lost }) : undefined,
+  ]
+      .filter(Boolean)
+      .join(' · ');
 
   return (
-      <View style={[styles.recentRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-        <View style={styles.recentMain}>
-          <Text style={[styles.recentTitle, { color: colors.text }]} numberOfLines={1}>
-            {event.meetingLabel ?? event.title ?? t('home.historyEntry')}
-          </Text>
-
-          <Text style={[styles.recentMeta, { color: colors.mutedText }]} numberOfLines={1}>
-            {event.date ? formatDate(event.date) : t('common.dateUnknown')}
-            {event.leagueName ? ` · ${event.leagueName}` : ''}
-          </Text>
-        </View>
-
-        <View style={styles.recentScore}>
-          <Text style={[styles.recentTtr, { color: colors.text }]}>
-            {getEventTtr(event) ?? '—'}
-          </Text>
-
-          <Text style={[styles.recentDelta, { color: deltaColor }]}>
-            {formatSignedNumber(delta)}
-          </Text>
-        </View>
-      </View>
+      <ListRow
+          leading={<DateBlock date={event.date} />}
+          title={event.meetingLabel ?? event.title ?? t('home.historyEntry')}
+          subtitle={subtitle || undefined}
+          chevron={false}
+          onPress={
+            meetingId
+                ? () =>
+                    router.push({
+                      pathname: '/match/[meetingId]',
+                      params: { meetingId, homeTeam: '', awayTeam: '' },
+                    })
+                : onOpenProfile
+          }
+          trailing={<DeltaText value={event.delta} />}
+      />
   );
 }

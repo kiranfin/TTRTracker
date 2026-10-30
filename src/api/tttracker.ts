@@ -1,14 +1,20 @@
-import { apiGet } from './client';
+import { buildLocalComparison } from '../features/player-compare/localCompare';
+import { ApiError, apiGet } from './client';
+import { withMyttSession } from './myttData';
+import { myttDirect } from './myttDirect';
 import type {
   ClubSearchResult,
   HealthResponse,
   LeagueAssociation,
   LeagueClassReference,
   LeagueRegion,
+  PlayerRatingResponse,
   PlayerSearchResult,
+  PlayerTtrEstimateResponse,
   PlayerTtrHistoryResponse,
   PlayerTtrResponse,
 } from '../types/tttracker';
+import { getCurrentSeason } from '../utils/dates';
 
 function findFirstArray(value: unknown, depth = 0): unknown[] | null {
   if (depth > 6) return null;
@@ -34,6 +40,14 @@ function normalizeList<T>(response: unknown): T[] {
   const array = findFirstArray(response);
   return array ? (array as T[]) : [];
 }
+
+// Wie das Backend den Verein des Spielers findet: direkt über Verband und Vereinsnummer oder über den Namen.
+export type PlayerLookup = {
+  organization?: string;
+  clubNumber?: string;
+  clubName?: string;
+  name?: string;
+};
 
 function segment(value: string) {
   return encodeURIComponent(value);
@@ -65,30 +79,68 @@ export const ttApi = {
   },
 
   getPlayerTtr(nuid: string) {
-    return apiGet<PlayerTtrResponse>(
-        `/api/players/${segment(nuid)}/ttr`,
-        undefined,
-        { authenticated: true }
-    );
+    return withMyttSession({
+      key: `ttr:${nuid}`,
+      direct: (cookie) => myttDirect.getPlayerTtr(cookie, nuid),
+      backend: () =>
+          apiGet<PlayerTtrResponse>(`/api/players/${segment(nuid)}/ttr`, undefined, { authenticated: true }),
+    });
+  },
+
+  // Öffentlicher TTR aus der Vereinsliste, ohne myTischtennis Verbindung.
+  getPlayerRating(nuid: string, lookup: PlayerLookup) {
+    return apiGet<PlayerRatingResponse>(`/api/players/${segment(nuid)}/rating`, lookup);
+  },
+
+  // Geschätzter TTR und Verlauf aus öffentlichen Spielberichten, ohne myTischtennis Verbindung.
+  getPlayerTtrEstimate(nuid: string, lookup: PlayerLookup) {
+    return apiGet<PlayerTtrEstimateResponse>(`/api/players/${segment(nuid)}/ttr-estimate`, lookup);
   },
 
   getPlayerTtrHistory(nuid: string) {
-    return apiGet<PlayerTtrHistoryResponse>(
-        `/api/players/${segment(nuid)}/ttr-history`,
-        undefined,
-        { authenticated: true }
-    );
+    return withMyttSession({
+      key: `ttr-history:${nuid}`,
+      direct: (cookie) => myttDirect.getPlayerTtrHistory(cookie, nuid),
+      backend: () =>
+          apiGet<PlayerTtrHistoryResponse>(`/api/players/${segment(nuid)}/ttr-history`, undefined, {
+            authenticated: true,
+          }),
+    });
   },
 
   comparePlayers(leftNuid: string, rightNuid: string) {
-    return apiGet<unknown>(
-        `/api/players/${segment(leftNuid)}/compare/${segment(rightNuid)}`,
-        undefined,
-        { authenticated: true }
-    );
+    return withMyttSession<unknown>({
+      key: `compare:${leftNuid}:${rightNuid}`,
+      direct: async (cookie) => {
+        const [leftTtr, rightTtr, leftHistory, rightHistory] = await Promise.all([
+          myttDirect.getPlayerTtr(cookie, leftNuid),
+          myttDirect.getPlayerTtr(cookie, rightNuid),
+          myttDirect.getPlayerTtrHistory(cookie, leftNuid),
+          myttDirect.getPlayerTtrHistory(cookie, rightNuid),
+        ]);
+
+        // Head-to-Head ist optional, ein Fehler dort lässt den Rest des Vergleichs stehen.
+        const headToHead = await myttDirect
+            .getHeadToHead(cookie, rightNuid.replace(/^NU/i, ''))
+            .catch((error) => {
+              if (error instanceof ApiError && error.code === 'MYTT_AUTH_EXPIRED') throw error;
+
+              return null;
+            });
+
+        return {
+          data: buildLocalComparison({ leftNuid, rightNuid, leftTtr, rightTtr, leftHistory, rightHistory, headToHead }),
+          meta: { source: 'device' },
+        };
+      },
+      backend: () =>
+          apiGet<unknown>(`/api/players/${segment(leftNuid)}/compare/${segment(rightNuid)}`, undefined, {
+            authenticated: true,
+          }),
+    });
   },
 
-  async getLeaguesByRegion(region: string, season = '25/26') {
+  async getLeaguesByRegion(region: string, season = getCurrentSeason()) {
     const response = await apiGet<unknown>('/api/leagues', {
       region,
       season,
@@ -103,6 +155,24 @@ export const ttApi = {
     return apiGet<unknown>(
         `/api/clubs/${segment(organization)}/${segment(clubNumber)}/teams`
     );
+  },
+
+  // Logos für mehrere Vereine, refs im Format "TTBW:2055064" (höchstens 30). Siehe storage/clubLogos.
+  getClubLogos(refs: string[]) {
+    return apiGet<unknown>('/api/clubs/logos', { clubs: refs.join(',') });
+  },
+
+  // Logo, Gründungsjahr, Spiellokale, Kontakt und Vorstand (aufbereitet im Backend).
+  getClubInfo(organization: string, clubNumber: string, season = getCurrentSeason(), clubSlug = 'x') {
+    const query: Record<string, string> = {
+      season: season.replace('/', '--'),
+    };
+
+    if (clubSlug?.trim() && clubSlug.trim() !== 'x') {
+      query.clubSlug = clubSlug.trim();
+    }
+
+    return apiGet<unknown>(`/api/clubs/${segment(organization)}/${segment(clubNumber)}/info`, query);
   },
 
   getClubPlayers(
@@ -130,7 +200,7 @@ export const ttApi = {
   getClubSchedule(
       organization: string,
       clubNumber: string,
-      season = '25--26',
+      season = getCurrentSeason().replace('/', '--'),
       dateStart?: string,
       dateEnd?: string,
       clubSlug = 'x'
@@ -198,7 +268,7 @@ export const ttApi = {
     return normalizeList<LeagueAssociation>(response);
   },
 
-  async getLeagueRegions(association: string, season = '25/26') {
+  async getLeagueRegions(association: string, season = getCurrentSeason()) {
     const response = await apiGet<unknown>(
         `/api/leagues/${segment(association)}/regions`,
         { season }
@@ -210,7 +280,7 @@ export const ttApi = {
   async getLeagueClasses(
       association: string,
       championship: string,
-      season = '25/26',
+      season = getCurrentSeason(),
       type: 'ligen' | 'pokalspiele' = 'ligen'
   ) {
     const response = await apiGet<unknown>(

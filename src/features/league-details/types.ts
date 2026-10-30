@@ -35,6 +35,6 @@ export type LeagueInfo = {
     favoriteId: string;
 };
 
-export type PromotionState = 'promotion' | 'relegation' | 'none';
+export type PromotionState = 'promotion' | 'promotionPlayoff' | 'relegation' | 'relegationPlayoff' | 'none';
 
 export type ThemeColors = ReturnType<typeof useTheme>['colors'];

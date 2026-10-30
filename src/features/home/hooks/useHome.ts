@@ -1,15 +1,22 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { eventsApi } from '@/src/api/events';
 import { ttApi } from '@/src/api/tttracker';
+import { useOnMyttConnected } from '@/src/features/mytt';
+import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
+import { getUpcomingEvents } from '@/src/features/events/utils';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { estimateToHistory } from '../../player-details/estimate';
+import { getEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
-import { getMePlayerNuid } from '@/src/storage/mePlayer';
+import { getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
+import type { EventSummary } from '@/src/types/events';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
 import type { HomeClubMatch } from '../types';
-import { compareMatchesNewestFirst, formatPersonName, getCurrentBackendSeason, getDefaultSeasonDateRange, getFirstName, getPlayerHistoryData, isCompletedClubMatch, normalizeHomeClubSchedule, parseOptionalNumber } from '../utils';
+import { compareMatchesNewestFirst, compareMatchesOldestFirst, formatPersonName, getCurrentBackendSeason, getDefaultSeasonDateRange, getFirstName, getPlayerHistoryData, getTtrDeltaSince, getTtrSeries, getWinRatePercent, isCompletedClubMatch, isUpcomingClubMatch, normalizeHomeClubSchedule, parseOptionalNumber } from '../utils';
 
 export function useHome() {
   const { t } = useI18n();
@@ -18,11 +25,20 @@ export function useHome() {
   const [meApiHistoryData, setMeApiHistoryData] = useState<Record<string, unknown> | null>(null);
   const [meLoading, setMeLoading] = useState(false);
   const [meError, setMeError] = useState<string | null>(null);
+  const [meStoredName, setMeStoredName] = useState<string | null>(null);
+  const [meUnavailableReason, setMeUnavailableReason] = useState<MyttUnavailableReason | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [meClub, setMeClub] = useState<MeClub | null>(null);
   const [clubCompletedMatches, setClubCompletedMatches] = useState<HomeClubMatch[]>([]);
+  const [clubUpcomingMatches, setClubUpcomingMatches] = useState<HomeClubMatch[]>([]);
   const [clubLoading, setClubLoading] = useState(false);
   const [clubError, setClubError] = useState<string | null>(null);
+
+  const [eventsWidgetEnabled, setEventsWidgetEnabled] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<EventSummary[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
 
   useFocusEffect(
       useCallback(() => {
@@ -31,6 +47,7 @@ export function useHome() {
         async function loadMe() {
           setMeLoading(true);
           setMeError(null);
+          setMeUnavailableReason(null);
 
           try {
             const storedNuid = await getMePlayerNuid();
@@ -38,6 +55,7 @@ export function useHome() {
             if (!active) return;
 
             setMeNuid(storedNuid);
+            setMeStoredName(await getMePlayerName());
 
             if (!storedNuid) {
               setMeHistory(null);
@@ -56,6 +74,16 @@ export function useHome() {
 
             setMeHistory(null);
             setMeApiHistoryData(null);
+
+            const reason = getMyttUnavailableReason(error);
+
+            if (reason) {
+              // Ohne myTischtennis Verbindung zeigt die Startseite den geschätzten Wert und einen Hinweis.
+              setMeUnavailableReason(reason);
+              await loadEstimateFallback();
+              return;
+            }
+
             setMeError(
                 error instanceof Error
                     ? error.message
@@ -68,12 +96,38 @@ export function useHome() {
           }
         }
 
+        // Der Verein kommt aus dem gespeicherten Ich-Verein, der Spieler hat meist denselben.
+        async function loadEstimateFallback() {
+          try {
+            const [storedNuid, storedClub, storedName] = await Promise.all([
+              getMePlayerNuid(),
+              getMeClub(),
+              getMePlayerName(),
+            ]);
+
+            if (!storedNuid || (!storedClub && !storedName)) return;
+
+            const response = await ttApi.getPlayerTtrEstimate(storedNuid, {
+              organization: storedClub?.organization,
+              clubNumber: storedClub?.clubNumber,
+              clubName: storedClub?.clubName ?? storedClub?.title,
+              name: storedName ?? undefined,
+            });
+
+            if (!active || !response.data.available) return;
+
+            setMeHistory(estimateToHistory(response.data));
+          } catch {
+            // Ohne Schätzung bleibt nur der Hinweis.
+          }
+        }
+
         loadMe().catch(() => undefined);
 
-  return () => {
+        return () => {
           active = false;
         };
-      }, []),
+      }, [reloadKey]),
   );
 
   useFocusEffect(
@@ -102,8 +156,64 @@ export function useHome() {
       }, []),
   );
 
-  const displayName = formatPersonName(meHistory?.personName) || t('home.profileFallback');
+  useFocusEffect(
+      useCallback(() => {
+        let active = true;
+
+        async function loadEventsWidget() {
+          try {
+            const enabled = await getEventsWidgetEnabled();
+
+            if (!active) return;
+
+            setEventsWidgetEnabled(enabled);
+
+            if (!enabled) {
+              setUpcomingEvents([]);
+              setEventsError(null);
+              setEventsLoading(false);
+              return;
+            }
+
+            setEventsLoading(true);
+            setEventsError(null);
+
+            const events = await eventsApi.list();
+
+            if (!active) return;
+
+            setUpcomingEvents(getUpcomingEvents(events, 3));
+          } catch (error) {
+            if (!active) return;
+
+            setUpcomingEvents([]);
+            setEventsError(
+                error instanceof Error ? error.message : t('events.loadError'),
+            );
+          } finally {
+            if (active) {
+              setEventsLoading(false);
+            }
+          }
+        }
+
+        loadEventsWidget().catch(() => undefined);
+
+        return () => {
+          active = false;
+        };
+      }, []),
+  );
+
+  const displayName = formatPersonName(meHistory?.personName) || meStoredName || t('home.profileFallback');
   const firstName = meHistory?.personName ? getFirstName(meHistory.personName) : '';
+
+  // Namen merken, damit die Einstellungen ihn ohne eigenen Request zeigen können.
+  useEffect(() => {
+    if (meNuid && meHistory?.personName) {
+      setMePlayerName(formatPersonName(meHistory.personName)).catch(() => undefined);
+    }
+  }, [meNuid, meHistory?.personName]);
   const clubName = meHistory?.clubName;
 
   const currentTtr =
@@ -118,9 +228,15 @@ export function useHome() {
       parseOptionalNumber(meHistory?.maxTtr) ??
       parseOptionalNumber(meApiHistoryData?.maxTtr);
 
+  const events = meHistory?.events;
+
   const recentEvents = useMemo(() => {
-    return [...(meHistory?.events ?? [])].reverse().slice(0, 2);
-  }, [meHistory?.events]);
+    return [...(events ?? [])].reverse().slice(0, 3);
+  }, [events]);
+
+  const ttrSeries = useMemo(() => getTtrSeries(events ?? []).slice(-30), [events]);
+  const ttrDelta30 = useMemo(() => getTtrDeltaSince(events ?? [], 30), [events]);
+  const winRate = useMemo(() => getWinRatePercent(events ?? []), [events]);
 
   useEffect(() => {
     let active = true;
@@ -128,6 +244,7 @@ export function useHome() {
     async function loadClubMatches() {
       if (!meClub?.organization || !meClub.clubNumber) {
         setClubCompletedMatches([]);
+        setClubUpcomingMatches([]);
         setClubError(null);
         setClubLoading(false);
         return;
@@ -136,6 +253,7 @@ export function useHome() {
       setClubLoading(true);
       setClubError(null);
       setClubCompletedMatches([]);
+      setClubUpcomingMatches([]);
 
       try {
         const season = meClub.season ?? getCurrentBackendSeason();
@@ -152,16 +270,25 @@ export function useHome() {
 
         if (!active) return;
 
-        const matches = normalizeHomeClubSchedule(response)
+        const allMatches = normalizeHomeClubSchedule(response);
+
+        const matches = allMatches
             .filter(isCompletedClubMatch)
             .sort(compareMatchesNewestFirst)
-            .slice(0, 3);
+            .slice(0, 2);
+
+        const upcoming = allMatches
+            .filter(isUpcomingClubMatch)
+            .sort(compareMatchesOldestFirst)
+            .slice(0, 2);
 
         setClubCompletedMatches(matches);
+        setClubUpcomingMatches(upcoming);
       } catch (error) {
         if (!active) return;
 
         setClubCompletedMatches([]);
+        setClubUpcomingMatches([]);
         setClubError(
             error instanceof Error
                 ? error.message
@@ -181,6 +308,18 @@ export function useHome() {
     };
   }, [meClub]);
 
+  function reloadMe() {
+    setReloadKey((current) => current + 1);
+  }
+
+  useOnMyttConnected(reloadMe);
+
+  async function selectMePlayer(nuid: string, name?: string) {
+    await setMePlayerNuid(nuid);
+    await setMePlayerName(name);
+    reloadMe();
+  }
+
   function openMeProfile() {
     if (!meNuid) {
       router.push('/settings');
@@ -192,9 +331,20 @@ export function useHome() {
       params: {
         nuid: meNuid,
         title: displayName,
-        clubName: clubName ?? '',
+        clubName: clubName ?? meClub?.clubName ?? meClub?.title ?? '',
+        // Mit gespeichertem Verein findet das Profil den öffentlichen TTR auch ohne myTischtennis.
+        organization: meClub?.organization ?? '',
+        clubNumber: meClub?.clubNumber ?? '',
       },
     });
+  }
+
+  function openAllEvents() {
+    router.push('/events');
+  }
+
+  function openEvent(event: EventSummary) {
+    router.push({ pathname: '/event/[id]', params: { id: event.id } });
   }
 
   function openMyClub() {
@@ -226,13 +376,26 @@ export function useHome() {
     qTtr,
     maxTtr,
     recentEvents,
+    ttrSeries,
+    ttrDelta30,
+    winRate,
     meLoading,
     meError,
+    meUnavailableReason,
     meClub,
     clubCompletedMatches,
+    clubUpcomingMatches,
     clubLoading,
     clubError,
+    selectMePlayer,
+    reloadMe,
+    eventsWidgetEnabled,
+    upcomingEvents,
+    eventsLoading,
+    eventsError,
     openMeProfile,
     openMyClub,
+    openAllEvents,
+    openEvent,
   };
 }

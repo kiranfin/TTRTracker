@@ -1,7 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardOverlap } from '../hooks/useKeyboardOverlap';
+import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '@/src/theme/typography';
 
 type BottomSheetProps = {
   visible: boolean;
@@ -13,13 +17,33 @@ type BottomSheetProps = {
 
 export function BottomSheet({ visible, title, onClose, children, headerRight }: BottomSheetProps) {
   const { colors } = useTheme();
+  const { t } = useI18n();
+
+  const insets = useSafeAreaInsets();
+  const { ref, overlap } = useKeyboardOverlap();
 
   return (
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <View style={styles.root}>
+      <Modal
+          visible={visible}
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          navigationBarTranslucent
+          onRequestClose={onClose}
+      >
+        <View ref={ref} style={[styles.root, { paddingBottom: overlap }]}>
           <Pressable style={styles.backdrop} onPress={onClose} />
 
-          <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View
+              style={[
+                styles.sheet,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  paddingBottom: 20 + (overlap > 0 ? 0 : insets.bottom),
+                },
+              ]}
+          >
             <View style={styles.handleWrap}>
               <View style={[styles.handle, { backgroundColor: colors.border }]} />
             </View>
@@ -31,13 +55,23 @@ export function BottomSheet({ visible, title, onClose, children, headerRight }: 
 
               <View style={styles.headerActions}>
                 {headerRight}
-                <Pressable onPress={onClose} hitSlop={10} style={styles.closeButton}>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.close')}
+                    onPress={onClose}
+                    hitSlop={10}
+                    style={styles.closeButton}
+                >
                   <Ionicons name="close" size={22} color={colors.mutedText} />
                 </Pressable>
               </View>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.content}
+            >
               {children}
             </ScrollView>
           </View>
@@ -62,7 +96,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 20,
   },
   handleWrap: {
     alignItems: 'center',
@@ -84,7 +117,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 21,
     lineHeight: 27,
-    fontWeight: '900',
+    ...font('900'),
   },
   headerActions: {
     flexDirection: 'row',

@@ -1,43 +1,14 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 112,
-    gap: 16,
+    gap: 18,
   },
-  titleBlock: {
-    gap: 4,
-  },
-  title: {
-    fontSize: 25,
-    lineHeight: 32,
-    fontWeight: '800',
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  card: {
-    padding: 16,
-    gap: 14,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-  },
-  label: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  input: {
+  input: { ...font('400'),
     minHeight: 46,
     borderWidth: 1,
     borderRadius: 14,
@@ -82,52 +53,13 @@ export const styles = StyleSheet.create({
   backgroundPreviewTitle: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '900',
+    ...font('900'),
     textAlign: 'center',
   },
-  backgroundPreviewMeta: {
+  backgroundPreviewMeta: { ...font('400'),
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'center',
-  },
-  accentPreview: {
-    minHeight: 78,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  accentPreviewTextBlock: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  accentPreviewTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '900',
-  },
-  accentPreviewMeta: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '800',
-    opacity: 0.9,
-  },
-  contrastBadge: {
-    minWidth: 68,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contrastBadgeText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '900',
   },
   colorPickerBox: {
     alignItems: 'center',
@@ -169,7 +101,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backendText: {
+  backendText: { ...font('400'),
     fontSize: 13,
     lineHeight: 19,
   },
@@ -187,7 +119,7 @@ export const styles = StyleSheet.create({
   statusTitle: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '800',
+    ...font('800'),
   },
   grantList: {
     gap: 10,
@@ -204,68 +136,16 @@ export const styles = StyleSheet.create({
   grantTitle: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '800',
+    ...font('800'),
   },
-  grantSubtitle: {
+  grantSubtitle: { ...font('400'),
     fontSize: 12,
     lineHeight: 18,
-  },
-  versionCard: {
-    padding: 22,
-    alignItems: 'center',
-    gap: 4,
   },
   versionText: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '700',
-  },
-  versionSubtext: {
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-  profileSection: {
-    gap: 10,
-  },
-  profileSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  profileSectionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileSectionTitleBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  profileSectionTitle: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '900',
-  },
-  profileSectionSubtitle: {
-    marginTop: 1,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  profileDivider: {
-    height: StyleSheet.hairlineWidth,
-    opacity: 0.9,
-  },
-  compactInput: {
-    minHeight: 42,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    fontSize: 14,
-    lineHeight: 20,
+    ...font('700'),
   },
   savedBox: {
     borderWidth: 1,
@@ -283,12 +163,103 @@ export const styles = StyleSheet.create({
   savedBoxTitle: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '900',
+    ...font('900'),
   },
   savedBoxMeta: {
     marginTop: 1,
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '700',
+    ...font('700'),
+  },
+  sheetBody: {
+    gap: 14,
+    paddingBottom: 12,
+  },
+  group: {
+    gap: 8,
+  },
+  groupLabel: {
+    paddingHorizontal: 4,
+  },
+  segmentRow: {
+    padding: 16,
+    gap: 10,
+  },
+
+  profileCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  profileText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  changePill: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    justifyContent: 'center',
+  },
+  iconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowValue: {
+    fontSize: 14,
+  },
+  statusValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  inlineRow: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  inlineTitle: {
+    flex: 1,
+  },
+  inlineSegment: {
+    width: 186,
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  swatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 0,
+  },
+  swatchCustom: {
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutButton: {
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

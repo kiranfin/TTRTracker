@@ -1,134 +1,151 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '@/src/storage/favorites';
-import type { ClubTeam, NormalizedClub, NormalizedPlayer, SearchCategory } from '@/src/types/tttracker';
-import { normalizeClub, normalizePlayer, normalizeTeams } from '@/src/utils/normalizers';
+import { addRecentViewed, clearRecentViewed, getRecentViewed } from '@/src/storage/recentViewed';
+import type { RecentViewedItem } from '@/src/storage/recentViewed';
+import type { NormalizedClub, NormalizedPlayer } from '@/src/types/tttracker';
+import { normalizeClub, normalizePlayer } from '@/src/utils/normalizers';
+import type { SearchFilter } from '../types';
 import { uniqueById } from '../utils';
+
+export const SEARCH_DEBOUNCE_MS = 400;
+export const SEARCH_MIN_CHARACTERS = 2;
+// So viele Treffer bekommen in der Übersicht ihren TTR nachgeladen (ein Request pro Spieler)
+const INITIAL_TTR_LOOKUPS = 4;
 
 export function useSearch() {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<SearchCategory>('players');
+  const [filter, setFilter] = useState<SearchFilter>('all');
+  const [searchedQuery, setSearchedQuery] = useState('');
   const [players, setPlayers] = useState<NormalizedPlayer[]>([]);
   const [clubs, setClubs] = useState<NormalizedClub[]>([]);
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(new Set());
-  const [selectedPlayer, setSelectedPlayer] = useState<NormalizedPlayer | null>(null);
-  const [selectedClub, setSelectedClub] = useState<NormalizedClub | null>(null);
-  const [clubTeams, setClubTeams] = useState<ClubTeam[]>([]);
+  const [recent, setRecent] = useState<RecentViewedItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingTeams, setLoadingTeams] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Jede Suche bekommt eine Nummer, damit späte Antworten alter Eingaben verworfen werden.
+  const requestCounter = useRef(0);
+  const ttrRequested = useRef<Set<string>>(new Set());
+  const playersRef = useRef<NormalizedPlayer[]>([]);
+  const filterRef = useRef<SearchFilter>(filter);
+
+  playersRef.current = players;
+  filterRef.current = filter;
 
   const loadFavorites = useCallback(async () => {
     const favorites = await getFavorites();
     setFavoriteSet(new Set(favorites.map((item) => favoriteKey(item.type, item.id))));
   }, []);
 
-  useFocusEffect(useCallback(() => {
-    loadFavorites().catch(() => undefined);
-  }, [loadFavorites]));
+  useFocusEffect(
+      useCallback(() => {
+        loadFavorites().catch(() => undefined);
+        getRecentViewed().then(setRecent).catch(() => undefined);
+      }, [loadFavorites]),
+  );
 
-  const resetSearchResults = useCallback(() => {
-    setSubmittedQuery('');
-    setPlayers([]);
-    setClubs([]);
+  const enrichTtr = useCallback((items: NormalizedPlayer[], requestId: number) => {
+    for (const player of items) {
+      const nuid = player.internalId;
+
+      if (!nuid || ttrRequested.current.has(nuid)) continue;
+
+      ttrRequested.current.add(nuid);
+
+      ttApi
+          .getPlayerTtr(nuid)
+          .then((response) => {
+            if (requestId !== requestCounter.current) return;
+
+            // Das Backend reicht den Wert von myTischtennis durch, der kann auch als Text kommen.
+            const rawTtr = response.data.ttr as unknown;
+            const ttr = typeof rawTtr === 'string' && rawTtr.trim() ? Number(rawTtr) : rawTtr;
+            if (typeof ttr !== 'number' || !Number.isFinite(ttr)) return;
+
+            setPlayers((previous) =>
+                previous.map((candidate) => (candidate.internalId === nuid ? { ...candidate, ttr } : candidate)),
+            );
+          })
+          .catch(() => undefined);
+    }
   }, []);
 
-  function handleQueryChange(value: string) {
-    setQuery(value);
-    setError(null);
+  useEffect(() => {
+    const text = query.trim();
+    const requestId = ++requestCounter.current;
 
-    if (!value.trim()) {
-      resetSearchResults();
-      return;
-    }
+    ttrRequested.current = new Set();
 
-    if (submittedQuery && value.trim() !== submittedQuery) {
+    if (text.length < SEARCH_MIN_CHARACTERS) {
       setPlayers([]);
       setClubs([]);
-    }
-  }
-
-  async function enrichPlayersWithTtr(items: NormalizedPlayer[]) {
-    const safeItems = Array.isArray(items) ? items : [];
-
-    const enriched = await Promise.all(
-        safeItems.map(async (player) => {
-          if (!player.internalId) return player;
-
-          try {
-            const response = await ttApi.getPlayerTtr(player.internalId);
-            return {
-              ...player,
-              ttr: response.data.ttr ?? player.ttr,
-            };
-          } catch {
-            return player;
-          }
-        })
-    );
-
-    return enriched;
-  }
-
-  const runSearch = useCallback(async () => {
-    const text = query.trim();
-    setError(null);
-
-    if (text.length < 2) {
-      resetSearchResults();
-      setError(t('search.minCharacters'));
+      setSearchedQuery('');
+      setLoading(false);
+      setError(null);
       return;
     }
 
     setLoading(true);
+    setError(null);
 
-    try {
-      const [playerRows, clubRows] = await Promise.all([
-        ttApi.searchPlayers(text),
-        ttApi.searchClubs(text),
-      ]);
+    const timer = setTimeout(() => {
+      Promise.all([ttApi.searchPlayers(text), ttApi.searchClubs(text)])
+          .then(([playerRows, clubRows]) => {
+            if (requestId !== requestCounter.current) return;
 
-      const normalizedPlayers = uniqueById(
-          Array.isArray(playerRows)
-              ? playerRows.map((row) => normalizePlayer(row))
-              : []
-      );
+            const normalizedPlayers = uniqueById(
+                Array.isArray(playerRows) ? playerRows.map((row) => normalizePlayer(row)) : [],
+            );
 
-      const normalizedClubs = uniqueById(
-          Array.isArray(clubRows)
-              ? clubRows.map((row) => normalizeClub(row))
-              : []
-      );
+            const normalizedClubs = uniqueById(
+                Array.isArray(clubRows) ? clubRows.map((row) => normalizeClub(row)) : [],
+            );
 
-      setSubmittedQuery(text);
-      setClubs(normalizedClubs);
-      setPlayers(normalizedPlayers);
+            setPlayers(normalizedPlayers);
+            setClubs(normalizedClubs);
+            setSearchedQuery(text);
 
-      const playersWithTtr = await enrichPlayersWithTtr(normalizedPlayers);
-      setPlayers(playersWithTtr);
-    } catch (searchError) {
-      setSubmittedQuery(text);
-      setPlayers([]);
-      setClubs([]);
-      setError(searchError instanceof Error ? searchError.message : t('search.failed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [query, resetSearchResults]);
+            // In "Spieler" sind alle Treffer sichtbar, sonst nur die ersten
+            enrichTtr(
+                filterRef.current === 'players' ? normalizedPlayers : normalizedPlayers.slice(0, INITIAL_TTR_LOOKUPS),
+                requestId,
+            );
+          })
+          .catch((searchError) => {
+            if (requestId !== requestCounter.current) return;
+
+            setPlayers([]);
+            setClubs([]);
+            setSearchedQuery(text);
+            setError(searchError instanceof Error ? searchError.message : t('search.failed'));
+          })
+          .finally(() => {
+            if (requestId === requestCounter.current) setLoading(false);
+          });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // Wer auf "Spieler" wechselt, sieht alle Treffer, also werden auch die übrigen TTR-Werte geladen.
+  useEffect(() => {
+    if (filter !== 'players') return;
+
+    enrichTtr(playersRef.current, requestCounter.current);
+  }, [enrichTtr, filter, players.length]);
 
   function findClubForPlayer(player: NormalizedPlayer) {
     const playerClubName = player.clubName.trim().toLowerCase();
 
     if (!playerClubName) return undefined;
 
-    return clubs.find((club) => {
-      return club.name.trim().toLowerCase() === playerClubName;
-    });
+    return clubs.find((club) => club.name.trim().toLowerCase() === playerClubName);
   }
 
   async function togglePlayerFavorite(player: NormalizedPlayer) {
@@ -151,6 +168,7 @@ export function useSearch() {
       type: 'player',
       title: player.fullName,
       subtitle: player.clubName,
+      ttr: player.ttr,
       params: {
         clubName: player.clubName,
         clubKey: playerClub?.id ?? '',
@@ -199,97 +217,109 @@ export function useSearch() {
     setFavoriteSet((previous) => new Set(previous).add(key));
   }
 
-  async function openClub(club: NormalizedClub) {
-    setSelectedClub(club);
-    setClubTeams([]);
-
-    if (!club.organization || !club.clubNumber) return;
-
-    setLoadingTeams(true);
-
-    try {
-      const response = await ttApi.getClubTeams(club.organization, club.clubNumber);
-      setClubTeams(normalizeTeams(response));
-    } catch {
-      setClubTeams([]);
-    } finally {
-      setLoadingTeams(false);
-    }
-  }
-
   function openPlayerDetails(player: NormalizedPlayer) {
-    if (!player.internalId) return;
+    if (!player.internalId) {
+      setError(t('search.playerMissingNuid'));
+      return;
+    }
 
     const playerClub = findClubForPlayer(player);
 
-    setSelectedPlayer(null);
+    const params = {
+      nuid: player.internalId,
+      title: player.fullName,
+      clubName: player.clubName,
+      clubKey: playerClub?.id ?? '',
+      organization: playerClub?.organization ?? '',
+      organizationName: playerClub?.organizationName ?? '',
+      clubNumber: playerClub?.clubNumber ?? '',
+      state: player.state ?? playerClub?.state ?? '',
+      externalId: playerClub?.externalId ?? '',
+      ttr: player.ttr ? String(player.ttr) : '',
+    };
 
-    router.push({
-      pathname: '/player/[nuid]',
-      params: {
-        nuid: player.internalId,
-        title: player.fullName,
-        clubName: player.clubName,
-        clubKey: playerClub?.id ?? '',
-        organization: playerClub?.organization ?? '',
-        organizationName: playerClub?.organizationName ?? '',
-        clubNumber: playerClub?.clubNumber ?? '',
-        state: player.state ?? playerClub?.state ?? '',
-        externalId: playerClub?.externalId ?? '',
-        ttr: player.ttr ? String(player.ttr) : '',
-      },
-    });
+    addRecentViewed({
+      type: 'player',
+      id: player.internalId,
+      title: player.fullName,
+      subtitle: player.clubName,
+      params,
+    }).catch(() => undefined);
+
+    router.push({ pathname: '/player/[nuid]', params });
   }
 
   function openClubDetails(club: NormalizedClub) {
-    setSelectedClub(null);
+    const params = {
+      clubKey: club.id,
+      title: club.name,
+      organization: club.organization ?? '',
+      organizationName: club.organizationName ?? '',
+      clubNumber: club.clubNumber ?? '',
+      state: club.state ?? '',
+      externalId: club.externalId ?? '',
+    };
 
-    router.push({
-      pathname: '/club/[clubKey]',
-      params: {
-        clubKey: club.id,
-        title: club.name,
-        organization: club.organization ?? '',
-        organizationName: club.organizationName ?? '',
-        clubNumber: club.clubNumber ?? '',
-        state: club.state ?? '',
-        externalId: club.externalId ?? '',
-      },
-    });
+    addRecentViewed({
+      type: 'club',
+      id: club.id,
+      title: club.name,
+      subtitle: [club.organizationName, club.organization].filter(Boolean).join(' • '),
+      params,
+    }).catch(() => undefined);
+
+    router.push({ pathname: '/club/[clubKey]', params });
   }
 
-  const tabOptions = useMemo(() => [
-    { value: 'players' as const, label: players.length > 0 ? t('search.playersTabCount', { count: players.length }) : t('search.playersTab'), icon: 'person-outline' as const },
-    { value: 'clubs' as const, label: clubs.length > 0 ? t('search.clubsTabCount', { count: clubs.length }) : t('search.clubsTab'), icon: "tennisball-outline" as const },
-  ], [clubs.length, players.length, t]);
+  function openRecent(item: RecentViewedItem) {
+    addRecentViewed({
+      type: item.type,
+      id: item.id,
+      title: item.title,
+      subtitle: item.subtitle,
+      params: item.params,
+    }).catch(() => undefined);
 
-  const hasSubmitted = submittedQuery.length > 0;
-  const queryChanged = query.trim().length > 0 && query.trim() !== submittedQuery;
+    if (item.type === 'player') {
+      router.push({ pathname: '/player/[nuid]', params: { ...item.params, nuid: item.params.nuid ?? item.id } });
+      return;
+    }
+
+    router.push({ pathname: '/club/[clubKey]', params: { ...item.params, clubKey: item.params.clubKey ?? item.id } });
+  }
+
+  async function clearRecent() {
+    await clearRecentViewed();
+    setRecent([]);
+  }
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+  }
+
+  const hasQuery = query.trim().length >= SEARCH_MIN_CHARACTERS;
+  // Ergebnisse gehören zur aktuellen Eingabe (nicht zu einer älteren)
+  const resultsCurrent = hasQuery && searchedQuery === query.trim() && !loading;
+
   return {
     query,
-    submittedQuery,
-    activeTab,
-    setActiveTab,
+    searchedQuery,
+    filter,
+    setFilter,
     players,
     clubs,
     favoriteSet,
-    selectedPlayer,
-    setSelectedPlayer,
-    selectedClub,
-    setSelectedClub,
-    clubTeams,
+    recent,
     loading,
-    loadingTeams,
     error,
+    hasQuery,
+    resultsCurrent,
     handleQueryChange,
-    runSearch,
     togglePlayerFavorite,
     toggleClubFavorite,
-    openClub,
     openPlayerDetails,
     openClubDetails,
-    tabOptions,
-    hasSubmitted,
-    queryChanged,
+    openRecent,
+    clearRecent,
   };
 }

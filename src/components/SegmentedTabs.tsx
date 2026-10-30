@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '../theme/typography';
 
 export type SegmentOption<T extends string> = {
   value: T;
   label: string;
+  // Wird bewusst nicht mehr angezeigt (nur Text, wie im Design), bleibt für bestehende Aufrufer erhalten.
   icon?: keyof typeof Ionicons.glyphMap;
 };
 
@@ -12,37 +14,43 @@ export function SegmentedTabs<T extends string>({
                                                   value,
                                                   onChange,
                                                   options,
+                                                  compact,
                                                 }: {
   value: T;
   onChange: (value: T) => void;
   options: SegmentOption<T>[];
+  // Kleinere Variante, z. B. für den Zeitraum im Diagramm
+  compact?: boolean;
 }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const noWebOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
 
   return (
-      <View style={[styles.wrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+      <View accessibilityRole="tablist" style={[styles.wrap, compact && styles.wrapCompact, { backgroundColor: colors.soft }]}>
         {options.map((option) => {
           const active = option.value === value;
-          const textColor = active ? colors.primary : colors.mutedText;
 
           return (
               <Pressable
                   key={option.value}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
                   onPress={() => onChange(option.value)}
                   style={({ pressed }) => [
                     styles.tab,
+                    compact && styles.tabCompact,
                     noWebOutline,
-                    active && {
-                      backgroundColor: colors.card,
-                      borderColor: colors.primarySoftBorder,
-                      shadowColor: colors.shadow,
-                    },
+                    active && [
+                      styles.tabActive,
+                      { backgroundColor: isDark ? colors.border : colors.card, shadowColor: colors.shadow },
+                    ],
                     pressed && styles.pressed,
                   ]}
               >
-                {option.icon ? <Ionicons name={option.icon} size={17} color={textColor} /> : null}
-                <Text style={[styles.label, { color: textColor }]} numberOfLines={1}>
+                <Text
+                    style={[styles.label, compact && styles.labelCompact, { color: active ? colors.text : colors.mutedText }]}
+                    numberOfLines={1}
+                >
                   {option.label}
                 </Text>
               </Pressable>
@@ -55,26 +63,38 @@ export function SegmentedTabs<T extends string>({
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
-    borderRadius: 18,
-    padding: 5,
-    gap: 5,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    padding: 3,
+    gap: 2,
+  },
+  wrapCompact: {
+    borderRadius: 11,
   },
   tab: {
     flex: 1,
-    minHeight: 42,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    height: 38,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 6,
+    paddingHorizontal: 6,
+  },
+  tabCompact: {
+    height: 30,
+    borderRadius: 8,
+  },
+  tabActive: {
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
   },
   label: {
     fontSize: 14,
     lineHeight: 18,
-    fontWeight: '800',
+    ...font('600'),
+  },
+  labelCompact: {
+    fontSize: 13,
   },
   pressed: {
     opacity: 0.78,

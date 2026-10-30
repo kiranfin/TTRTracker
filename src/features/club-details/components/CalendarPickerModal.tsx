@@ -20,7 +20,8 @@ export function CalendarPickerModal({
     onClose: () => void;
 }) {
     const { colors } = useTheme();
-    const { t } = useI18n();
+    const { t, language } = useI18n();
+    const locale = language === 'de' ? 'de-DE' : 'en-GB';
     const [visibleMonth, setVisibleMonth] = useState(() => parseDateInput(value) ?? new Date());
 
     useEffect(() => {
@@ -37,7 +38,12 @@ export function CalendarPickerModal({
     const selectedKey = parseDateInput(value) ? formatDateInput(parseDateInput(value)!) : '';
     const todayKey = formatDateInput(new Date());
 
-    const monthLabel = visibleMonth.toLocaleDateString('de-DE', {
+    // 1. Januar 2024 war ein Montag, daher ergibt sich die Reihenfolge Mo bis So
+    const weekdayLabels = Array.from({ length: 7 }, (_, index) =>
+        new Date(2024, 0, 1 + index).toLocaleDateString(locale, { weekday: 'short' }).replace('.', '').slice(0, 2),
+    );
+
+    const monthLabel = visibleMonth.toLocaleDateString(locale, {
         month: 'long',
         year: 'numeric',
     });
@@ -74,6 +80,8 @@ export function CalendarPickerModal({
                         </View>
 
                         <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t('common.close')}
                             onPress={onClose}
                             hitSlop={10}
                             style={[
@@ -90,6 +98,8 @@ export function CalendarPickerModal({
 
                     <View style={styles.calendarMonthRow}>
                         <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t('club.previousMonth')}
                             onPress={() => setVisibleMonth((current) => addMonths(current, -1))}
                             style={[
                                 styles.calendarNavButton,
@@ -107,6 +117,8 @@ export function CalendarPickerModal({
                         </Text>
 
                         <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t('club.nextMonth')}
                             onPress={() => setVisibleMonth((current) => addMonths(current, 1))}
                             style={[
                                 styles.calendarNavButton,
@@ -121,7 +133,7 @@ export function CalendarPickerModal({
                     </View>
 
                     <View style={styles.weekdayRow}>
-                        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((weekday) => (
+                        {weekdayLabels.map((weekday) => (
                             <Text
                                 key={weekday}
                                 style={[styles.weekdayText, { color: colors.mutedText }]}

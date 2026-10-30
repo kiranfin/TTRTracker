@@ -1,9 +1,20 @@
 import { ttApi } from '@/src/api/tttracker';
-import type { TranslationKey } from '@/src/i18n';
 import type { ClubTeam, ScheduleMatch } from '@/src/types/tttracker';
-import { formatDate, normalizeSchedule } from '@/src/utils/normalizers';
+import { formatDate, mapScheduleStatus, normalizeSchedule } from '@/src/utils/normalizers';
 import { isFavorite } from '@/src/storage/favorites';
-import type { ClubApiWithOptionalEndpoints, ClubScheduleMatch, RichObject, ClubPlayer, ThemeColors, ScheduleDateGroup } from './types';
+import { Linking, Platform } from 'react-native';
+import type {
+    ClubAddress,
+    ClubApiWithOptionalEndpoints,
+    ClubInfo,
+    ClubOfficial,
+    ClubPlayer,
+    ClubScheduleMatch,
+    RichObject,
+    ScheduleDateGroup,
+    ThemeColors,
+} from './types';
+import { getCurrentSeason, splitLocalDateTime } from '@/src/utils/dates';
 
 export const TEAM_HOME_KEYS = [
     'team_home',
@@ -52,19 +63,6 @@ export const MEETING_DATE_KEYS = [
 ];
 
 export const CLUB_FAVORITE_TYPE = 'club' as Parameters<typeof isFavorite>[0];
-
-export const scheduleStatusLabelKeys = {
-    completed: 'status.completed',
-    live: 'status.live',
-    free: 'status.free',
-    postponed: 'status.postponed',
-    scheduled: 'status.scheduled',
-} as const satisfies Record<ScheduleMatch['status'], TranslationKey>;
-
-export function matchStatusLabelKey(status: ScheduleMatch['status']) {
-    return scheduleStatusLabelKeys[status];
-}
-
 export async function loadClubPlayers(
     clubApi: ClubApiWithOptionalEndpoints,
     organization: string,
@@ -105,7 +103,8 @@ export async function loadClubSchedule(
         );
 
         const teamNames = teams.map((team) => team.teamName).filter(Boolean);
-        const clubMatches = normalizeClubScheduleResponse(response, teamNames);
+        const teamIds = teams.map((team) => team.teamId).filter((id): id is string => Boolean(id));
+        const clubMatches = normalizeClubScheduleResponse(response, teamNames, teamIds);
 
         const fallbackMatches =
             clubMatches.length > 0
@@ -147,7 +146,7 @@ export async function loadClubScheduleFromTeamLeagues(
     for (const team of teams) {
         if (!team.association || !team.groupId || !team.teamName) continue;
 
-        const season = team.season ?? '25/26';
+        const season = team.season || getCurrentSeason();
         const leagueSlug = team.leagueSlug ?? 'x';
         const key = [team.association, season, team.groupId, leagueSlug].join('|');
 
@@ -192,11 +191,11 @@ export async function loadClubScheduleFromTeamLeagues(
     return sortSchedule(dedupeSchedule(filterMatchesByDate(matches, options?.dateStart, options?.dateEnd)));
 }
 
-export function normalizeClubScheduleResponse(response: unknown, teamNames: string[]) {
+export function normalizeClubScheduleResponse(response: unknown, teamNames: string[], teamIds: string[] = []) {
     const meetings = collectClubMeetings(response);
 
     return meetings
-        .map((meeting, index) => normalizeClubScheduleMeeting(meeting, index, teamNames))
+        .map((meeting, index) => normalizeClubScheduleMeeting(meeting, index, teamNames, teamIds))
         .filter((match): match is ClubScheduleMatch => Boolean(match));
 }
 
@@ -268,6 +267,7 @@ export function normalizeClubScheduleMeeting(
     value: unknown,
     index: number,
     teamNames: string[],
+    teamIds: string[] = [],
 ): ClubScheduleMatch | null {
     if (!value || typeof value !== 'object') {
         return null;
@@ -280,12 +280,13 @@ export function normalizeClubScheduleMeeting(
 
     const id = pickDeepString(raw, MEETING_ID_KEYS);
 
-    const date =
-        pickDeepString(raw, MEETING_DATE_KEYS) ??
-        undefined;
+    // UTC-Zeitstempel in lokales Datum und lokale Uhrzeit umrechnen
+    const start = splitLocalDateTime(pickDeepString(raw, MEETING_DATE_KEYS));
+    const date = start.date;
 
     const time =
-        pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel', 'start_time', 'startTime']) ??
+        pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel']) ??
+        start.time ??
         extractTimeFromDateValue(date);
 
     const homeScore = pickDeepString(raw, [
@@ -336,8 +337,19 @@ export function normalizeClubScheduleMeeting(
         'number',
     ]);
 
+    // In der Teamliste heißt die Mannschaft nur "Erwachsene II", im Spielplan "TTV Pleidelsheim II".
+    // Die eigene Seite finden wir deshalb zuerst über die Team-ID.
+    const homeTeamId = pickDeepString(raw, ['team_home_id', 'homeTeamId']);
+    const awayTeamId = pickDeepString(raw, ['team_away_id', 'awayTeamId']);
+    const ownTeamById =
+        homeTeamId && teamIds.includes(homeTeamId)
+            ? homeTeam
+            : awayTeamId && teamIds.includes(awayTeamId)
+                ? awayTeam
+                : undefined;
+
     const rawStatus = pickDeepString(raw, ['state', 'status', 'meeting_state', 'meetingState']);
-    const status = normalizeClubMeetingStatus(rawStatus, homeScore, awayScore);
+    const status = mapScheduleStatus(rawStatus, raw.live, homeTeam, awayTeam, homeScore, awayScore);
 
     return {
         id: id ?? `${date ?? 'no-date'}-${homeTeam}-${awayTeam}-${index}`,
@@ -351,7 +363,10 @@ export function normalizeClubScheduleMeeting(
         leagueName,
         roundName,
         meetingNumber,
-        clubTeamName: findMatchedTeamName(
+        homeClubId: pickDeepString(raw, ['team_home_club_id', 'homeClubId']),
+        awayClubId: pickDeepString(raw, ['team_away_club_id', 'awayClubId']),
+        association: pickDeepString(raw, ['league_org_short_name', 'association']),
+        clubTeamName: ownTeamById ?? findMatchedTeamName(
             {
                 homeTeam,
                 awayTeam,
@@ -359,30 +374,6 @@ export function normalizeClubScheduleMeeting(
             teamNames,
         ),
     } as ClubScheduleMatch;
-}
-
-export function normalizeClubMeetingStatus(
-    rawStatus?: string,
-    homeScore?: string,
-    awayScore?: string,
-): ScheduleMatch['status'] {
-    const normalized = String(rawStatus ?? '').trim().toLowerCase();
-
-    if (normalized.includes('spielfrei') || normalized.includes('frei')) {
-        return 'free';
-    }
-
-    if (
-        normalized.includes('beendet') ||
-        normalized.includes('gespielt') ||
-        normalized.includes('completed') ||
-        normalized.includes('done') ||
-        (homeScore !== undefined && awayScore !== undefined)
-    ) {
-        return 'completed';
-    }
-
-    return 'scheduled';
 }
 
 export function pickDeepString(row: RichObject, keys: string[]) {
@@ -557,45 +548,6 @@ export function hasLastYearNoGame(value?: string) {
 
     return normalized.length > 0 && normalized !== 'no';
 }
-
-export function getPlayerCardAccent(colors: ThemeColors, noGameLastYear: boolean) {
-    const dark = isDarkTheme(colors);
-
-    if (noGameLastYear) {
-        return dark
-            ? {
-                background: 'rgba(239, 68, 68, 0.14)',
-                border: 'rgba(248, 113, 113, 0.58)',
-                rankBackground: 'rgba(239, 68, 68, 0.22)',
-                rankBorder: 'rgba(248, 113, 113, 0.78)',
-                rankText: '#FCA5A5',
-            }
-            : {
-                background: 'rgba(239, 68, 68, 0.11)',
-                border: 'rgba(220, 38, 38, 0.38)',
-                rankBackground: 'rgba(239, 68, 68, 0.17)',
-                rankBorder: 'rgba(220, 38, 38, 0.45)',
-                rankText: '#DC2626',
-            };
-    }
-
-    return dark
-        ? {
-            background: 'rgba(255, 255, 255, 0.035)',
-            border: 'rgba(255, 255, 255, 0.09)',
-            rankBackground: 'rgba(255, 255, 255, 0.06)',
-            rankBorder: 'rgba(255, 255, 255, 0.12)',
-            rankText: '#CBD5E1',
-        }
-        : {
-            background: colors.card,
-            border: colors.border,
-            rankBackground: colors.muted,
-            rankBorder: colors.border,
-            rankText: colors.mutedText,
-        };
-}
-
 export function isDarkTheme(colors: ThemeColors) {
     return getRelativeLuminance(colors.background) < 0.45;
 }
@@ -1047,4 +999,114 @@ export function getTimeValue(value?: string) {
     }
 
     return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function asRichObject(value: unknown): RichObject {
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as RichObject) : {};
+}
+
+function cleanText(value: unknown) {
+    const text = valueToString(value)?.trim();
+    return text ? text : undefined;
+}
+
+function normalizeClubAddress(value: unknown): ClubAddress {
+    const row = asRichObject(value);
+
+    return {
+        label: cleanText(row.label),
+        name: cleanText(row.name),
+        street: cleanText(row.street),
+        zipcode: cleanText(row.zipcode),
+        city: cleanText(row.city),
+        website: cleanText(row.website),
+        note: cleanText(row.note),
+        email: cleanText(row.email),
+        phone: cleanText(row.phone),
+    };
+}
+
+// Antwort von /api/clubs/:org/:nr/info, das Backend liefert die Felder schon aufbereitet.
+export function normalizeClubInfo(response: unknown): ClubInfo {
+    const root = asRichObject(response);
+    const data = asRichObject(root.data ?? root);
+    const foundationYear = toNumber(data.foundationYear);
+
+    return {
+        clubName: cleanText(data.clubName),
+        logoUrl: cleanText(data.logoUrl),
+        region: cleanText(data.region),
+        foundationYear: foundationYear && foundationYear > 1800 ? foundationYear : undefined,
+        organizationName: cleanText(data.organizationName),
+        contact: data.contact ? normalizeClubAddress(data.contact) : undefined,
+        venues: Array.isArray(data.venues) ? data.venues.map(normalizeClubAddress) : [],
+        officials: (Array.isArray(data.officials) ? data.officials : [])
+            .map((entry): ClubOfficial | null => {
+                const row = asRichObject(entry);
+                const name = cleanText(row.name);
+
+                return name
+                    ? { role: cleanText(row.role), name, email: cleanText(row.email), phone: cleanText(row.phone) }
+                    : null;
+            })
+            .filter((official) => official !== null),
+    };
+}
+
+// click-tt schreibt Kontakte als "Nachname, Vorname"
+export function formatPersonName(value?: string) {
+    if (!value) return undefined;
+
+    const parts = value.split(',').map((part) => part.trim()).filter(Boolean);
+    return parts.length === 2 ? `${parts[1]} ${parts[0]}` : value;
+}
+
+// "Abteilungsleiter*in/1. Vorsitzende*r" darf nach dem Schrägstrich umbrechen.
+export function formatOfficialRole(value?: string) {
+    return value?.replace(/\s*\/\s*/g, ' / ');
+}
+
+export function formatAddress(address: ClubAddress) {
+    const cityLine = [address.zipcode, address.city].filter(Boolean).join(' ');
+    return [address.street, cityLine].filter(Boolean).join(', ') || undefined;
+}
+
+export function buildMapsUrl(address: ClubAddress) {
+    const query = [address.name, formatAddress(address)].filter(Boolean).join(', ');
+    if (!query) return undefined;
+
+    const encoded = encodeURIComponent(query);
+
+    return Platform.OS === 'ios'
+        ? `https://maps.apple.com/?q=${encoded}`
+        : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+}
+
+export function toPhoneUrl(phone: string) {
+    return `tel:${phone.replace(/[^\d+]/g, '')}`;
+}
+
+export function openExternalUrl(url?: string) {
+    if (!url) return;
+    Linking.openURL(url).catch(() => undefined);
+}
+
+export function toWebsiteUrl(value: string) {
+    return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+// Kennzahlen für den Kopf: Tabellenführer unter den Mannschaften, TTR Schnitt und Bestwert der Spieler.
+export function summarizeClub(teams: ClubTeam[], players: ClubPlayer[]) {
+    const leaders = teams.filter((team) => toNumber(team.tableRank) === 1).length;
+    const ratings = players
+        .map((player) => toNumber(player.ttr))
+        .filter((value): value is number => value !== undefined && value > 0);
+
+    return {
+        teamCount: teams.length,
+        leaders,
+        playerCount: players.length,
+        averageTtr: ratings.length > 0 ? Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length) : undefined,
+        topTtr: ratings.length > 0 ? Math.max(...ratings) : undefined,
+    };
 }

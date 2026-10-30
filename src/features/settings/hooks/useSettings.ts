@@ -3,17 +3,31 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ensureApiTargetLoaded, getApiTarget, setApiTarget, type ApiTarget } from '@/src/api/apiTarget';
-import { getApiBaseUrl } from '@/src/api/client';
-import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant } from '@/src/api/mytt';
+import { ApiError, getApiBaseUrl } from '@/src/api/client';
+import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant, saveMyttCookie } from '@/src/api/mytt';
+import { hasLocalMyttSession } from '@/src/api/myttData';
 import { ttApi } from '@/src/api/tttracker';
 import { useAuth } from '@/src/auth/AuthProvider';
+import { confirmCookieUpload } from '@/src/features/mytt/utils/sharing';
+import { getLocalMyttCookie } from '@/src/storage/myttSession';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { getEventsWidgetEnabled, setEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { clearMeClub, getMeClub, setMeClub as saveMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
-import { clearMePlayerNuid, getMePlayerNuid, setMePlayerNuid } from '@/src/storage/mePlayer';
+import type { NormalizedClub } from '@/src/types/tttracker';
+import { clearMePlayerNuid, getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import type { MyttGrant, MyttStatusView } from '../types';
 import { DEFAULT_ACCENT, formatClubId, getClubDisplayName, normalizeGrants, normalizeHexColor, normalizeMyttStatus, parseClubIdInput } from '../utils';
+
+function getLocalStatusView(t: ReturnType<typeof useI18n>['t']): MyttStatusView {
+  return {
+    hasSession: true,
+    expired: false,
+    label: t('settings.statusConnected'),
+    detail: t('settings.statusLocalDetail'),
+  };
+}
 
 export function useSettings() {
   const {
@@ -28,9 +42,10 @@ export function useSettings() {
   } = useTheme();
 
   const { language, setLanguage, t } = useI18n();
-  const { user, isAuthenticated, login, register, logout } = useAuth();
+  const { user, isAuthenticated, login, register, setEmail, logout } = useAuth();
 
   const [health, setHealth] = useState<string | null>(null);
+  const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(false);
 
   const [apiTarget, setApiTargetState] = useState<ApiTarget>(() => getApiTarget());
@@ -55,10 +70,18 @@ export function useSettings() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmailField] = useState('');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState<
-      'login' | 'register' | 'logout' | null
+      'login' | 'register' | 'logout' | 'setEmail' | null
   >(null);
+
+  const [emailInput, setEmailInput] = useState(user?.email ?? '');
+  const [emailMessage, setEmailMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEmailInput(user?.email ?? '');
+  }, [user?.email]);
 
   const [myttStatus, setMyttStatus] = useState<MyttStatusView | null>(null);
   const [myttMessage, setMyttMessage] = useState<string | null>(null);
@@ -70,10 +93,8 @@ export function useSettings() {
   const [grantLoading, setGrantLoading] = useState<'load' | 'create' | null>(null);
   const [deletingGrantId, setDeletingGrantId] = useState<string | null>(null);
 
-  const [meNuidInput, setMeNuidInput] = useState('');
   const [savedMeNuid, setSavedMeNuid] = useState<string | null>(null);
-  const [meNuidMessage, setMeNuidMessage] = useState<string | null>(null);
-  const [meNuidLoading, setMeNuidLoading] = useState<'save' | 'clear' | null>(null);
+  const [savedMeName, setSavedMeName] = useState<string | null>(null);
 
   const [clubIdInput, setClubIdInput] = useState('');
   const [clubNameInput, setClubNameInput] = useState('');
@@ -83,6 +104,8 @@ export function useSettings() {
 
   const [backgroundMessage, setBackgroundMessage] = useState<string | null>(null);
   const [backgroundLoading, setBackgroundLoading] = useState<'pick' | 'clear' | null>(null);
+
+  const [eventsWidgetEnabled, setEventsWidgetEnabledState] = useState(false);
 
   const [draftAccent, setDraftAccent] = useState(() => normalizeHexColor(accent));
 
@@ -180,19 +203,23 @@ export function useSettings() {
 
         async function loadLocalProfileSettings() {
           try {
-            const [storedNuid, storedClub] = await Promise.all([
+            const [storedNuid, storedClub, storedName, storedEventsWidget] = await Promise.all([
               getMePlayerNuid(),
               getMeClub(),
+              getMePlayerName(),
+              getEventsWidgetEnabled(),
             ]);
 
             if (!active) return;
 
             setSavedMeNuid(storedNuid);
-            setMeNuidInput(storedNuid ?? '');
+            setSavedMeName(storedNuid ? storedName : null);
 
             setSavedMeClub(storedClub);
             setClubIdInput(formatClubId(storedClub));
             setClubNameInput(getClubDisplayName(storedClub));
+
+            setEventsWidgetEnabledState(storedEventsWidget);
           } catch {
             if (!active) return;
 
@@ -209,15 +236,28 @@ export function useSettings() {
       }, []),
   );
 
+  async function handleToggleEventsWidget(next: boolean) {
+    setEventsWidgetEnabledState(next);
+
+    try {
+      await setEventsWidgetEnabled(next);
+    } catch {
+      setEventsWidgetEnabledState(!next);
+    }
+  }
+
   async function checkHealth() {
     setChecking(true);
     setHealth(null);
+    setHealthOk(null);
 
     try {
       const response = await ttApi.health();
       setHealth(response.ok ? t('settings.backendReachable') : t('settings.backendOkFalse'));
+      setHealthOk(Boolean(response.ok));
     } catch (error) {
       setHealth(error instanceof Error ? error.message : t('settings.backendUnreachable'));
+      setHealthOk(false);
     } finally {
       setChecking(false);
     }
@@ -226,6 +266,7 @@ export function useSettings() {
   async function handleChangeApiTarget(target: ApiTarget) {
     // Status und Freigaben gehören zum jeweiligen Backend
     setHealth(null);
+    setHealthOk(null);
     setAuthMessage(null);
     setMyttStatus(null);
     setMyttMessage(null);
@@ -265,6 +306,7 @@ export function useSettings() {
       const registeredUser = await register({
         username: username.trim(),
         password,
+        email: email.trim() || undefined,
       });
 
       setPassword('');
@@ -274,6 +316,29 @@ export function useSettings() {
     } finally {
       setAuthLoading(null);
     }
+  }
+
+  async function handleSaveEmail() {
+    setAuthLoading('setEmail');
+    setEmailMessage(null);
+
+    try {
+      const updatedUser = await setEmail(emailInput.trim());
+      setEmailInput(updatedUser.email ?? '');
+      setEmailMessage(t('settings.emailSaved'));
+    } catch (error) {
+      setEmailMessage(error instanceof Error ? error.message : t('settings.emailSaveError'));
+    } finally {
+      setAuthLoading(null);
+    }
+  }
+
+  function openForgotPassword() {
+    router.push('/request-password-reset');
+  }
+
+  function openEnterResetCode() {
+    router.push('/reset-password');
   }
 
   async function handleLogout() {
@@ -300,8 +365,24 @@ export function useSettings() {
     setMyttMessage(null);
 
     try {
-      const status = await getMyttStatus();
-      setMyttStatus(normalizeMyttStatus(status, t));
+      const local = await hasLocalMyttSession();
+
+      // Ohne App Konto gibt es keinen Server Status, dann zählt nur die Session auf dem Gerät.
+      if (!isAuthenticated) {
+        setMyttStatus(local ? getLocalStatusView(t) : normalizeMyttStatus({}, t));
+        return;
+      }
+
+      try {
+        const view = normalizeMyttStatus(await getMyttStatus(), t);
+
+        setMyttStatus(local && !view.hasSession ? getLocalStatusView(t) : view);
+      } catch (error) {
+        // Ohne App Konto gibt es keinen Server Status, die Session auf dem Gerät zählt trotzdem.
+        if (!local) throw error;
+
+        setMyttStatus(getLocalStatusView(t));
+      }
     } catch (error) {
       setMyttStatus(null);
       setMyttMessage(error instanceof Error ? error.message : t('settings.statusLoadError'));
@@ -329,10 +410,29 @@ export function useSettings() {
     setGrantMessage(null);
 
     try {
-      await createMyttGrant({
+      const grantParams = {
         granteeUsername: grantUsername.trim(),
-        scopes: ['ttr:read', 'ttr_history:read'],
-      });
+        scopes: ['ttr:read', 'ttr_history:read'] as ('ttr:read' | 'ttr_history:read')[],
+      };
+
+      try {
+        await createMyttGrant(grantParams);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== 'MYTT_SESSION_UPLOAD_REQUIRED') throw error;
+
+        // Der Cookie liegt nur auf dem Gerät. Zum Teilen muss er mit Einwilligung auf den Server.
+        const localCookie = await getLocalMyttCookie();
+
+        if (!localCookie) {
+          setGrantMessage(t('settings.shareNeedsConnect'));
+          return;
+        }
+
+        if (!(await confirmCookieUpload(t))) return;
+
+        await saveMyttCookie(localCookie);
+        await createMyttGrant(grantParams);
+      }
 
       setGrantUsername('');
       setGrantMessage(t('settings.grantCreated'));
@@ -361,37 +461,40 @@ export function useSettings() {
     }
   }
 
-  async function handleSaveMeNuid() {
-    setMeNuidLoading('save');
-    setMeNuidMessage(null);
-
-    try {
-      const saved = await setMePlayerNuid(meNuidInput);
-      setSavedMeNuid(saved);
-      setMeNuidInput(saved);
-      setMeNuidMessage(t('settings.profileSaved'));
-    } catch (error) {
-      setMeNuidMessage(error instanceof Error ? error.message : t('settings.nuidSaveError'));
-    } finally {
-      setMeNuidLoading(null);
-    }
+  async function handleSelectMePlayer(nuid: string, name?: string) {
+    const saved = await setMePlayerNuid(nuid);
+    await setMePlayerName(name);
+    setSavedMeNuid(saved);
+    setSavedMeName(name?.trim() || null);
   }
 
   async function handleClearMeNuid() {
-    setMeNuidLoading('clear');
-    setMeNuidMessage(null);
-
-    try {
-      await clearMePlayerNuid();
-      setSavedMeNuid(null);
-      setMeNuidInput('');
-      setMeNuidMessage(t('settings.profileRemoved'));
-    } catch (error) {
-      setMeNuidMessage(error instanceof Error ? error.message : t('settings.nuidRemoveError'));
-    } finally {
-      setMeNuidLoading(null);
-    }
+    await clearMePlayerNuid();
+    setSavedMeNuid(null);
+    setSavedMeName(null);
   }
+
+  // Status und Freigaben direkt laden, damit die Zeilen in den Einstellungen sie anzeigen können.
+  useEffect(() => {
+    // Die Verbindung zu myTischtennis braucht kein Konto, Freigaben schon.
+    handleCheckMyttStatus().catch(() => undefined);
+
+    if (!isAuthenticated) {
+      setGrants([]);
+      return;
+    }
+
+    handleLoadGrants().catch(() => undefined);
+    // Nur beim An- und Abmelden neu laden
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // Serverstatus für die Zeile "Server" einmal pro Backend prüfen
+  useEffect(() => {
+    if (!apiBaseUrl) return;
+    checkHealth().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBaseUrl]);
 
   async function handleSaveMeClub() {
     setMeClubLoading('save');
@@ -422,6 +525,26 @@ export function useSettings() {
     } finally {
       setMeClubLoading(null);
     }
+  }
+
+  // Verein direkt aus der Suche übernehmen
+  async function handleSelectMeClub(club: NormalizedClub) {
+    if (!club.organization || !club.clubNumber) {
+      throw new Error(t('settings.clubSaveError'));
+    }
+
+    const saved = await saveMeClub({
+      organization: club.organization,
+      clubNumber: club.clubNumber,
+      title: club.name,
+      clubName: club.name,
+      state: club.state,
+    });
+
+    setSavedMeClub(saved);
+    setClubIdInput(formatClubId(saved));
+    setClubNameInput(getClubDisplayName(saved));
+    setMeClubMessage(null);
   }
 
   async function handleClearMeClub() {
@@ -465,7 +588,10 @@ export function useSettings() {
       pathname: '/(tabs)/player/[nuid]',
       params: {
         nuid: savedMeNuid,
-        title: t('home.profileFallback'),
+        title: savedMeName ?? t('home.profileFallback'),
+        clubName: savedMeClub?.clubName ?? savedMeClub?.title ?? '',
+        organization: savedMeClub?.organization ?? '',
+        clubNumber: savedMeClub?.clubNumber ?? '',
       },
     });
   }
@@ -484,6 +610,7 @@ export function useSettings() {
     user,
     isAuthenticated,
     health,
+    healthOk,
     checking,
     apiTarget,
     apiBaseUrl,
@@ -492,6 +619,11 @@ export function useSettings() {
     setUsername,
     password,
     setPassword,
+    email,
+    setEmailField,
+    emailInput,
+    setEmailInput,
+    emailMessage,
     authMessage,
     authLoading,
     myttStatus,
@@ -503,11 +635,8 @@ export function useSettings() {
     grantMessage,
     grantLoading,
     deletingGrantId,
-    meNuidInput,
-    setMeNuidInput,
     savedMeNuid,
-    meNuidMessage,
-    meNuidLoading,
+    savedMeName,
     clubIdInput,
     setClubIdInput,
     clubNameInput,
@@ -517,6 +646,8 @@ export function useSettings() {
     meClubLoading,
     backgroundMessage,
     backgroundLoading,
+    eventsWidgetEnabled,
+    handleToggleEventsWidget,
     draftAccent,
     handlePreviewAccent,
     handleApplyAccent,
@@ -526,14 +657,18 @@ export function useSettings() {
     checkHealth,
     handleLogin,
     handleRegister,
+    handleSaveEmail,
+    openForgotPassword,
+    openEnterResetCode,
     handleLogout,
     handleCheckMyttStatus,
     handleLoadGrants,
     handleCreateGrant,
     handleRevokeGrant,
-    handleSaveMeNuid,
+    handleSelectMePlayer,
     handleClearMeNuid,
     handleSaveMeClub,
+    handleSelectMeClub,
     handleClearMeClub,
     openSavedMeClub,
     openSavedMeProfile,
@@ -541,3 +676,5 @@ export function useSettings() {
     canCreateGrant,
   };
 }
+
+export type SettingsController = ReturnType<typeof useSettings>;

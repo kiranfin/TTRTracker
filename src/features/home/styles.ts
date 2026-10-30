@@ -1,369 +1,156 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
   content: {
-    padding: 16,
-    paddingBottom: 96,
-    gap: 14,
-  },
-  topArea: {
-    gap: 14,
-  },
-  hero: {
-    minHeight: 46,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  heroTitle: {
-    marginTop: 2,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    maxWidth: 330,
-  },
-  shortcutGrid: {
-    flexDirection: 'row',
-    gap: 9,
-  },
-  shortcutCard: {
-    flex: 1,
-    minHeight: 92,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  shortcutIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  shortcutTitle: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  shortcutSubtitle: {
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  emptyMeCard: {
-    padding: 18,
-    gap: 14,
-    alignItems: 'center',
-  },
-  emptyIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTextBlock: {
-    gap: 4,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 19,
-    lineHeight: 25,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    maxWidth: 320,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  meCard: {
-    padding: 16,
-    gap: 14,
-  },
-  meHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  meHeaderText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  sectionEyebrow: {
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.25,
-  },
-  meTitle: {
-    marginTop: 1,
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '900',
-  },
-  meSubtitle: {
-    marginTop: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 15,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  ttrOverview: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  primaryTtrTile: {
-    flex: 1.45,
-    minHeight: 108,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 14,
-    justifyContent: 'center',
-  },
-  primaryTtrLabel: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.25,
-  },
-  primaryTtrValue: {
-    marginTop: 4,
-    fontSize: 38,
-    lineHeight: 44,
-    fontWeight: '900',
-  },
-  secondaryStats: {
-    flex: 1,
-    gap: 5,
-  },
-  miniStat: {
-    flex: 1,
-    minHeight: 45,
-    borderRadius: 16,
-    borderWidth: 1,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    justifyContent: 'center',
+    paddingTop: 8,
+    paddingBottom: 112,
+    gap: 20,
   },
-  miniStatLabel: {
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.2,
+  section: {
+    gap: 10,
   },
-  miniStatValue: {
-    marginTop: 2,
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '900',
-  },
-  historyHeader: {
-    marginTop: 2,
+
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
-  historyTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '900',
-  },
-  historyLink: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '900',
-  },
-  recentList: {
-    gap: 8,
-  },
-  recentRow: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  recentMain: {
+  headerText: {
     flex: 1,
-    minWidth: 0,
-    gap: 3,
+    gap: 2,
   },
-  recentTitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '900',
+  headerDate: {
+    fontSize: 14,
+    lineHeight: 20,
+    ...font('500'),
+    textTransform: 'capitalize',
   },
-  recentMeta: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '700',
+  avatarButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  recentScore: {
-    alignItems: 'flex-end',
-    minWidth: 48,
-  },
-  recentTtr: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '900',
-  },
-  recentDelta: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '900',
-  },
-  clubCard: {
-    padding: 16,
+
+  heroCard: {
+    borderRadius: 24,
+    padding: 20,
     gap: 14,
   },
-  clubHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  clubHeaderText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  clubTitle: {
-    marginTop: 1,
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '900',
-  },
-  clubSubtitle: {
-    marginTop: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  clubLoadingBox: {
-    minHeight: 84,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  clubMessageBox: {
-    gap: 12,
-  },
-  clubMatchList: {
-    gap: 8,
-  },
-  clubMatchRow: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 11,
-    gap: 9,
-  },
-  clubMatchTopRow: {
+  heroHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  heroHeaderLabel: {
+    fontSize: 14,
+  },
+  heroProfileLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  heroDelta: {
+    paddingBottom: 6,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingTop: 12,
     gap: 8,
   },
-  clubMatchMeta: {
+  heroStat: {
     flex: 1,
-    minWidth: 0,
+    gap: 2,
+  },
+  heroLoading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 12,
+    minHeight: 96,
   },
-  clubMatchMetaText: {
+  heroError: {
+    gap: 12,
+  },
+
+  messageCard: {
+    padding: 18,
+    gap: 12,
+  },
+  messageText: {
+    gap: 4,
+  },
+  findIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  clubHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  clubHeaderTitle: {
     flex: 1,
     minWidth: 0,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
   },
-  completedPill: {
+  clubMessage: {
+    padding: 16,
+    gap: 12,
+  },
+  matchCard: {
+    borderRadius: 20,
     borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    padding: 16,
+    gap: 12,
   },
-  completedPillText: {
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.25,
-  },
-  clubMatchScoreRow: {
+  matchCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 8,
   },
-  clubMatchTeam: {
+  matchBadge: {
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  matchBadgeText: {
+    ...font('700'),
+  },
+  matchTeams: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  matchTeam: {
     flex: 1,
-    minWidth: 0,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '900',
+    ...font('700'),
   },
-  clubMatchAwayTeam: {
+  matchTeamAway: {
     textAlign: 'right',
   },
-  clubScoreBox: {
-    minWidth: 64,
-    minHeight: 34,
-    borderRadius: 13,
-    borderWidth: 1,
-    paddingHorizontal: 7,
+  matchFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
   },
-  clubScoreText: {
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '900',
-  },
-  clubScoreDivider: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  clubMatchFooter: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '700',
-  },
-  homeBody: {
-    fontSize: 14,
-    lineHeight: 21,
+  matchFooterText: {
+    flex: 1,
   },
 });

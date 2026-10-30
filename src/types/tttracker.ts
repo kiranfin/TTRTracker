@@ -6,6 +6,8 @@ export type FavoriteItem = {
   title: string;
   subtitle?: string;
   createdAt: string;
+  // TTR zum Zeitpunkt des Hinzufügens (nur Spieler)
+  ttr?: number;
   params?: Record<string, string>;
 };
 
@@ -92,12 +94,73 @@ export type PlayerTtrResponse = {
   };
 };
 
+export type PlayerRatingSource = 'public' | 'estimated' | 'official';
+
+export type PlayerRating = {
+  value: number;
+  source: PlayerRatingSource;
+  asOf: string;
+};
+
+export type PlayerRatingResponse = {
+  data: {
+    nuid: string;
+    available: boolean;
+    rating: PlayerRating | null;
+    club?: { organization: string; clubNumber: string; clubName: string } | null;
+  };
+  meta?: {
+    source?: string;
+  };
+};
+
+export type EstimatedTtrEvent = {
+  meetingId: string;
+  date: string | null;
+  teamHome: string | null;
+  teamGuest: string | null;
+  won: boolean;
+  setsOwn: number;
+  setsOther: number;
+  opponentName: string;
+  opponentTtr: number;
+  ttrBefore: number;
+  ttrAfter: number;
+  delta: number;
+};
+
+export type PlayerTtrEstimate = {
+  nuid: string;
+  available: boolean;
+  publicRating: PlayerRating | null;
+  rating: PlayerRating | null;
+  // Ältestes Einzel zuerst.
+  events: EstimatedTtrEvent[];
+  coverage: {
+    meetingsTotal: number;
+    meetingsScanned: number;
+    singlesFound: number;
+    singlesRated: number;
+    singlesUnrated: number;
+    truncated: boolean;
+  };
+  assumptions: { k: number; lagDays: number };
+};
+
+export type PlayerTtrEstimateResponse = {
+  data: PlayerTtrEstimate;
+  meta?: {
+    source?: string;
+  };
+};
+
 export type PlayerTtrHistoryResponse = {
   data: {
     nuid: string;
     available: boolean;
     ttr: number | null;
     qttr: number | null;
+    qttrDate?: string | null;
     maxTtr: number | null;
     ttrDate: string | null;
     maxTtrDate: string | null;
@@ -160,9 +223,6 @@ export type NormalizedPlayerTtrHistory = {
   personName?: string;
   events: NormalizedTtrHistoryEvent[];
 };
-
-export type SearchCategory = 'players' | 'clubs';
-
 export type NormalizedPlayer = {
   id: string;
   fullName: string;
@@ -253,7 +313,7 @@ export type LeagueReference = {
   leagueSlug?: string;
 };
 
-export type PromotionState = 'promotion' | 'relegation' | 'none';
+export type PromotionState = 'promotion' | 'promotionPlayoff' | 'relegation' | 'relegationPlayoff' | 'none';
 
 export type TableRow = {
   id: string;
