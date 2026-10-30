@@ -92,6 +92,9 @@ export type PlayerTtrResponse = {
     error?: unknown | null;
   };
   meta?: ResponseMeta;
+  // Die rohe myTischtennis Antwort, nur direkt nach dem Abruf auf dem Gerät (für den Snapshot Upload).
+  // Wird nie gespeichert.
+  raw?: unknown;
 };
 
 export type PlayerRatingSource = 'public' | 'estimated' | 'official';
@@ -166,6 +169,21 @@ export type PlayerTtrHistoryResponse = {
     personName: string | null;
     events: unknown[];
     error?: unknown | null;
+  };
+  meta?: ResponseMeta;
+  // Die rohe myTischtennis Antwort, nur direkt nach dem Abruf auf dem Gerät (für den Snapshot Upload).
+  // Wird nie gespeichert.
+  raw?: unknown;
+};
+
+// Was jemand mit dir teilt: Snapshot des Besitzers, je nach Freigabe mit aktuellem TTR und/oder Verlauf.
+export type SharedPlayerResponse = {
+  data: {
+    nuid: string;
+    owner: { username: string | null };
+    scopes: string[];
+    ttr?: PlayerTtrResponse['data'] & { fetchedAt: string };
+    history?: PlayerTtrHistoryResponse['data'] & { fetchedAt: string };
   };
   meta?: ResponseMeta;
 };

@@ -10,7 +10,7 @@ import { myttDirect } from '@/src/api/myttDirect';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { getMePlayerNuid } from '@/src/storage/mePlayer';
 import { notifyMyttConnected } from '../utils/connectionEvents';
-import { syncServerSession } from '../utils/sharing';
+import { cleanupServerSession } from '../utils/sharing';
 import { MYTT_BASE_URL, cookiesToHeader, getMyttPath, hasUnauthenticatedStatus, isAuthPath } from '../utils/login';
 
 export type MyttConnectStatus = 'preparing' | 'login' | 'saving' | 'error';
@@ -91,9 +91,9 @@ export function useMyttConnect(returnTo?: string) {
 
       await assertLoggedIn(cookieHeader);
 
-      // Der Cookie bleibt auf dem Gerät, der Server bekommt ihn nur bei einer aktiven Freigabe.
+      // Der Cookie bleibt auf dem Gerät. Der Server bekommt höchstens den geholten Stand, bei einer Freigabe.
       await saveLocalMyttSession(cookieHeader);
-      await syncServerSession(cookieHeader);
+      cleanupServerSession().catch(() => undefined);
 
       notifyMyttConnected();
       finish();

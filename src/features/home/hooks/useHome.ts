@@ -14,11 +14,13 @@ import { getEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import { getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
-import { getMeSnapshot, isMeSnapshotFresh, setMeSnapshot } from '@/src/storage/meSnapshot';
+import { getSnapshot, isSnapshotFresh } from '@/src/storage/myttSnapshots';
+import { shareSnapshotIfNeeded } from '../../mytt/utils/sharing';
+import type { PlayerTtrHistoryResponse } from '@/src/types/tttracker';
 import type { EventSummary } from '@/src/types/events';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
-import { freshnessFromSavedAt, getFreshness, type Freshness } from '@/src/utils/staleness';
+import { getFreshness, type Freshness } from '@/src/utils/staleness';
 import type { HomeClubMatch } from '../types';
 import { compareMatchesNewestFirst, compareMatchesOldestFirst, formatPersonName, getCurrentBackendSeason, getDefaultSeasonDateRange, getFirstName, getPlayerHistoryData, getTtrDeltaSince, getTtrSeries, getWinRatePercent, isCompletedClubMatch, isUpcomingClubMatch, normalizeHomeClubSchedule, parseOptionalNumber } from '../utils';
 import { describeApiError } from '@/src/utils/apiErrors';
@@ -81,11 +83,11 @@ export function useHome() {
 
             // Ein vor kurzem geholter Verlauf wird gezeigt, ohne erneut anzufragen (Tab Wechsel, App Start).
             if (!forced) {
-              const snapshot = await getMeSnapshot(storedNuid);
+              const snapshot = await getSnapshot<PlayerTtrHistoryResponse>('history', storedNuid);
 
               if (!active) return;
 
-              if (snapshot && isMeSnapshotFresh(snapshot)) {
+              if (snapshot && isSnapshotFresh(snapshot)) {
                 setMeApiHistoryData(getPlayerHistoryData(snapshot.response));
                 setMeHistory(normalizePlayerTtrHistory(snapshot.response));
                 setMeFreshness({ since: snapshot.savedAt, stale: false });
@@ -102,7 +104,10 @@ export function useHome() {
             setMeApiHistoryData(getPlayerHistoryData(response));
             setMeHistory(normalizePlayerTtrHistory(response));
             setMeFreshness(freshness);
-            setMeSnapshot(storedNuid, response, freshness?.since ?? Date.now()).catch(() => undefined);
+
+            // Der Stand wird beim Abruf auf dem Gerät gespeichert (withMyttSession). Teilt der Nutzer ihn, geht er
+            // jetzt, höchstens einmal pro Stunde, an den Server.
+            shareSnapshotIfNeeded({ nuid: storedNuid, history: response, t }).catch(() => undefined);
           } catch (error) {
             if (!active) return;
 
@@ -118,8 +123,9 @@ export function useHome() {
               return;
             }
 
-            // myTischtennis bremst (429) oder hängt: lieber der letzte bekannte Stand mit Hinweis als ein Fehler.
-            if ((await loadSnapshotFallback()) || (await loadPublicRatingFallback())) return;
+            // myTischtennis bremst oder hängt und es gibt keinen gespeicherten Stand (den liefert withMyttSession
+            // selbst als "stale"): wenigstens der öffentliche Wert.
+            if (await loadPublicRatingFallback()) return;
 
             if (!active) return;
 
@@ -129,19 +135,6 @@ export function useHome() {
               setMeLoading(false);
             }
           }
-        }
-
-        async function loadSnapshotFallback() {
-          const storedNuid = await getMePlayerNuid();
-          const snapshot = storedNuid ? await getMeSnapshot(storedNuid) : null;
-
-          if (!active || !snapshot) return false;
-
-          setMeApiHistoryData(getPlayerHistoryData(snapshot.response));
-          setMeHistory(normalizePlayerTtrHistory(snapshot.response));
-          setMeFreshness(freshnessFromSavedAt(snapshot.savedAt));
-
-          return true;
         }
 
         // Öffentlicher TTR aus der Andro Rangliste. Der Verein kommt aus dem gespeicherten Ich-Verein, der Spieler hat meist denselben.

@@ -36,6 +36,7 @@ export default function PlayerDetailsScreen() {
         currentTtr,
         ttrSource,
         freshness,
+        sharedBy,
         unavailableReason,
         qTtr,
         maxTtr,
@@ -106,6 +107,11 @@ export default function PlayerDetailsScreen() {
                     onClaimProfile={canClaimProfile ? () => { toggleMeProfile().catch(() => undefined); } : undefined}
                 />
 
+                {!loading && sharedBy ? (
+                    <Text style={[typography.meta, { color: colors.mutedText }]}>
+                        {sharedBy.username ? t('player.sharedBy', { name: sharedBy.username }) : t('player.sharedByUnknown')}
+                    </Text>
+                ) : null}
                 {!loading ? <DataFreshness freshness={freshness} /> : null}
 
                 {loading ? <SkeletonList count={3} /> : null}

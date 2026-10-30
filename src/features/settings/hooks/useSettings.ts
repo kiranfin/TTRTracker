@@ -3,12 +3,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ensureApiTargetLoaded, getApiTarget, setApiTarget, type ApiTarget } from '@/src/api/apiTarget';
-import { ApiError, clearApiCache, getApiBaseUrl, invalidateApiCache } from '@/src/api/client';
-import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant, saveMyttCookie } from '@/src/api/mytt';
+import { clearApiCache, getApiBaseUrl, invalidateApiCache } from '@/src/api/client';
+import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant } from '@/src/api/mytt';
 import { hasLocalMyttSession } from '@/src/api/myttData';
 import { ttApi } from '@/src/api/tttracker';
 import { useAuth } from '@/src/auth/AuthProvider';
-import { confirmCookieUpload } from '@/src/features/mytt/utils/sharing';
+import {
+  confirmSnapshotSharing,
+  forgetSharingStatus,
+  hasSnapshotConsent,
+  uploadOwnSnapshot,
+} from '@/src/features/mytt/utils/sharing';
 import { getLocalMyttCookie } from '@/src/storage/myttSession';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { getEventsWidgetEnabled, setEventsWidgetEnabled } from '@/src/storage/eventsWidget';
@@ -422,35 +427,44 @@ export function useSettings() {
     setGrantMessage(null);
 
     try {
-      const grantParams = {
-        granteeUsername: grantUsername.trim(),
-        scopes: ['ttr:read', 'ttr_history:read'] as ('ttr:read' | 'ttr_history:read')[],
-      };
-
-      try {
-        await createMyttGrant(grantParams);
-      } catch (error) {
-        if (!(error instanceof ApiError) || error.code !== 'MYTT_SESSION_UPLOAD_REQUIRED') throw error;
-
-        // Der Cookie liegt nur auf dem Gerät. Zum Teilen muss er mit Einwilligung auf den Server.
-        const localCookie = await getLocalMyttCookie();
-
-        if (!localCookie) {
-          setGrantMessage(t('settings.shareNeedsConnect'));
-          return;
-        }
-
-        if (!(await confirmCookieUpload(t))) return;
-
-        await saveMyttCookie(localCookie);
-        await createMyttGrant(grantParams);
+      // Geteilt wird der Stand, den das Gerät von myTischtennis holt: dafür braucht es die Verbindung auf
+      // dem Gerät, den eigenen Spieler und die Einwilligung.
+      if (!(await getLocalMyttCookie())) {
+        setGrantMessage(t('settings.shareNeedsConnect'));
+        return;
       }
+
+      const meNuid = await getMePlayerNuid();
+
+      if (!meNuid) {
+        setGrantMessage(t('settings.shareNeedsPlayer'));
+        return;
+      }
+
+      if (!(await hasSnapshotConsent()) && !(await confirmSnapshotSharing(t))) return;
+
+      await createMyttGrant({
+        granteeUsername: grantUsername.trim(),
+        scopes: ['ttr:read', 'ttr_history:read'],
+      });
+
+      forgetSharingStatus();
 
       setGrantUsername('');
       setGrantMessage(t('settings.grantCreated'));
 
       const response = await getMyttGrants();
       setGrants(normalizeGrants(response));
+
+      // Der Empfänger soll nicht auf den nächsten Start warten: jetzt holen und hochladen.
+      try {
+        const history = await ttApi.getPlayerTtrHistory(meNuid);
+        const result = await uploadOwnSnapshot({ nuid: meNuid, history, force: true });
+
+        if (result === 'failed') setGrantMessage(t('settings.shareUploadFailed'));
+      } catch {
+        setGrantMessage(t('settings.shareUploadFailed'));
+      }
     } catch (error) {
       setGrantMessage(error instanceof Error ? error.message : t('settings.grantCreateError'));
     } finally {
@@ -464,6 +478,7 @@ export function useSettings() {
 
     try {
       await revokeMyttGrant(grantId);
+      forgetSharingStatus();
       setGrants((current) => current.filter((grant) => grant.id !== grantId));
       setGrantMessage(t('settings.grantRemoved'));
     } catch (error) {
