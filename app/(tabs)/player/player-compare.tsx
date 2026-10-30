@@ -2,7 +2,8 @@ import { ScrollView, Text } from 'react-native';
 import { EmptyState } from '@/src/components/EmptyState';
 import { PlayerPickerSheet } from '@/src/components/PlayerPickerSheet';
 import { Screen } from '@/src/components/Screen';
-import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { router } from 'expo-router';
+import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { MyttConnectNotice } from '@/src/features/mytt';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
@@ -41,7 +42,24 @@ export default function PlayerCompareScreen() {
   return (
       <Screen>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <ScreenHeader title={t('compare.title')} />
+          <ScreenHeader
+              title={t('compare.title')}
+              right={
+                <HeaderIconButton
+                    icon="calculator-outline"
+                    accessibilityLabel={t('calculator.title')}
+                    onPress={() =>
+                        router.push({
+                          pathname: '/player/ttr-calculator',
+                          params: {
+                            own: String(comparison?.left.ratings?.currentTtr ?? ''),
+                            opponent: String(comparison?.right.ratings?.currentTtr ?? ''),
+                          },
+                        })
+                    }
+                />
+              }
+          />
 
           <PlayersCard
               left={comparison?.left}

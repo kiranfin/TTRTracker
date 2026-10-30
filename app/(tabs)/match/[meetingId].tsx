@@ -4,7 +4,7 @@ import { Screen } from '@/src/components/Screen';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { InfoPill, MatchHero, MatchSection } from '../../../src/features/match-details/components';
+import { InfoPill, MatchHero, MatchSection, TeamStrengthCard } from '../../../src/features/match-details/components';
 import { styles } from '../../../src/features/match-details/styles';
 import { useMatchDetails } from '../../../src/features/match-details/hooks/useMatchDetails';
 import { SkeletonList } from '@/src/components/SkeletonRow';
@@ -15,6 +15,7 @@ export default function MatchDetailsScreen() {
 
   const {
     meeting,
+    preview,
     loading,
     error,
     lines,
@@ -60,6 +61,8 @@ export default function MatchDetailsScreen() {
           {!loading && !error && locationText ? <InfoPill icon="location-outline" text={locationText} /> : null}
 
           {loading ? <SkeletonList count={3} /> : null}
+
+          {!loading && !error && preview ? <TeamStrengthCard preview={preview} homeTeam={homeTeam} awayTeam={awayTeam} /> : null}
 
           {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 

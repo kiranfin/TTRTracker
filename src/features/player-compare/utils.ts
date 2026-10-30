@@ -1,12 +1,10 @@
 import type { useI18n } from '@/src/i18n/I18nProvider';
+import { expectedResult } from '@/src/utils/ttr';
 import type { Leader, PlayerCompareSide, PlayerComparisonData, RecentEvent, RecentStats } from './types';
 
 export { formatOptionalNumber, formatPercent, formatSignedAverage, formatSignedNumber } from '../player-details/utils';
 
 type Translate = ReturnType<typeof useI18n>['t'];
-
-// Skalierung der TTR-Differenz in der Siegchance-Formel
-const WIN_CHANCE_SCALE = 150;
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -131,7 +129,7 @@ export function buildRecentStats(player: PlayerCompareSide): RecentStats {
 export function getWinChance(a?: number | null, b?: number | null) {
   if (!isFiniteNumber(a) || !isFiniteNumber(b)) return undefined;
 
-  const left = 1 / (1 + Math.pow(10, (b - a) / WIN_CHANCE_SCALE));
+  const left = expectedResult(a, b);
 
   return { left, right: 1 - left };
 }

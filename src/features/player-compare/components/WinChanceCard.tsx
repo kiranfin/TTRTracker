@@ -4,6 +4,7 @@ import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { numeric, typography } from '@/src/theme/typography';
 import type { PlayerComparisonData } from '../types';
+import { formatChange, ratingChangeRange } from '@/src/utils/ttr';
 import { getWinChance } from '../utils';
 import { styles } from '../styles';
 
@@ -40,6 +41,13 @@ export function WinChanceCard({ comparison }: { comparison: PlayerComparisonData
                 <Text style={[numeric.row, { color: colors.orange }]}>{Math.round(chance.right * 100)} %</Text>
               </View>
 
+              {typeof leftTtr === 'number' && typeof rightTtr === 'number' ? (
+                  <View style={styles.chanceLabels}>
+                    <ChangeText own={leftTtr} opponent={rightTtr} />
+                    <ChangeText own={rightTtr} opponent={leftTtr} />
+                  </View>
+              ) : null}
+
               {comparison.comparison?.sameClub ? (
                   <Text style={[typography.label, { color: colors.mutedText }]}>{t('compare.sameClub')}</Text>
               ) : null}
@@ -48,5 +56,18 @@ export function WinChanceCard({ comparison }: { comparison: PlayerComparisonData
             <Text style={[typography.body, { color: colors.mutedText }]}>{t('compare.noQuote')}</Text>
         )}
       </Card>
+  );
+}
+
+// Punkteänderung für einen Spieler bei Sieg und bei Niederlage.
+function ChangeText({ own, opponent }: { own: number; opponent: number }) {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+  const range = ratingChangeRange(own, opponent);
+
+  return (
+      <Text style={[typography.label, { color: colors.mutedText }]}>
+        {t('compare.changeIfWin', { value: formatChange(range.win) })} · {t('compare.changeIfLoss', { value: formatChange(range.loss) })}
+      </Text>
   );
 }

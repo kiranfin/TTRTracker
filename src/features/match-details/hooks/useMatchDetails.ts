@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { MeetingDetails, TeamLinkContext } from '../types';
+import { useMatchPreview } from './useMatchPreview';
 import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getMeetingClub, getParam, normalizeMeetingRows, toNumber, unwrapMeetingResponse } from '../utils';
 import { getCurrentSeason } from '@/src/utils/dates';
 
@@ -121,6 +122,14 @@ export function useMatchDetails() {
     };
   }
 
+  const preview = useMatchPreview({
+    enabled: Boolean(meeting) && !hasStarted,
+    homeTeamId: getParam(params.homeTeamId),
+    awayTeamId: getParam(params.awayTeamId),
+    homeTeam,
+    awayTeam,
+  });
+
   const homeTeamLink = getTeamLink('home');
   const awayTeamLink = getTeamLink('away');
 
@@ -151,6 +160,7 @@ export function useMatchDetails() {
     loading,
     error,
     meetingId,
+    preview,
     lines,
     singles,
     doubles,
