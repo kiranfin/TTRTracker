@@ -2,12 +2,15 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
+import { useApiUpdates } from '@/src/hooks/useApiUpdates';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '@/src/storage/favorites';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import type { TableRow } from '@/src/types/tttracker';
+import { describeApiError } from '@/src/utils/apiErrors';
 import { normalizeSchedule, normalizeTable } from '@/src/utils/normalizers';
+import { getResponseFreshness, type Freshness } from '@/src/utils/staleness';
 import type { DetailTab, EnrichedScheduleMatch, LeagueInfo, RoundFilter, SchedulePeriodFilter } from '../types';
 import {
   LEAGUE_FAVORITE_TYPE,
@@ -31,6 +34,8 @@ export function useLeagueDetails() {
   const [matches, setMatches] = useState<EnrichedScheduleMatch[]>([]);
   const [periodFilter, setPeriodFilter] = useState<SchedulePeriodFilter>('all');
   const [roundFilter, setRoundFilter] = useState<RoundFilter>('all');
+  const [tableFreshness, setTableFreshness] = useState<Freshness | null>(null);
+  const [scheduleFreshness, setScheduleFreshness] = useState<Freshness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFavoriteLeague, setIsFavoriteLeague] = useState(false);
@@ -126,6 +131,21 @@ export function useLeagueDetails() {
     }
   }
 
+  // Lädt Tabelle und Spielplan. Ohne Ladeanzeige, wenn die App sie im Hintergrund aktualisiert hat.
+  const readLeague = useCallback(async () => {
+    if (!league.association || !league.groupId) return;
+
+    const [tableResponse, scheduleResponse] = await Promise.all([
+      ttApi.getLeagueTable(league.association, league.season, league.groupId, league.leagueSlug, 'gesamt'),
+      ttApi.getLeagueSchedule(league.association, league.season, league.groupId, league.leagueSlug),
+    ]);
+
+    setTableRows(normalizeTable(tableResponse));
+    setMatches(normalizeSchedule(scheduleResponse).map(enrichScheduleMatch));
+    setTableFreshness(getResponseFreshness(tableResponse));
+    setScheduleFreshness(getResponseFreshness(scheduleResponse));
+  }, [league.association, league.groupId, league.leagueSlug, league.season]);
+
   useEffect(() => {
     async function loadLeague() {
       if (!league.association || !league.groupId) {
@@ -138,22 +158,25 @@ export function useLeagueDetails() {
       setError(null);
 
       try {
-        const [tableResponse, scheduleResponse] = await Promise.all([
-          ttApi.getLeagueTable(league.association, league.season, league.groupId, league.leagueSlug, 'gesamt'),
-          ttApi.getLeagueSchedule(league.association, league.season, league.groupId, league.leagueSlug),
-        ]);
-
-        setTableRows(normalizeTable(tableResponse));
-        setMatches(normalizeSchedule(scheduleResponse).map(enrichScheduleMatch));
+        await readLeague();
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : t('league.loadError'));
+        setError(describeApiError(loadError, t, 'league.loadError'));
       } finally {
         setLoading(false);
       }
     }
 
     loadLeague().catch(() => undefined);
-  }, [league.association, league.groupId, league.leagueSlug, league.season, t]);
+  }, [league.association, league.groupId, readLeague, t]);
+
+  useApiUpdates(
+      league.association && league.groupId
+          ? `/api/leagues/${encodeURIComponent(league.association)}/${encodeURIComponent(league.season)}/${encodeURIComponent(league.groupId)}`
+          : null,
+      () => {
+        readLeague().catch(() => undefined);
+      },
+  );
 
   const filteredMatches = useMemo(
       () => matches.filter((match) => matchesPeriodFilter(match, periodFilter) && matchesRoundFilter(match, roundFilter)),
@@ -199,6 +222,8 @@ export function useLeagueDetails() {
     resetScheduleFilters,
     loading,
     error,
+    tableFreshness,
+    scheduleFreshness,
     isFavoriteLeague,
     toggleFavoriteLeague,
     meClub,

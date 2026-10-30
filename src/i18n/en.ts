@@ -29,6 +29,18 @@ export const en: TranslationResource = {
     ageHours: '{{count}} hours ago',
     ageDay: '1 day ago',
     ageDays: '{{count}} days ago',
+    dataAge: 'As of {{age}}',
+  },
+  apiErrors: {
+    blocked: 'myTischtennis is blocking the server right now. New data may take a few hours.',
+    unavailable: 'myTischtennis is having problems right now. Please try again later.',
+    rateLimited: 'Too many requests. Please try again in about {{minutes}} minutes.',
+    rateLimitedShort: 'Too many requests. Please try again in a moment.',
+    formatChanged: 'myTischtennis changed its data format. The data cannot be read right now.',
+    disabled: 'The data source is switched off for now.',
+    featureDisabled: 'This feature is not available right now.',
+    network: 'No connection to the server. Please check your internet connection.',
+    withAge: '{{message}} Last update: {{age}}.',
   },
   tabs: {
     home: 'Home',

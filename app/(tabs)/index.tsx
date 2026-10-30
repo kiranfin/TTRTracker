@@ -36,7 +36,7 @@ export default function HomeScreen() {
     meLoading,
     meError,
     meUnavailableReason,
-    meStaleSince,
+    meFreshness,
     meClub,
     clubCompletedMatches,
     clubUpcomingMatches,
@@ -70,7 +70,7 @@ export default function HomeScreen() {
                     series={ttrSeries}
                     loading={meLoading}
                     error={meError}
-                    staleSince={meStaleSince}
+                    freshness={meFreshness}
                     onOpenProfile={openMeProfile}
                     onRetry={reloadMe}
                 />

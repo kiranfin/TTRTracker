@@ -2,12 +2,15 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
+import { useApiUpdates } from '@/src/hooks/useApiUpdates';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, isFavorite, removeFavorite } from '@/src/storage/favorites';
 import { clearMeClub, getMeClub, setMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import type { ClubTeam } from '@/src/types/tttracker';
+import { describeApiError } from '@/src/utils/apiErrors';
 import { normalizeTeams } from '@/src/utils/normalizers';
+import type { Freshness } from '@/src/utils/staleness';
 import type { ClubApiWithOptionalEndpoints, ClubInfo, ClubPlayer, ClubScheduleMatch, ClubTab } from '../types';
 import {
   CLUB_FAVORITE_TYPE,
@@ -63,7 +66,8 @@ export function useClubDetails() {
   const [error, setError] = useState<string | null>(null);
   const [playersError, setPlayersError] = useState<string | null>(null);
   // Stand der Rangliste, wenn sie aus einem älteren Stand kommt (sonst null).
-  const [playersStaleSince, setPlayersStaleSince] = useState<number | null>(null);
+  const [playersFreshness, setPlayersFreshness] = useState<Freshness | null>(null);
+  const [scheduleFreshness, setScheduleFreshness] = useState<Freshness | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [dateStartDraft, setDateStartDraft] = useState(initialDateRange.dateStart);
   const [dateEndDraft, setDateEndDraft] = useState(initialDateRange.dateEnd);
@@ -127,7 +131,7 @@ export function useClubDetails() {
       setScheduleError(null);
       setTeams([]);
       setPlayers([]);
-      setPlayersStaleSince(null);
+      setPlayersFreshness(null);
       setScheduleMatches([]);
 
       try {
@@ -142,13 +146,13 @@ export function useClubDetails() {
         try {
           const playersResult = await loadClubPlayers(clubApi, organization, clubNumber, clubNameForPlayers);
           setPlayers(playersResult.players);
-          setPlayersStaleSince(playersResult.staleSince);
+          setPlayersFreshness(playersResult.freshness);
         } catch (playersLoadError) {
           setPlayers([]);
-          setPlayersError(playersLoadError instanceof Error ? playersLoadError.message : t('club.playersLoadError'));
+          setPlayersError(describeApiError(playersLoadError, t, 'club.playersLoadError'));
         }
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : t('club.clubDataLoadError'));
+        setError(describeApiError(loadError, t, 'club.clubDataLoadError'));
         setTeamsLoaded(false);
       } finally {
         setLoading(false);
@@ -174,16 +178,18 @@ export function useClubDetails() {
 
       try {
         const clubApi = ttApi as ClubApiWithOptionalEndpoints;
-        const matches = await loadClubSchedule(clubApi, organization, clubNumber, teams, {
+        const result = await loadClubSchedule(clubApi, organization, clubNumber, teams, {
           season: scheduleSeason,
           dateStart: appliedDateStart,
           dateEnd: appliedDateEnd,
         });
 
-        setScheduleMatches(matches);
+        setScheduleMatches(result.matches);
+        setScheduleFreshness(result.freshness);
       } catch (loadError) {
         setScheduleMatches([]);
-        setScheduleError(loadError instanceof Error ? loadError.message : t('club.scheduleLoadError'));
+        setScheduleFreshness(null);
+        setScheduleError(describeApiError(loadError, t, 'club.scheduleLoadError'));
       } finally {
         setScheduleLoading(false);
       }
@@ -192,6 +198,35 @@ export function useClubDetails() {
     loadScheduleForFilter().catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, clubNumber, teams, teamsLoaded, error, scheduleSeason, appliedDateStart, appliedDateEnd]);
+
+  // Hat die App Spieler oder Spielplan im Hintergrund aktualisiert, still neu lesen (kommt aus dem Zwischenspeicher).
+  const clubPath = organization && clubNumber ? `/api/clubs/${encodeURIComponent(organization)}/${encodeURIComponent(clubNumber)}` : null;
+
+  useApiUpdates(clubPath ? `${clubPath}/players` : null, () => {
+    if (!organization || !clubNumber) return;
+
+    loadClubPlayers(ttApi as ClubApiWithOptionalEndpoints, organization, clubNumber, clubNameForPlayers)
+        .then((result) => {
+          setPlayers(result.players);
+          setPlayersFreshness(result.freshness);
+        })
+        .catch(() => undefined);
+  });
+
+  useApiUpdates(clubPath ? `${clubPath}/schedule` : null, () => {
+    if (!organization || !clubNumber || !teamsLoaded || !isValidDateInput(appliedDateStart) || !isValidDateInput(appliedDateEnd)) return;
+
+    loadClubSchedule(ttApi as ClubApiWithOptionalEndpoints, organization, clubNumber, teams, {
+      season: scheduleSeason,
+      dateStart: appliedDateStart,
+      dateEnd: appliedDateEnd,
+    })
+        .then((result) => {
+          setScheduleMatches(result.matches);
+          setScheduleFreshness(result.freshness);
+        })
+        .catch(() => undefined);
+  });
 
   // Vereinsinfos laufen neben Mannschaften und Spielern. Fehlt etwas, zeigt der Kopf einfach weniger.
   useEffect(() => {
@@ -406,7 +441,8 @@ export function useClubDetails() {
     loading,
     error,
     playersError,
-    playersStaleSince,
+    playersFreshness,
+    scheduleFreshness,
     scheduleError,
     scheduleLoading,
     scheduleSeason,

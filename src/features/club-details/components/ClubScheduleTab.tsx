@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Chip, ChipRow } from '@/src/components/Chip';
+import { DataFreshness } from '@/src/components/DataFreshness';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
 import { MatchRow } from '@/src/components/MatchRow';
@@ -24,6 +25,7 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
         scheduleGroups,
         scheduleLoading,
         scheduleError,
+        scheduleFreshness,
         scheduleSeason,
         dateStartDraft,
         dateEndDraft,
@@ -43,6 +45,7 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
             </ChipRow>
 
             {scheduleError ? <Text style={[typography.meta, { color: colors.destructive }]}>{scheduleError}</Text> : null}
+            {!scheduleLoading && !scheduleError ? <DataFreshness freshness={scheduleFreshness} /> : null}
             {scheduleLoading ? <SkeletonList count={3} /> : null}
 
             {!scheduleLoading && !scheduleError && scheduleGroups.length === 0 ? (

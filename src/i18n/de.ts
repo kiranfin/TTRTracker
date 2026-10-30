@@ -21,6 +21,18 @@ export const de = {
     ageHours: 'vor {{count}} Stunden',
     ageDay: 'vor 1 Tag',
     ageDays: 'vor {{count}} Tagen',
+    dataAge: 'Stand: {{age}}',
+  },
+  apiErrors: {
+    blocked: 'myTischtennis sperrt den Zugriff des Servers gerade. Neue Daten können einige Stunden auf sich warten lassen.',
+    unavailable: 'myTischtennis hat gerade eine Störung. Bitte später erneut versuchen.',
+    rateLimited: 'Zu viele Anfragen. Bitte in etwa {{minutes}} Minuten erneut versuchen.',
+    rateLimitedShort: 'Zu viele Anfragen. Bitte gleich noch einmal versuchen.',
+    formatChanged: 'myTischtennis hat das Datenformat geändert. Die Daten können gerade nicht gelesen werden.',
+    disabled: 'Die Datenquelle ist derzeit abgeschaltet.',
+    featureDisabled: 'Diese Funktion ist derzeit nicht verfügbar.',
+    network: 'Keine Verbindung zum Server. Bitte die Internetverbindung prüfen.',
+    withAge: '{{message}} Letzter Stand: {{age}}.',
   },
   tabs: {
     home: 'Start',

@@ -8,6 +8,7 @@ import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/feat
 import { useI18n } from '@/src/i18n/I18nProvider';
 import type { PlayerCompareSide, PlayerComparisonData, SideId } from '../types';
 import { buildRecentStats, getClubName, getPlayerName, unwrapComparisonResponse } from '../utils';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 export function usePlayerCompare() {
   const params = useLocalSearchParams<Record<string, string>>();
@@ -68,7 +69,7 @@ export function usePlayerCompare() {
         if (reason) {
           setUnavailableReason(reason);
         } else {
-          setError(loadError instanceof Error ? loadError.message : t('compare.loadError'));
+          setError(describeApiError(loadError, t, 'compare.loadError'));
         }
       } finally {
         if (active) setLoading(false);

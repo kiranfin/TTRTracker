@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { ttApi } from '@/src/api/tttracker';
 import { ActionButton } from '@/src/components/ActionButton';
 import { Avatar } from '@/src/components/Avatar';
 import { Card } from '@/src/components/Card';
+import { DataFreshness } from '@/src/components/DataFreshness';
 import { ClubLogo } from '@/src/components/ClubLogo';
 import { Chip, ChipRow } from '@/src/components/Chip';
 import { Screen } from '@/src/components/Screen';
@@ -14,7 +15,10 @@ import { SegmentedTabs } from '@/src/components/SegmentedTabs';
 import { StatStrip } from '@/src/components/StatStrip';
 import { typography } from '@/src/theme/typography';
 import { formatSeasonLong, getCurrentSeason } from '@/src/utils/dates';
+import { useApiUpdates } from '@/src/hooks/useApiUpdates';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { describeApiError } from '@/src/utils/apiErrors';
+import { getResponseFreshness, type Freshness } from '@/src/utils/staleness';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { InfosTab, LineupTab, ScheduleTab, BalancesTab } from '../../../src/features/team-details/components';
 import { styles } from '../../../src/features/team-details/styles';
@@ -40,6 +44,12 @@ export default function TeamDetailsScreen() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [warning, setWarning] = useState<string | null>(null);
+    const [playersFreshness, setPlayersFreshness] = useState<Freshness | null>(null);
+    const [scheduleFreshness, setScheduleFreshness] = useState<Freshness | null>(null);
+    const [balancesFreshness, setBalancesFreshness] = useState<Freshness | null>(null);
+    // Wird erhöht, wenn die App Daten dieser Mannschaft im Hintergrund aktualisiert hat. Dann wird still neu gelesen.
+    const [refreshTick, setRefreshTick] = useState(0);
+    const silentRef = useRef(false);
 
     const team = useMemo<TeamContext>(
         () => {
@@ -94,9 +104,14 @@ export default function TeamDetailsScreen() {
                 team.apiSeason,
             );
 
-            setLoading(true);
-            setError(null);
-            setWarning(null);
+            const silent = silentRef.current;
+            silentRef.current = false;
+
+            if (!silent) {
+                setLoading(true);
+                setError(null);
+                setWarning(null);
+            }
 
             try {
                 const [
@@ -165,6 +180,16 @@ export default function TeamDetailsScreen() {
                 ]);
 
                 const warnings: string[] = [];
+
+                setPlayersFreshness(
+                    playersResult.status === 'fulfilled' ? getResponseFreshness(playersResult.value) : null,
+                );
+                setScheduleFreshness(
+                    scheduleResult.status === 'fulfilled' ? getResponseFreshness(scheduleResult.value) : null,
+                );
+                setBalancesFreshness(
+                    balancesGesamtResult.status === 'fulfilled' ? getResponseFreshness(balancesGesamtResult.value) : null,
+                );
 
                 if (playersResult.status === 'fulfilled') {
                     const normalizedPlayers = normalizeLineup(playersResult.value, team.teamName, t);
@@ -246,11 +271,7 @@ export default function TeamDetailsScreen() {
 
                 setWarning(warnings.length > 0 ? warnings.join('\n') : null);
             } catch (loadError) {
-                setError(
-                    loadError instanceof Error
-                        ? loadError.message
-                        : t('team.loadError'),
-                );
+                setError(describeApiError(loadError, t, 'team.loadError'));
             } finally {
                 setLoading(false);
             }
@@ -266,8 +287,19 @@ export default function TeamDetailsScreen() {
         team.teamName,
         team.teamNameSlug,
         language,
+        refreshTick,
         t,
     ]);
+
+    const isTeamPath = useCallback(
+        (path: string) => path.startsWith('/api/teams/') && path.includes(`/${encodeURIComponent(team.teamId)}/`),
+        [team.teamId],
+    );
+
+    useApiUpdates(team.teamId ? isTeamPath : null, () => {
+        silentRef.current = true;
+        setRefreshTick((tick) => tick + 1);
+    });
 
     const localizedTabOptions = useMemo(
         () => [
@@ -405,6 +437,18 @@ export default function TeamDetailsScreen() {
                             <Text style={[styles.warningText, { color: colors.mutedText }]}>{warning}</Text>
                         </View>
                     </Card>
+                ) : null}
+
+                {!loading && !error ? (
+                    <DataFreshness
+                        freshness={
+                            activeTab === 'lineup'
+                                ? playersFreshness
+                                : activeTab === 'balances'
+                                    ? balancesFreshness
+                                    : scheduleFreshness
+                        }
+                    />
                 ) : null}
 
                 {!loading && !error && activeTab === 'infos' ? (

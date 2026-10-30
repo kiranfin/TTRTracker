@@ -14,6 +14,7 @@ import { ListGroup } from './ListGroup';
 import { ListRow } from './ListRow';
 import { SearchInput } from './SearchInput';
 import { SkeletonList } from './SkeletonRow';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 export type PlayerSelection = {
   nuid: string;
@@ -96,7 +97,7 @@ export function PlayerPickerSheet({ visible, onClose, onSelect, title, clearLabe
             if (requestId !== requestCounter.current) return;
 
             setPlayers([]);
-            setError(searchError instanceof Error ? searchError.message : t('search.failed'));
+            setError(describeApiError(searchError, t, 'search.failed'));
           })
           .finally(() => {
             if (requestId === requestCounter.current) setLoading(false);
@@ -112,7 +113,7 @@ export function PlayerPickerSheet({ visible, onClose, onSelect, title, clearLabe
       await onSelect(selection);
       onClose();
     } catch (selectError) {
-      setError(selectError instanceof Error ? selectError.message : t('search.failed'));
+      setError(describeApiError(selectError, t, 'search.failed'));
     }
   }
 

@@ -1,4 +1,5 @@
 import { ScrollView, Text, View } from 'react-native';
+import { DataFreshness } from '@/src/components/DataFreshness';
 import { Screen } from '@/src/components/Screen';
 import { HeaderIconButton, ScreenHeader } from '@/src/components/ScreenHeader';
 import { SectionHeader } from '@/src/components/SectionHeader';
@@ -27,6 +28,8 @@ export default function LeagueDetailsScreen() {
         scheduleStatsByTeam,
         loading,
         error,
+        tableFreshness,
+        scheduleFreshness,
         isFavoriteLeague,
         toggleFavoriteLeague,
         meClub,
@@ -72,6 +75,7 @@ export default function LeagueDetailsScreen() {
 
                 {loading ? <SkeletonList count={3} /> : null}
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+                {!loading && !error ? <DataFreshness freshness={activeTab === 'table' ? tableFreshness : scheduleFreshness} /> : null}
 
                 {!loading && !error && activeTab === 'table' ? (
                     <>
