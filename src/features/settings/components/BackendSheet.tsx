@@ -17,7 +17,17 @@ type SheetProps = {
 
 export function BackendSheet({ settings, visible, onClose }: SheetProps) {
   const { colors } = useTheme();
-  const { t, apiTarget, apiBaseUrl, health, checking, handleChangeApiTarget, checkHealth } = settings;
+  const {
+    t,
+    apiTarget,
+    apiBaseUrl,
+    health,
+    checking,
+    handleChangeApiTarget,
+    checkHealth,
+    cacheMessage,
+    handleClearCache,
+  } = settings;
 
   const apiTargetOptions = useMemo<SegmentOption<ApiTarget>[]>(
       () => [
@@ -54,6 +64,20 @@ export function BackendSheet({ settings, visible, onClose }: SheetProps) {
           </Button>
 
           <MessageText message={health} tone={health === t('settings.backendReachable') ? 'positive' : 'negative'} />
+
+          <Text style={[styles.backendText, { color: colors.mutedText }]}>{t('settings.clearCacheDescription')}</Text>
+
+          <Button
+              variant="outline"
+              icon="trash-outline"
+              onPress={() => {
+                handleClearCache().catch(() => undefined);
+              }}
+          >
+            {t('settings.clearCache')}
+          </Button>
+
+          <MessageText message={cacheMessage} tone="positive" />
         </View>
       </BottomSheet>
   );

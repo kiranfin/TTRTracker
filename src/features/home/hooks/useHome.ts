@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { eventsApi } from '@/src/api/events';
+import { invalidateApiCache } from '@/src/api/client';
 import { ttApi } from '@/src/api/tttracker';
 import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
@@ -340,6 +341,8 @@ export function useHome() {
   }, [meClub]);
 
   function reloadMe() {
+    // "Erneut versuchen" soll wirklich neu laden, nicht den Zwischenspeicher zeigen.
+    invalidateApiCache('/api/players').catch(() => undefined);
     setReloadKey((current) => current + 1);
   }
 

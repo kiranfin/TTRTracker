@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { invalidateApiCache } from '@/src/api/client';
 import { ttApi } from '@/src/api/tttracker';
 import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
@@ -21,7 +22,10 @@ export function usePlayerCompare() {
   const [unavailableReason, setUnavailableReason] = useState<MyttUnavailableReason | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const reloadAfterConnect = useCallback(() => setReloadKey((current) => current + 1), []);
+  const reloadAfterConnect = useCallback(() => {
+    invalidateApiCache('/api/players').catch(() => undefined);
+    setReloadKey((current) => current + 1);
+  }, []);
   useOnMyttConnected(reloadAfterConnect);
 
   useEffect(() => {

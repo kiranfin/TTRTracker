@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ensureApiTargetLoaded, getApiTarget, setApiTarget, type ApiTarget } from '@/src/api/apiTarget';
-import { ApiError, getApiBaseUrl } from '@/src/api/client';
+import { ApiError, clearApiCache, getApiBaseUrl, invalidateApiCache } from '@/src/api/client';
 import { createMyttGrant, getMyttGrants, getMyttStatus, revokeMyttGrant, saveMyttCookie } from '@/src/api/mytt';
 import { hasLocalMyttSession } from '@/src/api/myttData';
 import { ttApi } from '@/src/api/tttracker';
@@ -48,6 +48,7 @@ export function useSettings() {
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(false);
 
+  const [cacheMessage, setCacheMessage] = useState<string | null>(null);
   const [apiTarget, setApiTargetState] = useState<ApiTarget>(() => getApiTarget());
   const [apiBaseUrl, setApiBaseUrl] = useState(() => getApiBaseUrl());
 
@@ -263,6 +264,14 @@ export function useSettings() {
     }
   }
 
+  async function handleClearCache() {
+    setCacheMessage(null);
+
+    await clearApiCache();
+
+    setCacheMessage(t('settings.cacheCleared'));
+  }
+
   async function handleChangeApiTarget(target: ApiTarget) {
     // Status und Freigaben gehören zum jeweiligen Backend
     setHealth(null);
@@ -274,6 +283,9 @@ export function useSettings() {
     setGrantMessage(null);
 
     await setApiTarget(target);
+
+    // Die Cache Keys enthalten die Basis URL, trotzdem soll nach dem Wechsel alles neu geladen werden.
+    await invalidateApiCache();
 
     setApiTargetState(getApiTarget());
     setApiBaseUrl(getApiBaseUrl());
@@ -655,6 +667,8 @@ export function useSettings() {
     handlePickBackgroundImage,
     handleClearBackgroundImage,
     checkHealth,
+    cacheMessage,
+    handleClearCache,
     handleLogin,
     handleRegister,
     handleSaveEmail,

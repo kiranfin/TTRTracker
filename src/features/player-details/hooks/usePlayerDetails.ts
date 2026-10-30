@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { invalidateApiCache } from '@/src/api/client';
 import { ttApi } from '@/src/api/tttracker';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, isFavorite, removeFavorite } from '@/src/storage/favorites';
@@ -75,7 +76,11 @@ export function usePlayerDetails() {
   const [isFavoritePlayer, setIsFavoritePlayer] = useState(false);
   const [comparePickerOpen, setComparePickerOpen] = useState(false);
 
-  const reloadAfterConnect = useCallback(() => setReloadKey((current) => current + 1), []);
+  const reloadAfterConnect = useCallback(() => {
+    // Ein bewusstes Neuladen soll auch die zwischengespeicherten öffentlichen Werte neu holen.
+    invalidateApiCache('/api/players').catch(() => undefined);
+    setReloadKey((current) => current + 1);
+  }, []);
   useOnMyttConnected(reloadAfterConnect);
 
   const nuid = params.nuid;
@@ -91,6 +96,7 @@ export function usePlayerDetails() {
   const estimatedHistory = useMemo(() => (estimate && estimate.events.length > 0 ? estimateToHistory(estimate) : null), [estimate]);
   const history = officialHistory ?? estimatedHistory;
   const historyIsEstimated = officialHistory === null && estimatedHistory !== null;
+  const estimatePending = historyIsEstimated && (estimate?.coverage.pending ?? 0) > 0;
 
   const displayName = history?.personName ?? title;
   // Name für die Vereinssuche im Backend, nur wenn es ein echter Name und kein Platzhalter ist.
@@ -562,6 +568,7 @@ export function usePlayerDetails() {
     clubName,
     history,
     historyIsEstimated,
+    estimatePending,
     loading,
     error,
     officialUnavailable: unavailableReason !== null,

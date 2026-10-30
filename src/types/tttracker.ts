@@ -141,6 +141,8 @@ export type PlayerTtrEstimate = {
     singlesRated: number;
     singlesUnrated: number;
     truncated: boolean;
+    // Berichte oder Einzel, die das Backend noch nicht ausgewertet hat. Der nächste Aufruf rechnet weiter.
+    pending?: number;
   };
   assumptions: { k: number; lagDays: number };
 };

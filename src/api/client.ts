@@ -1,17 +1,23 @@
 import { getAccessToken } from '../storage/authToken';
 import { ensureApiTargetLoaded, getApiBaseUrlForTarget, getApiTarget } from './apiTarget';
+import { cachedGet } from './responseCache';
+
+export { clearApiCache, invalidateApiCache } from './responseCache';
 
 export class ApiError extends Error {
   status?: number;
   code?: string;
   details?: unknown;
+  // Bei einem 429: so lange bittet das Backend zu warten.
+  retryAfterSeconds?: number;
 
-  constructor(message: string, status?: number, code?: string, details?: unknown) {
+  constructor(message: string, status?: number, code?: string, details?: unknown, retryAfterSeconds?: number) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -20,6 +26,12 @@ type ApiRequestOptions = {
   params?: Record<string, string | number | undefined>;
   body?: unknown;
   authenticated?: boolean;
+};
+
+type ApiGetOptions = {
+  authenticated?: boolean;
+  // false schaltet den Zwischenspeicher für diesen Aufruf ab.
+  cache?: boolean;
 };
 
 function extractError(data: unknown, fallback: string) {
@@ -39,6 +51,8 @@ function extractError(data: unknown, fallback: string) {
         value?.error?.details ||
         value?.details ||
         value?.data?.error?.details,
+    retryAfterSeconds:
+        typeof value?.error?.retryAfterSeconds === 'number' ? (value.error.retryAfterSeconds as number) : undefined,
   };
 }
 
@@ -114,11 +128,14 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const error = extractError(data, `API-Fehler ${response.status}`);
 
+    const retryAfterHeader = Number(response.headers.get('retry-after'));
+
     throw new ApiError(
         error.message,
         response.status,
         error.code,
-        error.details
+        error.details,
+        error.retryAfterSeconds ?? (Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader : undefined)
     );
   }
 
@@ -128,13 +145,24 @@ export async function apiRequest<T>(
 export async function apiGet<T>(
     path: string,
     params?: Record<string, string | number | undefined>,
-    options?: { authenticated?: boolean }
+    options?: ApiGetOptions
 ): Promise<T> {
-  return apiRequest<T>(path, {
-    method: 'GET',
-    params,
-    authenticated: options?.authenticated,
-  });
+  const load = () =>
+      apiRequest<T>(path, {
+        method: 'GET',
+        params,
+        authenticated: options?.authenticated,
+      });
+
+  // Angemeldete Anfragen (Login Daten) haben ihren eigenen Cache in myttData.
+  if (options?.authenticated || options?.cache === false) {
+    return load();
+  }
+
+  // Die Basis URL gehört zum Cache Key, also muss das API Ziel schon geladen sein.
+  await ensureApiTargetLoaded();
+
+  return cachedGet<T>({ baseUrl: getApiBaseUrl(), path, params, load });
 }
 
 export async function apiPost<T>(

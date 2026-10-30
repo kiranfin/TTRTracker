@@ -30,6 +30,7 @@ export default function PlayerDetailsScreen() {
         clubName,
         history,
         historyIsEstimated,
+        estimatePending,
         loading,
         error,
         currentTtr,
@@ -120,7 +121,7 @@ export default function PlayerDetailsScreen() {
                 {!loading && !error && (!unavailableReason || historyIsEstimated) ? (
                     <>
                         {historyIsEstimated ? (
-                            <Text style={[typography.meta, { color: colors.mutedText }]}>{t('player.estimatedHistory')}</Text>
+                            <Text style={[typography.meta, { color: colors.mutedText }]}>{estimatePending ? `${t('player.estimatedHistory')} ${t('player.estimatedHistoryPending')}` : t('player.estimatedHistory')}</Text>
                         ) : null}
 
                         <StatStrip
