@@ -10,7 +10,7 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export type TeamApiClient = typeof ttApi & {
     getTeamPlayers?: (teamId: string) => Promise<unknown>;
-    getPlayerTtr?: (nuid: string) => Promise<unknown>;
+    getPlayerTtr?: (nuid: string, options?: { maxAgeMs?: number }) => Promise<unknown>;
     getTeamInfos?: (
         association: string,
         season: string,

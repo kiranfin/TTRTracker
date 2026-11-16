@@ -1,5 +1,5 @@
 import { buildLocalComparison } from '../features/player-compare/localCompare';
-import { ApiError, apiGet } from './client';
+import { ApiError, apiGet, apiPeek } from './client';
 import { getLocalMyttCookie } from '../storage/myttSession';
 import { withMyttSession } from './myttData';
 import { myttDirect } from './myttDirect';
@@ -53,6 +53,29 @@ export type PlayerLookup = {
 
 function segment(value: string) {
   return encodeURIComponent(value);
+}
+
+// Pfad und Parameter der Ligatabelle an einer Stelle, damit der Cache Key von GET und Peek gleich bleibt.
+function leagueTableRequest(
+    association: string,
+    season: string,
+    groupId: string,
+    leagueSlug: string,
+    filter: 'vr' | 'rr' | 'gesamt'
+) {
+  return {
+    path: `/api/leagues/${segment(association)}/${segment(season)}/${segment(groupId)}/table`,
+    params: { leagueSlug, filter },
+  };
+}
+
+function ttrFromHistory(nuid: string, history: PlayerTtrHistoryResponse): PlayerTtrResponse {
+  const { ttr, error } = history.data;
+
+  return {
+    data: { nuid, available: !error && ttr !== null, ttr, error: error ?? null },
+    meta: history.meta,
+  };
 }
 
 // Eine Seite des Vergleichs aus dem Snapshot, den jemand mit dir teilt. null, wenn nichts geteilt wird.
@@ -141,17 +164,20 @@ export const ttApi = {
   },
 
   // Aktueller TTR mit myTischtennis Login: holt nur das Gerät (kein Cookie: MYTT_ACCOUNT_REQUIRED).
-  getPlayerTtr(nuid: string) {
+  getPlayerTtr(nuid: string, options?: { maxAgeMs?: number }) {
     return withMyttSession({
       key: `ttr:${nuid}`,
       snapshot: { kind: 'ttr', nuid },
+      maxAgeMs: options?.maxAgeMs,
       direct: (cookie) => myttDirect.getPlayerTtr(cookie, nuid),
     });
   },
 
   // Öffentlicher TTR aus der Vereinsliste, ohne myTischtennis Verbindung.
-  getPlayerRating(nuid: string, lookup: PlayerLookup) {
-    return apiGet<PlayerRatingResponse>(`/api/players/${segment(nuid)}/rating`, lookup);
+  getPlayerRating(nuid: string, lookup: PlayerLookup, options?: { maxAgeMs?: number }) {
+    return apiGet<PlayerRatingResponse>(`/api/players/${segment(nuid)}/rating`, lookup, {
+      maxAgeMs: options?.maxAgeMs,
+    });
   },
 
   // Geschätzter TTR und Verlauf aus öffentlichen Spielberichten, ohne myTischtennis Verbindung.
@@ -160,10 +186,11 @@ export const ttApi = {
   },
 
   // Verlauf mit myTischtennis Login: holt nur das Gerät (kein Cookie: MYTT_ACCOUNT_REQUIRED).
-  getPlayerTtrHistory(nuid: string) {
+  getPlayerTtrHistory(nuid: string, options?: { maxAgeMs?: number }) {
     return withMyttSession({
       key: `ttr-history:${nuid}`,
       snapshot: { kind: 'history', nuid },
+      maxAgeMs: options?.maxAgeMs,
       direct: (cookie) => myttDirect.getPlayerTtrHistory(cookie, nuid),
     });
   },
@@ -184,12 +211,14 @@ export const ttApi = {
     return withMyttSession<unknown>({
       key: `compare:${leftNuid}:${rightNuid}`,
       direct: async (cookie) => {
-        const [leftTtr, rightTtr, leftHistory, rightHistory] = await Promise.all([
-          myttDirect.getPlayerTtr(cookie, leftNuid),
-          myttDirect.getPlayerTtr(cookie, rightNuid),
+        // Der aktuelle TTR steckt schon im Verlauf, ein eigener Abruf pro Spieler wäre überflüssig.
+        const [leftHistory, rightHistory] = await Promise.all([
           myttDirect.getPlayerTtrHistory(cookie, leftNuid),
           myttDirect.getPlayerTtrHistory(cookie, rightNuid),
         ]);
+
+        const leftTtr = ttrFromHistory(leftNuid, leftHistory);
+        const rightTtr = ttrFromHistory(rightNuid, rightHistory);
 
         // Head-to-Head ist optional, ein Fehler dort lässt den Rest des Vergleichs stehen.
         const headToHead = await myttDirect
@@ -271,7 +300,8 @@ export const ttApi = {
       season = getCurrentSeason().replace('/', '--'),
       dateStart?: string,
       dateEnd?: string,
-      clubSlug = 'x'
+      clubSlug = 'x',
+      options?: { maxAgeMs?: number }
   ) {
     const query: Record<string, string> = {
       season,
@@ -291,7 +321,8 @@ export const ttApi = {
 
     return apiGet<unknown>(
         `/api/clubs/${segment(organization)}/${segment(clubNumber)}/schedule`,
-        query
+        query,
+        { maxAgeMs: options?.maxAgeMs }
     );
   },
 
@@ -302,13 +333,22 @@ export const ttApi = {
       leagueSlug = 'x',
       filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
   ) {
-    return apiGet<unknown>(
-        `/api/leagues/${segment(association)}/${segment(season)}/${segment(groupId)}/table`,
-        {
-          leagueSlug,
-          filter,
-        }
-    );
+    const request = leagueTableRequest(association, season, groupId, leagueSlug, filter);
+
+    return apiGet<unknown>(request.path, request.params);
+  },
+
+  // Die Tabelle, falls sie schon auf dem Gerät liegt (sonst null). Lädt nie, kostet also keinen Request.
+  peekLeagueTable(
+      association: string,
+      season: string,
+      groupId: string,
+      leagueSlug = 'x',
+      filter: 'vr' | 'rr' | 'gesamt' = 'gesamt'
+  ) {
+    const request = leagueTableRequest(association, season, groupId, leagueSlug, filter);
+
+    return apiPeek<unknown>(request.path, request.params);
   },
 
   getLeagueSchedule(

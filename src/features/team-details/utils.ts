@@ -1,5 +1,7 @@
 import { Linking } from 'react-native';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { hasLocalMyttSession } from '@/src/api/myttData';
+import { LINEUP_TTR_FRESH_MS } from '@/src/storage/myttSnapshots';
 import { mapScheduleStatus } from '@/src/utils/normalizers';
 import type { TeamPlayer, TeamApiClient, TeamInfo, TeamContext, TeamScheduleMatch, TeamBalance, ScheduleSummary, RoundFilter } from './types';
 
@@ -106,8 +108,20 @@ export function normalizeLineupPlayer(value: unknown, t: ReturnType<typeof useI1
     };
 }
 
-export async function enrichLineupWithTtr(players: TeamPlayer[], api: TeamApiClient) {
-    if (!api.getPlayerTtr) return players;
+/**
+ * Ersetzt den Q-TTR aus der Meldung durch den aktuellen TTR, wenn eine myTischtennis Verbindung besteht.
+ * Ohne Verbindung wird nichts angefragt. Die Abrufe laufen über die gemeinsame Geräte-Warteschlange und
+ * pro Spieler höchstens alle LINEUP_TTR_FRESH_MS (auch nach einem App Neustart).
+ */
+export async function enrichLineupWithTtr(
+    players: TeamPlayer[],
+    api: TeamApiClient,
+): Promise<{ players: TeamPlayer[]; ttrByPlayerId: Map<string, string>; connected: boolean }> {
+    const ttrByPlayerId = new Map<string, string>();
+
+    if (!api.getPlayerTtr || !(await hasLocalMyttSession())) {
+        return { players, ttrByPlayerId, connected: false };
+    }
 
     const playerIds = Array.from(
         new Set(
@@ -117,16 +131,15 @@ export async function enrichLineupWithTtr(players: TeamPlayer[], api: TeamApiCli
         ),
     );
 
-    if (playerIds.length === 0) return players;
+    if (playerIds.length === 0) return { players, ttrByPlayerId, connected: true };
 
     const ttrResults = await Promise.allSettled(
         playerIds.map(async (playerId) => {
-            const result = await api.getPlayerTtr!(playerId);
+            const result = await api.getPlayerTtr!(playerId, { maxAgeMs: LINEUP_TTR_FRESH_MS });
             return [playerId, extractTtrFromPlayerTtrResponse(result)] as const;
         }),
     );
 
-    const ttrByPlayerId = new Map<string, string>();
 
     for (const result of ttrResults) {
         if (result.status !== 'fulfilled') continue;
@@ -138,6 +151,13 @@ export async function enrichLineupWithTtr(players: TeamPlayer[], api: TeamApiCli
             ttrByPlayerId.set(playerId, cleanedTtr);
         }
     }
+
+    return { players: applyTtrToPlayers(players, ttrByPlayerId), ttrByPlayerId, connected: true };
+}
+
+/** Setzt bekannte TTR Werte (playerId -> TTR) in die Aufstellung ein. */
+export function applyTtrToPlayers(players: TeamPlayer[], ttrByPlayerId: Map<string, string>) {
+    if (ttrByPlayerId.size === 0) return players;
 
     return players.map((player) => {
         const playerId = cleanValue(player.id);

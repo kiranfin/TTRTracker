@@ -36,15 +36,17 @@ type FreshMs = number | ((response: unknown) => number);
 const FRESHNESS_RULES: [RegExp, FreshMs, boolean?][] = [
   [/^\/api\/search\//, DAY_MS],
   [/^\/api\/players\/[^/]+\/rating$/, HOUR_MS],
-  [/^\/api\/clubs\/[^/]+\/[^/]+\/teams$/, HOUR_MS],
-  [/^\/api\/clubs\/[^/]+\/[^/]+\/players$/, HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/teams$/, 12 * HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/players$/, 6 * HOUR_MS],
   [/^\/api\/clubs\/[^/]+\/[^/]+\/info$/, 12 * HOUR_MS],
   [/^\/api\/clubs\/[^/]+\/[^/]+\/schedule$/, HOUR_MS],
   [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/table$/, 15 * MINUTE_MS],
   [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/schedule$/, HOUR_MS],
-  [/^\/api\/teams\/[^/]+\/players$/, 10 * MINUTE_MS],
-  [/^\/api\/teams\/.+\/infos$/, 15 * MINUTE_MS],
-  [/^\/api\/teams\/.+\/(schedule|simple-schedule|balances)$/, 5 * MINUTE_MS],
+  [/^\/api\/teams\/[^/]+\/players$/, 6 * HOUR_MS],
+  [/^\/api\/teams\/.+\/infos$/, 12 * HOUR_MS],
+  // simple-schedule vor der gemeinsamen Regel: ändert sich im Tagesverlauf kaum (wie im Backend).
+  [/^\/api\/teams\/.+\/simple-schedule$/, HOUR_MS],
+  [/^\/api\/teams\/.+\/(schedule|balances)$/, 5 * MINUTE_MS],
   [/^\/api\/events(\/[^/]+)?$/, 30 * MINUTE_MS],
   [/^\/api\/meetings\/[^/]+\/live$/, getMeetingFreshMs, false],
 ];
@@ -78,6 +80,9 @@ export type CachedGetRequest<T> = {
   path: string;
   params?: Record<string, string | number | undefined>;
   load: () => Promise<T>;
+  // Höchstalter für diesen Aufruf. Ein älterer Eintrag wird wie ein abgelaufener behandelt: sofort gezeigt
+  // und im Hintergrund neu geladen. Gehört nicht zum Cache Key. Nie länger als die Frische der Datenart.
+  maxAgeMs?: number;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -419,7 +424,8 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
     // Als Notnagel taugt der Eintrag nur, solange er nicht zu alt ist.
     const fallback = entry && age <= STALE_MAX_AGE_MS ? entry : null;
 
-    const isFresh = entry && !invalidated.has(key) && age < getFreshMs(path, entry.data);
+    const freshMs = entry ? Math.min(getFreshMs(path, entry.data), request.maxAgeMs ?? Infinity) : 0;
+    const isFresh = entry && !invalidated.has(key) && age < freshMs;
 
     // 1. Frischer Eintrag: sofort zurück.
     if (entry && isFresh) {
@@ -443,6 +449,25 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
 
     // 2. Laden und speichern (hängt sich an eine laufende Anfrage), 3. bei vorübergehendem Fehler den alten Stand liefern.
     return startLoad(key, request, fallback);
+  }
+
+  /** Was schon auf dem Gerät liegt, egal wie alt. Lädt nie und wirft nie. */
+  async function peek<T>(
+      baseUrl: string,
+      path: string,
+      params?: Record<string, string | number | undefined>,
+  ): Promise<T | null> {
+    if (!isCacheable(path)) return null;
+
+    try {
+      await loadIndex();
+
+      const entry = await readEntry(buildKey(baseUrl, path, params));
+
+      return entry ? (entry.data as T) : null;
+    } catch {
+      return null;
+    }
   }
 
   /** Meldet sich für Aktualisierungen im Hintergrund an. Liefert die Funktion zum Abmelden. */
@@ -493,13 +518,22 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
     await flush();
   }
 
-  return { cachedGet, invalidate, clear, flush, subscribe };
+  return { cachedGet, peek, invalidate, clear, flush, subscribe };
 }
 
 const defaultCache = createResponseCache({ storage: AsyncStorage });
 
 export function cachedGet<T>(request: CachedGetRequest<T>) {
   return defaultCache.cachedGet(request);
+}
+
+/** Liest einen Eintrag nur vom Gerät (mit demselben Pfad und denselben Parametern wie der GET), ohne zu laden. */
+export function peekCachedGet<T>(
+    baseUrl: string,
+    path: string,
+    params?: Record<string, string | number | undefined>,
+) {
+  return defaultCache.peek<T>(baseUrl, path, params);
 }
 
 /** Meldet, wenn ein Eintrag im Hintergrund aktualisiert wurde. Liefert die Funktion zum Abmelden. */
