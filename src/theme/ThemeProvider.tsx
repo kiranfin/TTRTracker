@@ -204,7 +204,7 @@ function resolveIsDark(mode: ThemeMode, systemScheme: ColorSchemeName) {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
 
-  const [mode, setModeState] = useState<ThemeMode>('light');
+  const [mode, setModeState] = useState<ThemeMode>('system');
   const [accent, setAccentState] = useState<AccentColor>(DEFAULT_ACCENT);
   const [backgroundImageUri, setBackgroundImageUriState] = useState<string | null>(null);
 

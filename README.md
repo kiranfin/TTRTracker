@@ -47,6 +47,10 @@ Before running or building the app, ensure that the backend is configured, deplo
 
 Public data (search, clubs, leagues, tables, schedules, match reports) never comes straight from myTischtennis. The app asks the backend, which acts as a defensive proxy: it caches, spreads requests over time and keeps to a fixed request budget. The myTischtennis interface used by the project is unofficial and must not be hit directly, aggressively or systematically from many phones.
 
+On a cache miss the backend can ask the phone to fetch the data instead (**device relay**): the backend describes the myTischtennis request, the phone fetches it from its own IP with its own quota (no cookies, no tokens) and uploads the raw answer, and the backend parses, validates and caches it. This keeps the shared server IP from being blocked. If the phone is throttled itself or the relay fails, the app asks again without the relay header and the server fetches with its own budget. Set `EXPO_PUBLIC_RELAY_ENABLED=false` to turn the relay off in the app.
+
+Every request the phone makes to myTischtennis (relay requests and the login data below) goes through one shared queue (`src/api/deviceQueue.ts`): at most two at a time, 400 ms apart, and one shared pause when myTischtennis throttles. In development each request prints a `[myTT] METHOD /path r=<remaining quota>` line, so the requests per screen can be counted. Some data only loads on demand: the current TTR of each lineup player when the "Lineup" tab opens (kept for 12 hours per player, `LINEUP_TTR_FRESH_MS`), and the first-half and second-half balances when that filter is selected. The home screen always shows current data when it opens, except when the last state is younger than 5 minutes (`HOME_FRESH_MS`); then it shows the remembered state without any request. It asks the backend for data of at most that age with the `x-tt-max-age` header, which the backend honours only for relay requests, so the shared server IP never pays for it.
+
 Personal data that needs a myTischtennis login (your own TTR and history) is different. It is fetched by the phone itself with the login stored on the device, and the login never goes to the backend. If you share your rating with another app user, the phone uploads the last data it got (a snapshot, at most once an hour, with your consent) and the backend hands it to the people you shared it with.
 
 The backend is responsible for:
@@ -103,6 +107,8 @@ Create a `.env` file in the root of the project that points to your deployed bac
 ```env
 EXPO_PUBLIC_API_BASE_URL=https://your-backend-domain.com
 ```
+
+Optional: `EXPO_PUBLIC_RELAY_ENABLED=false` disables the device relay (default is enabled).
 
 In a development build (JS served by Metro) the settings screen (System tab) shows a switch between **Server** and **Local (PC)**. Local uses the IP of the machine running Metro and port `4001`, so the phone reaches the backend on your PC over Wi-Fi. Preview and production builds never show the switch and always use `EXPO_PUBLIC_API_BASE_URL`.
 

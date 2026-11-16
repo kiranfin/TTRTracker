@@ -22,7 +22,7 @@ import { getResponseFreshness, type Freshness } from '@/src/utils/staleness';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { InfosTab, LineupTab, ScheduleTab, BalancesTab } from '../../../src/features/team-details/components';
 import { styles } from '../../../src/features/team-details/styles';
-import { slugifyMyttPathSegment, normalizeSeasonForApi, normalizeLineup, enrichLineupWithTtr, normalizeTeamInfo, normalizeTeamSchedule, normalizeBalances, filterScheduleByRound, buildScheduleSummary, buildBalanceSummary } from '../../../src/features/team-details/utils';
+import { slugifyMyttPathSegment, normalizeSeasonForApi, normalizeLineup, enrichLineupWithTtr, applyTtrToPlayers, normalizeTeamInfo, normalizeTeamSchedule, normalizeBalances, filterScheduleByRound, buildScheduleSummary, buildBalanceSummary } from '../../../src/features/team-details/utils';
 import type { DetailTab, RoundFilter, TeamInfo, TeamPlayer, TeamScheduleMatch, TeamBalance, TeamContext, TeamApiClient } from '../../../src/features/team-details/types';
 import { SkeletonList } from '@/src/components/SkeletonRow';
 
@@ -50,6 +50,16 @@ export default function TeamDetailsScreen() {
     // Wird erhöht, wenn die App Daten dieser Mannschaft im Hintergrund aktualisiert hat. Dann wird still neu gelesen.
     const [refreshTick, setRefreshTick] = useState(0);
     const silentRef = useRef(false);
+    // Aktueller TTR je Spieler (playerId -> TTR), damit er beim stillen Neuladen erhalten bleibt.
+    const ttrByPlayerIdRef = useRef<Map<string, string>>(new Map());
+    // Mannschaft, deren Aufstellung schon angereichert wurde oder gerade angereichert wird.
+    const enrichedTeamRef = useRef<string | null>(null);
+    const ttrWarningRef = useRef<string | null>(null);
+    const lineupRef = useRef<TeamPlayer[]>([]);
+    const teamIdRef = useRef('');
+    // Runden der Bilanzen, die schon geladen wurden (Schlüssel teamId:runde:refreshTick).
+    const loadedRoundsRef = useRef<Set<string>>(new Set());
+    const [roundLoading, setRoundLoading] = useState(false);
 
     const team = useMemo<TeamContext>(
         () => {
@@ -80,6 +90,28 @@ export default function TeamDetailsScreen() {
         ],
     );
 
+    teamIdRef.current = team.teamId;
+    lineupRef.current = lineup;
+
+    const hasLeagueContext = useMemo(
+        () => Boolean(team.association && team.groupId && team.leagueSlug && team.teamNameSlug && team.apiSeason),
+        [team.apiSeason, team.association, team.groupId, team.leagueSlug, team.teamNameSlug],
+    );
+
+    // Beim Wechsel der Mannschaft gehört nichts von der vorigen mehr dazu.
+    useEffect(() => {
+        ttrByPlayerIdRef.current = new Map();
+        enrichedTeamRef.current = null;
+        ttrWarningRef.current = null;
+        loadedRoundsRef.current = new Set();
+        setBalancesByRound({ gesamt: [], vr: [], rr: [] });
+    }, [team.teamId]);
+
+    const applyKnownTtr = useCallback(
+        (players: TeamPlayer[]) => applyTtrToPlayers(players, ttrByPlayerIdRef.current),
+        [],
+    );
+
     useEffect(() => {
         async function loadTeam() {
             const api = ttApi as unknown as TeamApiClient;
@@ -96,14 +128,6 @@ export default function TeamDetailsScreen() {
                 return;
             }
 
-            const hasLeagueContext = Boolean(
-                team.association &&
-                team.groupId &&
-                team.leagueSlug &&
-                team.teamNameSlug &&
-                team.apiSeason,
-            );
-
             const silent = silentRef.current;
             silentRef.current = false;
 
@@ -114,13 +138,12 @@ export default function TeamDetailsScreen() {
             }
 
             try {
+                // Bilanzen für Vor- und Rückrunde laden erst, wenn sie gebraucht werden (Tab "Bilanzen").
                 const [
                     playersResult,
                     infoResult,
                     scheduleResult,
                     balancesGesamtResult,
-                    balancesVrResult,
-                    balancesRrResult,
                 ] = await Promise.allSettled([
                     api.getTeamPlayers(team.teamId),
                     hasLeagueContext && api.getTeamInfos
@@ -155,28 +178,6 @@ export default function TeamDetailsScreen() {
                             'gesamt',
                         )
                         : Promise.resolve(null),
-                    hasLeagueContext && api.getTeamBalances
-                        ? api.getTeamBalances(
-                            team.association!,
-                            team.apiSeason,
-                            team.groupId!,
-                            team.leagueSlug,
-                            team.teamId,
-                            team.teamNameSlug,
-                            'vr',
-                        )
-                        : Promise.resolve(null),
-                    hasLeagueContext && api.getTeamBalances
-                        ? api.getTeamBalances(
-                            team.association!,
-                            team.apiSeason,
-                            team.groupId!,
-                            team.leagueSlug,
-                            team.teamId,
-                            team.teamNameSlug,
-                            'rr',
-                        )
-                        : Promise.resolve(null),
                 ]);
 
                 const warnings: string[] = [];
@@ -192,27 +193,12 @@ export default function TeamDetailsScreen() {
                 );
 
                 if (playersResult.status === 'fulfilled') {
-                    const normalizedPlayers = normalizeLineup(playersResult.value, team.teamName, t);
+                    // Der aktuelle TTR kommt erst im Tab "Aufstellung" (siehe Effekt unten). Bis dahin gilt der Q-TTR
+                    // aus der Meldung, bereits geladene Werte bleiben erhalten.
+                    setLineup(applyKnownTtr(normalizeLineup(playersResult.value, team.teamName, t)));
 
-                    const canLoadPlayerTtr = typeof (api as Partial<TeamApiClient>).getPlayerTtr === 'function';
-
-                    if (normalizedPlayers.length > 0 && canLoadPlayerTtr) {
-                        const enrichedPlayers = await enrichLineupWithTtr(normalizedPlayers, api);
-                        setLineup(enrichedPlayers);
-
-                        const missingTtrCount = enrichedPlayers.filter(
-                            (player) => Boolean(player.id) && !player.qttr,
-                        ).length;
-
-                        if (missingTtrCount > 0) {
-                            warnings.push(t('team.ttrWarnings', { count: missingTtrCount }));
-                        }
-                    } else {
-                        setLineup(normalizedPlayers);
-
-                        if (!canLoadPlayerTtr && normalizedPlayers.some((player) => Boolean(player.id) && !player.qttr)) {
-                            warnings.push(t('team.ttrApiMissing'));
-                        }
+                    if (ttrWarningRef.current) {
+                        warnings.push(ttrWarningRef.current);
                     }
                 } else {
                     setLineup([]);
@@ -243,21 +229,8 @@ export default function TeamDetailsScreen() {
                         ? normalizeBalances(balancesGesamtResult.value, t)
                         : [];
 
-                const vrBalances =
-                    balancesVrResult.status === 'fulfilled'
-                        ? normalizeBalances(balancesVrResult.value, t)
-                        : [];
-
-                const rrBalances =
-                    balancesRrResult.status === 'fulfilled'
-                        ? normalizeBalances(balancesRrResult.value, t)
-                        : [];
-
-                setBalancesByRound({
-                    gesamt: gesamtBalances,
-                    vr: vrBalances,
-                    rr: rrBalances,
-                });
+                // Schon geladene Vor- und Rückrunde bleiben erhalten.
+                setBalancesByRound((current) => ({ ...current, gesamt: gesamtBalances }));
 
                 if (balancesGesamtResult.status === 'rejected') {
                     warnings.push(t('team.balancesLoadError'));
@@ -279,6 +252,8 @@ export default function TeamDetailsScreen() {
 
         loadTeam().catch(() => undefined);
     }, [
+        applyKnownTtr,
+        hasLeagueContext,
         team.apiSeason,
         team.association,
         team.groupId,
@@ -289,6 +264,108 @@ export default function TeamDetailsScreen() {
         language,
         refreshTick,
         t,
+    ]);
+
+    // Aktueller TTR je Spieler erst im Tab "Aufstellung", einmal pro Mannschaft. Ohne myTischtennis Verbindung
+    // fragt enrichLineupWithTtr nichts an. Pro Spieler gilt der gemerkte Wert 12 Stunden.
+    const hasLineup = lineup.length > 0;
+
+    useEffect(() => {
+        if (activeTab !== 'lineup' || loading || !hasLineup || !team.teamId) return;
+        if (enrichedTeamRef.current === team.teamId) return;
+
+        const teamId = team.teamId;
+
+        enrichedTeamRef.current = teamId;
+
+        enrichLineupWithTtr(lineupRef.current, ttApi as unknown as TeamApiClient)
+            .then((result) => {
+                // Späte Antwort für eine andere Mannschaft verwerfen.
+                if (teamIdRef.current !== teamId) return;
+
+                result.ttrByPlayerId.forEach((ttr, playerId) => ttrByPlayerIdRef.current.set(playerId, ttr));
+
+                const merged = applyKnownTtr(lineupRef.current);
+
+                setLineup(merged);
+
+                const missing = result.connected
+                    ? merged.filter((player) => Boolean(player.id) && !player.qttr).length
+                    : 0;
+
+                if (missing > 0) {
+                    const message = t('team.ttrWarnings', { count: missing });
+
+                    ttrWarningRef.current = message;
+                    setWarning((current) => (current ? `${current}\n${message}` : message));
+                }
+            })
+            .catch(() => {
+                if (enrichedTeamRef.current === teamId) enrichedTeamRef.current = null;
+            });
+    }, [activeTab, applyKnownTtr, hasLineup, loading, t, team.teamId]);
+
+    // Bilanzen für Vor- und Rückrunde erst beim Öffnen des Tabs. Nach einem Update im Hintergrund (refreshTick)
+    // wird die gewählte Runde neu gelesen, das kostet keinen myTischtennis Request, sondern kommt vom Gerät.
+    useEffect(() => {
+        const api = ttApi as unknown as TeamApiClient;
+
+        if (activeTab !== 'balances' || roundFilter === 'gesamt' || !hasLeagueContext || !api.getTeamBalances) return;
+
+        const teamId = team.teamId;
+        const loadKey = `${teamId}:${roundFilter}:${refreshTick}`;
+
+        if (!teamId || loadedRoundsRef.current.has(loadKey)) return;
+
+        loadedRoundsRef.current.add(loadKey);
+
+        let active = true;
+
+        setRoundLoading(true);
+
+        api.getTeamBalances(
+            team.association!,
+            team.apiSeason,
+            team.groupId!,
+            team.leagueSlug,
+            teamId,
+            team.teamNameSlug,
+            roundFilter,
+        )
+            .then((response) => {
+                if (!active) return;
+
+                setBalancesByRound((current) => ({ ...current, [roundFilter]: normalizeBalances(response, t) }));
+            })
+            .catch(() => {
+                loadedRoundsRef.current.delete(loadKey);
+
+                if (!active) return;
+
+                const message = t('team.balancesLoadError');
+
+                setWarning((current) => (current?.includes(message) ? current : current ? `${current}\n${message}` : message));
+            })
+            .finally(() => {
+                if (active) setRoundLoading(false);
+            });
+
+        return () => {
+            active = false;
+            setRoundLoading(false);
+        };
+    }, [
+        activeTab,
+        hasLeagueContext,
+        refreshTick,
+        roundFilter,
+        t,
+        team.apiSeason,
+        team.association,
+        team.groupId,
+        team.leagueSlug,
+        team.teamId,
+        team.teamNameSlug,
     ]);
 
     const isTeamPath = useCallback(
@@ -426,7 +503,9 @@ export default function TeamDetailsScreen() {
                     </ChipRow>
                 ) : null}
 
-                {loading ? <SkeletonList count={3} /> : null}
+                {loading || (roundLoading && activeTab === 'balances' && currentBalances.length === 0) ? (
+                    <SkeletonList count={3} />
+                ) : null}
 
                 {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 

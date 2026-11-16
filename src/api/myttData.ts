@@ -7,18 +7,17 @@ import {
   type SnapshotKind,
 } from '../storage/myttSnapshots';
 import { ApiError } from './client';
+import { isDevicePaused, pauseDevice } from './devicePause';
 
 // Gleiche Dauer wie die Frische der Startseite: derselbe Wert wird nicht öfter von myTischtennis geholt.
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
-const cache = new Map<string, { value: unknown; expiresAt: number }>();
+// savedAt: wann der Wert von myTischtennis geholt wurde. Wie alt er sein darf, bestimmt der Aufrufer (maxAgeMs).
+const cache = new Map<string, { value: unknown; savedAt: number }>();
 
 // Läuft die lokale Session ab, wird sie bis zum nächsten Login übersprungen. Nur im Speicher, denn nach
 // einem App Neustart reicht ein einzelner Aufruf, um es erneut festzustellen.
 let localSessionExpired = false;
-
-// Nach einem 429 von myTischtennis fragt das Gerät bis dahin nicht erneut.
-let directPausedUntil = 0;
 
 export async function saveLocalMyttSession(cookie: string) {
   await saveLocalMyttCookie(cookie);
@@ -75,6 +74,9 @@ export async function withMyttSession<T>(params: {
   key: string;
   snapshot?: { kind: SnapshotKind; nuid: string };
   direct: (cookie: string) => Promise<T>;
+  // Höchstalter des Wertes in Millisekunden (Standard: CACHE_TTL_MS). 0 heißt: immer neu von myTischtennis holen.
+  // Nur mit gesetztem Wert und `snapshot` zählt auch der gespeicherte Stand auf dem Gerät als frisch genug.
+  maxAgeMs?: number;
 }): Promise<T> {
   const cookie = await getLocalMyttCookie();
 
@@ -86,9 +88,20 @@ export async function withMyttSession<T>(params: {
     throw new ApiError('myTischtennis-Session ist abgelaufen.', 401, 'MYTT_AUTH_EXPIRED');
   }
 
+  const maxAge = params.maxAgeMs ?? CACHE_TTL_MS;
   const cached = cache.get(params.key);
 
-  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+  if (cached && Date.now() - cached.savedAt < maxAge) return cached.value as T;
+
+  if (params.maxAgeMs !== undefined && params.snapshot) {
+    const stored = await getSnapshot<T>(params.snapshot.kind, params.snapshot.nuid);
+
+    if (stored && typeof stored.checkedAt === 'number' && Date.now() - stored.checkedAt < maxAge) {
+      cache.set(params.key, { value: stored.response, savedAt: stored.checkedAt });
+
+      return stored.response;
+    }
+  }
 
   async function lastKnown(error: unknown): Promise<T> {
     const snapshot = params.snapshot ? await getSnapshot<T>(params.snapshot.kind, params.snapshot.nuid) : null;
@@ -98,7 +111,8 @@ export async function withMyttSession<T>(params: {
     return toStaleResponse(snapshot);
   }
 
-  if (Date.now() < directPausedUntil) {
+  // Die Pause gilt für alle Abrufe des Geräts bei myTischtennis (auch das Device Relay), es ist dieselbe IP.
+  if (isDevicePaused()) {
     return lastKnown(
         new ApiError('myTischtennis ist gerade rate-limited. Bitte später erneut versuchen.', 429, 'MYTT_RATE_LIMITED'),
     );
@@ -107,7 +121,7 @@ export async function withMyttSession<T>(params: {
   try {
     const value = await params.direct(cookie);
 
-    cache.set(params.key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+    cache.set(params.key, { value, savedAt: Date.now() });
 
     if (params.snapshot && !(value as Snapshotted).data?.error) {
       saveSnapshot(params.snapshot.kind, params.snapshot.nuid, value, fetchedAtOf(value)).catch(() => undefined);
@@ -123,7 +137,7 @@ export async function withMyttSession<T>(params: {
     }
 
     if (isRateLimitedError(error)) {
-      directPausedUntil = Date.now() + getRetryAfterMs(error);
+      pauseDevice(getRetryAfterMs(error));
     }
 
     // Rate Limit, Netzfehler, Störung bei myTischtennis: lieber der letzte bekannte Stand als ein Fehler.

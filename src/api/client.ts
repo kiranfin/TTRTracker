@@ -1,6 +1,7 @@
 import { getAccessToken } from '../storage/authToken';
 import { ensureApiTargetLoaded, getApiBaseUrlForTarget, getApiTarget } from './apiTarget';
-import { cachedGet } from './responseCache';
+import { relayGet } from './relay';
+import { cachedGet, peekCachedGet } from './responseCache';
 
 export { clearApiCache, invalidateApiCache } from './responseCache';
 
@@ -26,12 +27,17 @@ type ApiRequestOptions = {
   params?: Record<string, string | number | undefined>;
   body?: unknown;
   authenticated?: boolean;
+  // Zusätzliche Header, z.B. x-tt-relay für das Device Relay.
+  headers?: Record<string, string>;
 };
 
 type ApiGetOptions = {
   authenticated?: boolean;
   // false schaltet den Zwischenspeicher für diesen Aufruf ab.
   cache?: boolean;
+  // Höchstalter der Daten für diesen Aufruf (z.B. Startseite: 5 Minuten). Ältere Einträge der App werden im
+  // Hintergrund neu geladen, und das Backend bekommt das Höchstalter als x-tt-max-age (gilt dort nur im Relay).
+  maxAgeMs?: number;
 };
 
 function extractError(data: unknown, fallback: string) {
@@ -103,6 +109,7 @@ export async function apiRequest<T>(
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...options.headers,
   };
 
   if (options.body !== undefined) {
@@ -134,7 +141,8 @@ export async function apiRequest<T>(
         error.message,
         response.status,
         error.code,
-        error.details,
+        // Beim Relay gehören die abzurufenden Requests dazu (relay.requests), der Relay Client liest sie hier.
+        error.code === 'RELAY_REQUIRED' ? (data as { relay?: unknown } | null)?.relay : error.details,
         error.retryAfterSeconds ?? (Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader : undefined)
     );
   }
@@ -147,12 +155,29 @@ export async function apiGet<T>(
     params?: Record<string, string | number | undefined>,
     options?: ApiGetOptions
 ): Promise<T> {
-  const load = () =>
+  // Mit Höchstalter bekommt jeder GET dieses Aufrufs den Header, auch die Wiederholungen im Device Relay.
+  const maxAgeHeader: Record<string, string> =
+      options?.maxAgeMs !== undefined && options.maxAgeMs > 0
+          ? { 'x-tt-max-age': String(Math.ceil(options.maxAgeMs / 1000)) }
+          : {};
+
+  const loadPlain = (headers?: Record<string, string>) =>
       apiRequest<T>(path, {
         method: 'GET',
         params,
         authenticated: options?.authenticated,
+        headers: { ...maxAgeHeader, ...headers },
       });
+
+  // Öffentliche Daten holt bei einem Cache Miss im Backend das Gerät selbst (Device Relay), mit dem Server
+  // als Fallback. Angemeldete Anfragen laufen wie bisher direkt über das Backend.
+  const load = () =>
+      options?.authenticated
+          ? loadPlain()
+          : relayGet<T>({
+            get: loadPlain,
+            upload: (body) => apiRequest('/api/relay', { method: 'POST', body }),
+          });
 
   // Angemeldete Anfragen (Login Daten) haben ihren eigenen Cache in myttData.
   if (options?.authenticated || options?.cache === false) {
@@ -162,7 +187,14 @@ export async function apiGet<T>(
   // Die Basis URL gehört zum Cache Key, also muss das API Ziel schon geladen sein.
   await ensureApiTargetLoaded();
 
-  return cachedGet<T>({ baseUrl: getApiBaseUrl(), path, params, load });
+  return cachedGet<T>({ baseUrl: getApiBaseUrl(), path, params, load, maxAgeMs: options?.maxAgeMs });
+}
+
+/** Liest nur, was schon auf dem Gerät liegt (gleicher Pfad und gleiche Parameter wie apiGet), ohne Anfrage. */
+export async function apiPeek<T>(path: string, params?: Record<string, string | number | undefined>) {
+  await ensureApiTargetLoaded();
+
+  return peekCachedGet<T>(getApiBaseUrl(), path, params);
 }
 
 export async function apiPost<T>(

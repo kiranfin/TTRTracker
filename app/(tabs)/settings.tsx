@@ -173,14 +173,9 @@ export default function SettingsScreen() {
           </ListGroup>
 
           <View style={styles.group}>
-            <SectionHeader variant="label" title={t('settings.account')} />
+            <SectionHeader variant="label" title={t('settings.groupConnections')} />
             <ListGroup>
-              <ListRow
-                  leading={<IconTile icon="person-outline" />}
-                  title={isAuthenticated ? t('settings.signedIn') : t('settings.signIn')}
-                  trailing={<RowValue>{isAuthenticated && user ? user.username : t('settings.notLoggedIn')}</RowValue>}
-                  onPress={() => setSheet('account')}
-              />
+              {/* myTischtennis zuerst: die Verbindung braucht kein App-Konto, das Konto ist nur fürs Teilen. */}
               <ListRow
                   leading={<IconTile icon="link-outline" />}
                   title="myTischtennis"
@@ -192,19 +187,27 @@ export default function SettingsScreen() {
                   }
                   onPress={() => setSheet('mytt')}
               />
-              {/* Freigaben brauchen ein App-Konto, die Verbindung zu myTischtennis selbst nicht. */}
-              {isAuthenticated ? (
-                  <ListRow
-                      leading={<IconTile icon="people-outline" />}
-                      title={t('settings.grantsRow')}
-                      trailing={
-                        <RowValue>
-                          {grants.length > 0 ? t('settings.grantsCount', { count: grants.length }) : t('settings.grantsNone')}
-                        </RowValue>
-                      }
-                      onPress={() => setSheet('grants')}
-                  />
-              ) : null}
+              <ListRow
+                  leading={<IconTile icon="person-outline" />}
+                  title={isAuthenticated ? t('settings.signedIn') : t('settings.signIn')}
+                  trailing={<RowValue>{isAuthenticated && user ? user.username : t('settings.notLoggedIn')}</RowValue>}
+                  onPress={() => setSheet('account')}
+              />
+              {/* Ohne Konto bleibt die Zeile sichtbar, damit man sieht, wofür das Konto da ist. Sie führt dann zur Anmeldung. */}
+              <ListRow
+                  leading={<IconTile icon="people-outline" />}
+                  title={t('settings.grantsRow')}
+                  trailing={
+                    <RowValue>
+                      {!isAuthenticated
+                          ? t('settings.grantsNeedAccount')
+                          : grants.length > 0
+                              ? t('settings.grantsCount', { count: grants.length })
+                              : t('settings.grantsNone')}
+                    </RowValue>
+                  }
+                  onPress={() => setSheet(isAuthenticated ? 'grants' : 'account')}
+              />
             </ListGroup>
             {!isAuthenticated ? (
                 <Text style={[typography.caption, { color: colors.mutedText }]}>{t('settings.accountOptionalHint')}</Text>
