@@ -49,11 +49,19 @@ export function AccountSheet({ settings, visible, onClose }: SheetProps) {
   return (
       <BottomSheet visible={visible} title={t('settings.account')} onClose={onClose}>
         <View style={styles.sheetBody}>
-          <Text style={[styles.backendText, { color: colors.mutedText }]}>
-            {isAuthenticated && user
-                ? t('settings.loggedInAs', { username: user.username })
-                : t('settings.accountDescription')}
-          </Text>
+          {isAuthenticated && user ? (
+              <>
+                <Text style={[typography.bodyStrong, { color: colors.text }]}>
+                  {t('settings.loggedInAs', { username: user.username })}
+                </Text>
+                {/* Freigaben laufen über den Benutzernamen, also muss man ihn weitergeben können. */}
+                <Text style={[styles.backendText, { color: colors.mutedText }]}>
+                  {t('settings.accountUsernameHint', { username: user.username })}
+                </Text>
+              </>
+          ) : (
+              <Text style={[styles.backendText, { color: colors.mutedText }]}>{t('settings.accountDescription')}</Text>
+          )}
 
           {!isAuthenticated ? (
               <>
@@ -80,6 +88,10 @@ export function AccountSheet({ settings, visible, onClose }: SheetProps) {
                     keyboardType="email-address"
                     autoCapitalize="none"
                 />
+
+                {!email.trim() ? (
+                    <Text style={[styles.backendText, { color: colors.mutedText }]}>{t('settings.registerEmailHint')}</Text>
+                ) : null}
 
                 <View style={styles.twoGrid}>
                   <Button
@@ -131,8 +143,8 @@ export function AccountSheet({ settings, visible, onClose }: SheetProps) {
               <>
                 <Text style={[typography.bodyStrong, { color: colors.text }]}>{t('settings.email')}</Text>
 
-                <Text style={[styles.backendText, { color: colors.mutedText }]}>
-                  {t('settings.emailDescription')}
+                <Text style={[styles.backendText, { color: user?.email ? colors.mutedText : colors.negative }]}>
+                  {user?.email ? t('settings.emailDescription') : t('settings.emailMissingWarning')}
                 </Text>
 
                 <SettingsInput
