@@ -162,6 +162,40 @@ function remixTarget(fetched: Fetched): string | null {
   }
 }
 
+// Laufen zwei Backend Aufrufe gleichzeitig in denselben Miss (z.B. Home und Spielerseite holen dasselbe Rating),
+// holt das Gerät ihn nur einmal. Eine gute Antwort bleibt kurz liegen, falls die zweite Runde etwas später startet.
+// Das Backend hält Antworten ohnehin 2 Minuten in seiner Inbox, der Wert ist also nicht zu alt.
+const SHARED_RESULT_MS = 10_000;
+const shared = new Map<string, Promise<RelayResponse | null>>();
+
+function sharedKey(request: RelayRequest) {
+  return `${request.method} ${request.url}\n${request.body ?? ''}`;
+}
+
+function fetchShared(request: RelayRequest): Promise<RelayResponse | null> {
+  const key = sharedKey(request);
+  const pending = shared.get(key);
+
+  // Die id gehört zum jeweiligen Aufrufer, der Rest der Antwort ist derselbe.
+  if (pending) return pending.then((result) => (result ? { ...result, id: request.id } : null));
+
+  const promise = fetchOne(request);
+
+  shared.set(key, promise);
+  promise.then((result) => {
+    if (!result) {
+      shared.delete(key);
+      return;
+    }
+
+    setTimeout(() => {
+      if (shared.get(key) === promise) shared.delete(key);
+    }, SHARED_RESULT_MS);
+  });
+
+  return promise;
+}
+
 // null: das Gerät ist selbst gebremst oder der Abruf ging schief. Dann wird nichts hochgeladen.
 async function fetchOne(request: RelayRequest): Promise<RelayResponse | null> {
   const headers = safeHeaders(request.headers);
@@ -214,7 +248,7 @@ async function runRound(requests: RelayRequest[]): Promise<RelayResponse[] | nul
     return null;
   }
 
-  const results = await Promise.all(requests.map(fetchOne));
+  const results = await Promise.all(requests.map(fetchShared));
   const responses = results.filter((result): result is RelayResponse => result !== null);
 
   return responses.length === requests.length ? responses : null;
