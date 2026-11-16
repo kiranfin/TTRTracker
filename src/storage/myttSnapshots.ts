@@ -5,7 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Fehlers. Die Daten liegen nur auf dem Gerät. Sie werden beim Trennen der Verbindung gelöscht.
 
 const STORAGE_KEY = 'tttracker.myttSnapshots';
-const MAX_ENTRIES = 40;
+// Genug Platz für den eigenen Verlauf und die TTR Werte einer ganzen Aufstellung (verdrängt wird nach checkedAt).
+const MAX_ENTRIES = 300;
 
 export type SnapshotKind = 'ttr' | 'history';
 
@@ -21,8 +22,11 @@ export type StoredSnapshot<T = unknown> = {
 
 type SnapshotMap = Record<string, StoredSnapshot>;
 
-// So lange gilt ein geholter Stand als frisch: Tab Wechsel und App Start fragen nicht erneut an.
-export const SNAPSHOT_FRESH_MS = 15 * 60 * 1000;
+// So lange gilt der aktuelle TTR eines Spielers in der Aufstellung als frisch (auch nach einem App Neustart).
+export const LINEUP_TTR_FRESH_MS = 12 * 60 * 60 * 1000;
+
+// So lange zeigt die Startseite den gemerkten Stand, ohne erneut anzufragen.
+export const HOME_FRESH_MS = 5 * 60 * 1000;
 
 let memory: SnapshotMap | null = null;
 
@@ -58,10 +62,6 @@ export async function getSnapshot<T = unknown>(kind: SnapshotKind, nuid: string)
   const entry = map[keyOf(kind, nuid)];
 
   return entry && typeof entry.savedAt === 'number' && entry.response ? (entry as StoredSnapshot<T>) : null;
-}
-
-export function isSnapshotFresh(snapshot: StoredSnapshot, now = Date.now()) {
-  return typeof snapshot.checkedAt === 'number' && now - snapshot.checkedAt < SNAPSHOT_FRESH_MS;
 }
 
 // `raw` (die rohe Antwort für den Upload) wird nie gespeichert.

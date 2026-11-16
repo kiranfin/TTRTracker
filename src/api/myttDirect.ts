@@ -1,6 +1,7 @@
 import type { PlayerTtrHistoryResponse, PlayerTtrResponse } from '../types/tttracker';
 import { ApiError } from './client';
-import { parseRetryAfterMs } from './devicePause';
+import { isDevicePaused, parseRetryAfterMs } from './devicePause';
+import { noteQuota, runOnDevice } from './deviceQueue';
 
 const MYTT_API_URL = 'https://www.mytischtennis.de';
 
@@ -40,18 +41,29 @@ function looksLikeLoginPage(contentType: string, body: string) {
 // Direkter Aufruf der drei Login Endpunkte von myTischtennis mit dem Cookie vom Gerät.
 // credentials: 'omit', damit auf iOS nicht der Cookie Speicher der Plattform den Header überschreibt.
 async function requestMytt(params: { method: 'GET' | 'POST'; path: string; cookie: string; body?: URLSearchParams }) {
-    const response = await fetch(`${MYTT_API_URL}${params.path}`, {
-        method: params.method,
-        credentials: 'omit',
-        headers: {
-            Accept: 'application/json',
-            Cookie: params.cookie,
-            ...(params.body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
-        },
-        body: params.body?.toString(),
-    });
+    // Dieselbe Pause und dieselbe Warteschlange wie das Device Relay: es ist dieselbe IP und dasselbe Kontingent.
+    if (isDevicePaused()) {
+        throw new ApiError('myTischtennis ist gerade rate-limited. Bitte später erneut versuchen.', 429, 'MYTT_RATE_LIMITED');
+    }
 
-    const text = await response.text();
+    const url = `${MYTT_API_URL}${params.path}`;
+
+    const { response, text } = await runOnDevice(async () => {
+        const result = await fetch(url, {
+            method: params.method,
+            credentials: 'omit',
+            headers: {
+                Accept: 'application/json',
+                Cookie: params.cookie,
+                ...(params.body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
+            },
+            body: params.body?.toString(),
+        });
+
+        noteQuota(result.headers.get('ratelimit'), { method: params.method, url });
+
+        return { response: result, text: await result.text() };
+    });
 
     if ([401, 403, 419].includes(response.status) || looksLikeLoginPage(response.headers.get('content-type') ?? '', text)) {
         throw new ApiError('myTischtennis-Session ist abgelaufen.', 401, 'MYTT_AUTH_EXPIRED');

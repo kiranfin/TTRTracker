@@ -1,4 +1,5 @@
-import { DEFAULT_PAUSE_MS, isDevicePaused, parseRetryAfterMs, pauseDevice } from './devicePause';
+import { isDevicePaused, parseRetryAfterMs, pauseDevice } from './devicePause';
+import { noteQuota, runOnDevice } from './deviceQueue';
 
 // Device Relay: Fehlen dem Backend Daten von myTischtennis, beschreibt es der App die nötigen Requests.
 // Die App ruft sie von ihrer eigenen IP ab (eigenes Kontingent) und lädt die Rohantworten hoch. Das Backend
@@ -10,12 +11,9 @@ const MYTT_ORIGIN = 'https://www.mytischtennis.de';
 
 const MAX_ROUNDS = 4;
 const MAX_REQUESTS_PER_ROUND = 4;
-const MIN_INTERVAL_MS = 400;
-const MAX_CONCURRENT = 2;
+const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT_MS = 10_000;
 const VERIFY_PAUSE_MS = 30 * 60 * 1000;
-// Bleiben so viele Anfragen im Kontingent von myTischtennis übrig, pausiert das Gerät danach.
-const QUOTA_RESERVE = 20;
 
 const RELAY_HEADERS = { 'x-tt-relay': '1' };
 
@@ -80,36 +78,6 @@ function relayRequestsFromError(error: unknown): RelayRequest[] | null {
   return code === 'RELAY_REQUIRED' ? toRequests(details) : null;
 }
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
-// Warteschlange: höchstens MAX_CONCURRENT Abrufe gleichzeitig, Starts mindestens MIN_INTERVAL_MS auseinander.
-let active = 0;
-let nextStartAt = 0;
-const waiters: (() => void)[] = [];
-
-async function acquire() {
-  while (active >= MAX_CONCURRENT) {
-    await new Promise<void>((resolve) => waiters.push(resolve));
-  }
-
-  active += 1;
-
-  const startAt = Math.max(Date.now(), nextStartAt);
-
-  nextStartAt = startAt + MIN_INTERVAL_MS;
-
-  if (startAt > Date.now()) {
-    await sleep(startAt - Date.now());
-  }
-}
-
-function release() {
-  active -= 1;
-  waiters.shift()?.();
-}
-
 function isAllowed(request: RelayRequest) {
   try {
     return (
@@ -146,65 +114,97 @@ function isVerifyPath(url: string) {
   }
 }
 
-function parseQuota(header: string | null) {
-  const remaining = header?.match(/\br=(\d+)/)?.[1];
-  const resetSeconds = header?.match(/\bt=(\d+)/)?.[1];
+type Fetched = { status: number; headers: Headers; url: string; body: string };
 
-  return remaining === undefined ? null : { remaining: Number(remaining), resetMs: Number(resetSeconds ?? 0) * 1000 };
+// Ein einzelner Abruf innerhalb der gemeinsamen Warteschlange des Geräts. Der Timeout läuft erst ab dem Start.
+function send(url: string, method: 'GET' | 'POST', headers: Record<string, string>, body?: string) {
+  return runOnDevice(async (): Promise<Fetched> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        method,
+        // credentials: 'omit', damit auf iOS nicht der Cookie Speicher der Plattform Header ergänzt.
+        credentials: 'omit',
+        headers,
+        body: method === 'POST' ? body : undefined,
+        signal: controller.signal,
+      });
+
+      // Die Antwort ist noch gut, danach schont das Gerät bei knappem Kontingent die Anfragen bis zum Reset.
+      noteQuota(response.headers.get('ratelimit'), { method, url });
+
+      return {
+        status: response.status,
+        headers: response.headers,
+        url: response.url || url,
+        body: await response.text(),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+}
+
+// myTischtennis beantwortet eine Weiterleitung auf einen ?_data= Request mit 204 und x-remix-redirect.
+// Das Gerät folgt ihr selbst (wie das Backend: höchstens MAX_REDIRECTS, nur gleiche Origin, danach GET ohne Body).
+// null: keine Weiterleitung. '': ein unbrauchbares Ziel.
+function remixTarget(fetched: Fetched): string | null {
+  const location = fetched.headers.get('x-remix-redirect');
+
+  if (location === null) return null;
+
+  try {
+    return new URL(location, fetched.url).toString();
+  } catch {
+    return '';
+  }
 }
 
 // null: das Gerät ist selbst gebremst oder der Abruf ging schief. Dann wird nichts hochgeladen.
 async function fetchOne(request: RelayRequest): Promise<RelayResponse | null> {
-  await acquire();
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const headers = safeHeaders(request.headers);
 
   try {
-    const response = await fetch(request.url, {
-      method: request.method,
-      // credentials: 'omit', damit auf iOS nicht der Cookie Speicher der Plattform Header ergänzt.
-      credentials: 'omit',
-      headers: safeHeaders(request.headers),
-      body: request.method === 'POST' ? request.body : undefined,
-      signal: controller.signal,
-    });
+    let fetched = await send(request.url, request.method, headers, request.body);
 
-    const finalUrl = response.url || request.url;
-    const remixRedirect = response.headers.get('x-remix-redirect');
+    for (let hops = 0; ; hops += 1) {
+      const redirect = remixTarget(fetched);
 
-    if (response.status === 429) {
-      pauseDevice(parseRetryAfterMs(response.headers.get('retry-after')));
+      if (fetched.status === 429) {
+        pauseDevice(parseRetryAfterMs(fetched.headers.get('retry-after')));
 
-      return null;
+        return null;
+      }
+
+      if (isVerifyPath(fetched.url) || (redirect !== null && isVerifyPath(redirect))) {
+        pauseDevice(VERIFY_PAUSE_MS);
+
+        return null;
+      }
+
+      if (redirect === null) {
+        // Hochgeladen wird die letzte Antwort unter der ursprünglichen request.id.
+        return {
+          id: request.id,
+          status: fetched.status,
+          contentType: fetched.headers.get('content-type') ?? '',
+          body: fetched.body,
+          finalUrl: fetched.url,
+          ...(fetched.headers.has('x-remix-error') ? { remixError: true } : {}),
+        };
+      }
+
+      // Zu viele Sprünge oder ein Ziel außerhalb von myTischtennis: der Server holt es selbst.
+      if (hops >= MAX_REDIRECTS || !redirect || new URL(redirect).origin !== MYTT_ORIGIN) {
+        return null;
+      }
+
+      fetched = await send(redirect, 'GET', headers);
     }
-
-    if (isVerifyPath(finalUrl) || (remixRedirect !== null && isVerifyPath(remixRedirect))) {
-      pauseDevice(VERIFY_PAUSE_MS);
-
-      return null;
-    }
-
-    const quota = parseQuota(response.headers.get('ratelimit'));
-
-    // Die Antwort ist noch gut, danach schont das Gerät das Kontingent bis zum Reset.
-    if (quota && quota.remaining < QUOTA_RESERVE) {
-      pauseDevice(quota.resetMs > 0 ? quota.resetMs : DEFAULT_PAUSE_MS);
-    }
-
-    return {
-      id: request.id,
-      status: response.status,
-      contentType: response.headers.get('content-type') ?? '',
-      body: await response.text(),
-      finalUrl,
-      ...(response.headers.has('x-remix-error') ? { remixError: true } : {}),
-    };
   } catch {
     return null;
-  } finally {
-    clearTimeout(timer);
-    release();
   }
 }
 

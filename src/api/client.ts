@@ -1,7 +1,7 @@
 import { getAccessToken } from '../storage/authToken';
 import { ensureApiTargetLoaded, getApiBaseUrlForTarget, getApiTarget } from './apiTarget';
 import { relayGet } from './relay';
-import { cachedGet } from './responseCache';
+import { cachedGet, peekCachedGet } from './responseCache';
 
 export { clearApiCache, invalidateApiCache } from './responseCache';
 
@@ -35,6 +35,9 @@ type ApiGetOptions = {
   authenticated?: boolean;
   // false schaltet den Zwischenspeicher für diesen Aufruf ab.
   cache?: boolean;
+  // Höchstalter der Daten für diesen Aufruf (z.B. Startseite: 5 Minuten). Ältere Einträge der App werden im
+  // Hintergrund neu geladen, und das Backend bekommt das Höchstalter als x-tt-max-age (gilt dort nur im Relay).
+  maxAgeMs?: number;
 };
 
 function extractError(data: unknown, fallback: string) {
@@ -152,12 +155,18 @@ export async function apiGet<T>(
     params?: Record<string, string | number | undefined>,
     options?: ApiGetOptions
 ): Promise<T> {
+  // Mit Höchstalter bekommt jeder GET dieses Aufrufs den Header, auch die Wiederholungen im Device Relay.
+  const maxAgeHeader: Record<string, string> =
+      options?.maxAgeMs !== undefined && options.maxAgeMs > 0
+          ? { 'x-tt-max-age': String(Math.ceil(options.maxAgeMs / 1000)) }
+          : {};
+
   const loadPlain = (headers?: Record<string, string>) =>
       apiRequest<T>(path, {
         method: 'GET',
         params,
         authenticated: options?.authenticated,
-        headers,
+        headers: { ...maxAgeHeader, ...headers },
       });
 
   // Öffentliche Daten holt bei einem Cache Miss im Backend das Gerät selbst (Device Relay), mit dem Server
@@ -178,7 +187,14 @@ export async function apiGet<T>(
   // Die Basis URL gehört zum Cache Key, also muss das API Ziel schon geladen sein.
   await ensureApiTargetLoaded();
 
-  return cachedGet<T>({ baseUrl: getApiBaseUrl(), path, params, load });
+  return cachedGet<T>({ baseUrl: getApiBaseUrl(), path, params, load, maxAgeMs: options?.maxAgeMs });
+}
+
+/** Liest nur, was schon auf dem Gerät liegt (gleicher Pfad und gleiche Parameter wie apiGet), ohne Anfrage. */
+export async function apiPeek<T>(path: string, params?: Record<string, string | number | undefined>) {
+  await ensureApiTargetLoaded();
+
+  return peekCachedGet<T>(getApiBaseUrl(), path, params);
 }
 
 export async function apiPost<T>(

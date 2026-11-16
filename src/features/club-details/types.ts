@@ -79,6 +79,8 @@ export type ClubApiWithOptionalEndpoints = typeof ttApi & {
         season: string,
         dateStart?: string,
         dateEnd?: string,
+        clubSlug?: string,
+        options?: { maxAgeMs?: number },
     ) => Promise<unknown>;
 };
 

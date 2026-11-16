@@ -14,9 +14,8 @@ import { getEventsWidgetEnabled } from '@/src/storage/eventsWidget';
 import { getMeClub } from '@/src/storage/meClub';
 import type { MeClub } from '@/src/storage/meClub';
 import { getMePlayerName, getMePlayerNuid, setMePlayerName, setMePlayerNuid } from '@/src/storage/mePlayer';
-import { getSnapshot, isSnapshotFresh } from '@/src/storage/myttSnapshots';
+import { HOME_FRESH_MS } from '@/src/storage/myttSnapshots';
 import { shareSnapshotIfNeeded } from '../../mytt/utils/sharing';
-import type { PlayerTtrHistoryResponse } from '@/src/types/tttracker';
 import type { EventSummary } from '@/src/types/events';
 import type { NormalizedPlayerTtrHistory } from '@/src/types/tttracker';
 import { normalizePlayerTtrHistory } from '@/src/utils/normalizers';
@@ -81,21 +80,10 @@ export function useHome() {
               return;
             }
 
-            // Ein vor kurzem geholter Verlauf wird gezeigt, ohne erneut anzufragen (Tab Wechsel, App Start).
-            if (!forced) {
-              const snapshot = await getSnapshot<PlayerTtrHistoryResponse>('history', storedNuid);
-
-              if (!active) return;
-
-              if (snapshot && isSnapshotFresh(snapshot)) {
-                setMeApiHistoryData(getPlayerHistoryData(snapshot.response));
-                setMeHistory(normalizePlayerTtrHistory(snapshot.response));
-                setMeFreshness({ since: snapshot.savedAt, stale: false });
-                return;
-              }
-            }
-
-            const response = await ttApi.getPlayerTtrHistory(storedNuid);
+            // Ein Verlauf, der höchstens HOME_FRESH_MS alt ist, wird ohne Anfrage gezeigt (Tab Wechsel). Sonst wird
+            // neu geholt, "Erneut versuchen" und ein neuer Login holen immer neu. Die Prüfung gegen den auf dem
+            // Gerät gespeicherten Stand macht withMyttSession.
+            const response = await ttApi.getPlayerTtrHistory(storedNuid, { maxAgeMs: forced ? 0 : HOME_FRESH_MS });
 
             if (!active) return;
 
@@ -148,12 +136,16 @@ export function useHome() {
 
             if (!storedNuid || (!storedClub && !storedName)) return false;
 
-            const response = await ttApi.getPlayerRating(storedNuid, {
-              organization: storedClub?.organization,
-              clubNumber: storedClub?.clubNumber,
-              clubName: storedClub?.clubName ?? storedClub?.title,
-              name: storedName ?? undefined,
-            });
+            const response = await ttApi.getPlayerRating(
+                storedNuid,
+                {
+                  organization: storedClub?.organization,
+                  clubNumber: storedClub?.clubNumber,
+                  clubName: storedClub?.clubName ?? storedClub?.title,
+                  name: storedName ?? undefined,
+                },
+                { maxAgeMs: HOME_FRESH_MS },
+            );
 
             if (!active || !response.data.rating) return false;
 
@@ -316,6 +308,7 @@ export function useHome() {
             dateRange.dateStart,
             dateRange.dateEnd,
             meClub.clubSlug ?? 'x',
+            { maxAgeMs: HOME_FRESH_MS },
         );
 
         if (!active) return;
