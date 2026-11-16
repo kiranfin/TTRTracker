@@ -1,5 +1,6 @@
 import type { PlayerTtrHistoryResponse, PlayerTtrResponse } from '../types/tttracker';
 import { ApiError } from './client';
+import { parseRetryAfterMs } from './devicePause';
 
 const MYTT_API_URL = 'https://www.mytischtennis.de';
 
@@ -26,21 +27,6 @@ function asNumberOrNull(value: unknown) {
 
 function asStringOrNull(value: unknown) {
     return typeof value === 'string' && value.trim() ? value : null;
-}
-
-// Ohne Retry-After pausieren die direkten Aufrufe so lange, ehe das Gerät es wieder selbst versucht.
-const DEFAULT_RATE_LIMIT_PAUSE_MS = 5 * 60 * 1000;
-
-function parseRetryAfterMs(header: string | null) {
-    if (!header) return DEFAULT_RATE_LIMIT_PAUSE_MS;
-
-    const seconds = Number(header);
-
-    if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
-
-    const date = Date.parse(header);
-
-    return Number.isFinite(date) ? Math.max(0, date - Date.now()) : DEFAULT_RATE_LIMIT_PAUSE_MS;
 }
 
 function looksLikeLoginPage(contentType: string, body: string) {

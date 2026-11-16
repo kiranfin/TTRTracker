@@ -1,5 +1,6 @@
 import { getAccessToken } from '../storage/authToken';
 import { ensureApiTargetLoaded, getApiBaseUrlForTarget, getApiTarget } from './apiTarget';
+import { relayGet } from './relay';
 import { cachedGet } from './responseCache';
 
 export { clearApiCache, invalidateApiCache } from './responseCache';
@@ -26,6 +27,8 @@ type ApiRequestOptions = {
   params?: Record<string, string | number | undefined>;
   body?: unknown;
   authenticated?: boolean;
+  // Zusätzliche Header, z.B. x-tt-relay für das Device Relay.
+  headers?: Record<string, string>;
 };
 
 type ApiGetOptions = {
@@ -103,6 +106,7 @@ export async function apiRequest<T>(
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...options.headers,
   };
 
   if (options.body !== undefined) {
@@ -134,7 +138,8 @@ export async function apiRequest<T>(
         error.message,
         response.status,
         error.code,
-        error.details,
+        // Beim Relay gehören die abzurufenden Requests dazu (relay.requests), der Relay Client liest sie hier.
+        error.code === 'RELAY_REQUIRED' ? (data as { relay?: unknown } | null)?.relay : error.details,
         error.retryAfterSeconds ?? (Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader : undefined)
     );
   }
@@ -147,12 +152,23 @@ export async function apiGet<T>(
     params?: Record<string, string | number | undefined>,
     options?: ApiGetOptions
 ): Promise<T> {
-  const load = () =>
+  const loadPlain = (headers?: Record<string, string>) =>
       apiRequest<T>(path, {
         method: 'GET',
         params,
         authenticated: options?.authenticated,
+        headers,
       });
+
+  // Öffentliche Daten holt bei einem Cache Miss im Backend das Gerät selbst (Device Relay), mit dem Server
+  // als Fallback. Angemeldete Anfragen laufen wie bisher direkt über das Backend.
+  const load = () =>
+      options?.authenticated
+          ? loadPlain()
+          : relayGet<T>({
+            get: loadPlain,
+            upload: (body) => apiRequest('/api/relay', { method: 'POST', body }),
+          });
 
   // Angemeldete Anfragen (Login Daten) haben ihren eigenen Cache in myttData.
   if (options?.authenticated || options?.cache === false) {

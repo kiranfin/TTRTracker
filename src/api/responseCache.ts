@@ -36,15 +36,17 @@ type FreshMs = number | ((response: unknown) => number);
 const FRESHNESS_RULES: [RegExp, FreshMs, boolean?][] = [
   [/^\/api\/search\//, DAY_MS],
   [/^\/api\/players\/[^/]+\/rating$/, HOUR_MS],
-  [/^\/api\/clubs\/[^/]+\/[^/]+\/teams$/, HOUR_MS],
-  [/^\/api\/clubs\/[^/]+\/[^/]+\/players$/, HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/teams$/, 12 * HOUR_MS],
+  [/^\/api\/clubs\/[^/]+\/[^/]+\/players$/, 6 * HOUR_MS],
   [/^\/api\/clubs\/[^/]+\/[^/]+\/info$/, 12 * HOUR_MS],
   [/^\/api\/clubs\/[^/]+\/[^/]+\/schedule$/, HOUR_MS],
   [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/table$/, 15 * MINUTE_MS],
   [/^\/api\/leagues\/[^/]+\/[^/]+\/[^/]+\/schedule$/, HOUR_MS],
-  [/^\/api\/teams\/[^/]+\/players$/, 10 * MINUTE_MS],
-  [/^\/api\/teams\/.+\/infos$/, 15 * MINUTE_MS],
-  [/^\/api\/teams\/.+\/(schedule|simple-schedule|balances)$/, 5 * MINUTE_MS],
+  [/^\/api\/teams\/[^/]+\/players$/, 6 * HOUR_MS],
+  [/^\/api\/teams\/.+\/infos$/, 12 * HOUR_MS],
+  // simple-schedule vor der gemeinsamen Regel: ändert sich im Tagesverlauf kaum (wie im Backend).
+  [/^\/api\/teams\/.+\/simple-schedule$/, HOUR_MS],
+  [/^\/api\/teams\/.+\/(schedule|balances)$/, 5 * MINUTE_MS],
   [/^\/api\/events(\/[^/]+)?$/, 30 * MINUTE_MS],
   [/^\/api\/meetings\/[^/]+\/live$/, getMeetingFreshMs, false],
 ];

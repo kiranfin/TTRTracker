@@ -7,6 +7,7 @@ import {
   type SnapshotKind,
 } from '../storage/myttSnapshots';
 import { ApiError } from './client';
+import { isDevicePaused, pauseDevice } from './devicePause';
 
 // Gleiche Dauer wie die Frische der Startseite: derselbe Wert wird nicht öfter von myTischtennis geholt.
 const CACHE_TTL_MS = 30 * 60 * 1000;
@@ -16,9 +17,6 @@ const cache = new Map<string, { value: unknown; expiresAt: number }>();
 // Läuft die lokale Session ab, wird sie bis zum nächsten Login übersprungen. Nur im Speicher, denn nach
 // einem App Neustart reicht ein einzelner Aufruf, um es erneut festzustellen.
 let localSessionExpired = false;
-
-// Nach einem 429 von myTischtennis fragt das Gerät bis dahin nicht erneut.
-let directPausedUntil = 0;
 
 export async function saveLocalMyttSession(cookie: string) {
   await saveLocalMyttCookie(cookie);
@@ -98,7 +96,8 @@ export async function withMyttSession<T>(params: {
     return toStaleResponse(snapshot);
   }
 
-  if (Date.now() < directPausedUntil) {
+  // Die Pause gilt für alle Abrufe des Geräts bei myTischtennis (auch das Device Relay), es ist dieselbe IP.
+  if (isDevicePaused()) {
     return lastKnown(
         new ApiError('myTischtennis ist gerade rate-limited. Bitte später erneut versuchen.', 429, 'MYTT_RATE_LIMITED'),
     );
@@ -123,7 +122,7 @@ export async function withMyttSession<T>(params: {
     }
 
     if (isRateLimitedError(error)) {
-      directPausedUntil = Date.now() + getRetryAfterMs(error);
+      pauseDevice(getRetryAfterMs(error));
     }
 
     // Rate Limit, Netzfehler, Störung bei myTischtennis: lieber der letzte bekannte Stand als ein Fehler.
