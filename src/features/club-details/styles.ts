@@ -1,96 +1,12 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
     content: {
-        padding: 16,
-        paddingTop: 20,
+        paddingHorizontal: 16,
+        paddingTop: 4,
         paddingBottom: 112,
-        gap: 16,
-    },
-    headerRow: {
-        minHeight: 42,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 10,
-    },
-    backButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        borderWidth: StyleSheet.hairlineWidth,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    profileTitleBlock: {
-        marginTop: -6,
-        gap: 2,
-    },
-    headerText: {
-        flex: 1,
-    },
-    title: {
-        fontSize: 25,
-        lineHeight: 32,
-        fontWeight: '900',
-    },
-    subtitle: {
-        marginTop: 2,
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    infoCard: {
-        padding: 16,
-        gap: 10,
-    },
-    badgeRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    infoRow: {
-        minHeight: 42,
-        paddingVertical: 9,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 12,
-    },
-    infoLabel: {
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    infoValue: {
-        flex: 1,
-        textAlign: 'right',
-        fontSize: 14,
-        lineHeight: 20,
-        fontWeight: '800',
-    },
-    filterCard: {
-        padding: 14,
-        gap: 12,
-    },
-    filterHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-    },
-    filterTitle: {
-        fontSize: 16,
-        lineHeight: 22,
-        fontWeight: '900',
-    },
-    filterSubtitle: {
-        marginTop: 2,
-        fontSize: 12,
-        lineHeight: 17,
+        gap: 18,
     },
     filterRow: {
         flexDirection: 'row',
@@ -103,260 +19,19 @@ export const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 12,
         lineHeight: 16,
-        fontWeight: '800',
-    },
-    dateInput: {
-        height: 42,
-        borderWidth: 1,
-        borderRadius: 14,
-        paddingHorizontal: 12,
-        fontSize: 14,
-        lineHeight: 20,
-        fontWeight: '800',
+        ...font('800'),
     },
     filterButtonRow: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: 10,
     },
-    resetButton: {
-        minHeight: 40,
-        borderRadius: 14,
-        borderWidth: 1,
-        paddingHorizontal: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    resetButtonText: {
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '900',
-    },
-    applyButton: {
-        minHeight: 40,
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    applyButtonText: {
-        color: '#fff',
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '900',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        lineHeight: 26,
-        fontWeight: '900',
-    },
-    sectionSubtitle: {
-        marginTop: 2,
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    loader: {
-        paddingVertical: 24,
-    },
-    inlineLoader: {
-        paddingVertical: 12,
-    },
-    error: {
+    error: { ...font('400'),
         fontSize: 14,
         lineHeight: 20,
     },
     stack: {
         gap: 12,
-    },
-    teamCard: {
-        padding: 14,
-        gap: 12,
-    },
-    teamTopRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    teamIcon: {
-        width: 42,
-        height: 42,
-        borderRadius: 15,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    teamText: {
-        flex: 1,
-        minWidth: 0,
-    },
-    teamName: {
-        fontSize: 16,
-        lineHeight: 22,
-        fontWeight: '900',
-    },
-    teamLeague: {
-        marginTop: 2,
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    playerCard: {
-        borderWidth: 1,
-        borderRadius: 24,
-        padding: 14,
-        gap: 12,
-    },
-    playerCardPressed: {
-        opacity: 0.78,
-        transform: [{ scale: 0.992 }],
-    },
-    playerTopRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    playerRankBadge: {
-        width: 38,
-        height: 38,
-        borderRadius: 999,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    playerRankText: {
-        fontSize: 14,
-        lineHeight: 18,
-        fontWeight: '900',
-    },
-    playerText: {
-        flex: 1,
-        minWidth: 0,
-    },
-    playerName: {
-        fontSize: 16,
-        lineHeight: 22,
-        fontWeight: '900',
-    },
-    playerMeta: {
-        marginTop: 2,
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    scheduleDayCard: {
-        padding: 14,
-        gap: 12,
-    },
-    scheduleDayHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    scheduleDayIcon: {
-        width: 38,
-        height: 38,
-        borderRadius: 14,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    scheduleDayTitleBlock: {
-        flex: 1,
-        minWidth: 0,
-    },
-    scheduleDayTitle: {
-        fontSize: 17,
-        lineHeight: 23,
-        fontWeight: '900',
-    },
-    scheduleDaySubtitle: {
-        marginTop: 1,
-        fontSize: 12,
-        lineHeight: 17,
-    },
-    matchCard: {
-        padding: 14,
-        gap: 11,
-    },
-    matchTopMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-    },
-    matchScoreRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 9,
-    },
-    matchTeam: {
-        flex: 1,
-        fontSize: 14,
-        lineHeight: 19,
-        fontWeight: '900',
-    },
-    awayTeam: {
-        textAlign: 'right',
-    },
-    scoreBox: {
-        minWidth: 76,
-        minHeight: 38,
-        borderRadius: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 5,
-        paddingHorizontal: 8,
-    },
-    scoreText: {
-        fontSize: 21,
-        lineHeight: 27,
-        fontWeight: '900',
-    },
-    scoreDivider: {
-        fontSize: 18,
-        lineHeight: 24,
-    },
-    vsBox: {
-        minWidth: 54,
-        minHeight: 34,
-        borderRadius: 14,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    vsText: {
-        fontSize: 11,
-        lineHeight: 15,
-        fontWeight: '900',
-        letterSpacing: 0.5,
-    },
-    matchMetaRow: {
-        gap: 5,
-    },
-    metaLine: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        flexShrink: 1,
-    },
-    metaText: {
-        flexShrink: 1,
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    headerActionButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        borderWidth: StyleSheet.hairlineWidth,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     dateButton: {
         height: 42,
@@ -372,7 +47,7 @@ export const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         lineHeight: 20,
-        fontWeight: '800',
+        ...font('800'),
     },
     calendarOverlay: {
         flex: 1,
@@ -398,9 +73,9 @@ export const styles = StyleSheet.create({
     calendarTitle: {
         fontSize: 18,
         lineHeight: 24,
-        fontWeight: '900',
+        ...font('900'),
     },
-    calendarSubtitle: {
+    calendarSubtitle: { ...font('400'),
         marginTop: 2,
         fontSize: 13,
         lineHeight: 18,
@@ -420,9 +95,9 @@ export const styles = StyleSheet.create({
         gap: 12,
     },
     calendarNavButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         borderWidth: StyleSheet.hairlineWidth,
         alignItems: 'center',
         justifyContent: 'center',
@@ -432,7 +107,7 @@ export const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 15,
         lineHeight: 21,
-        fontWeight: '900',
+        ...font('900'),
         textTransform: 'capitalize',
     },
     weekdayRow: {
@@ -443,7 +118,7 @@ export const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 12,
         lineHeight: 16,
-        fontWeight: '900',
+        ...font('900'),
     },
     calendarGrid: {
         flexDirection: 'row',
@@ -463,7 +138,7 @@ export const styles = StyleSheet.create({
     calendarDayText: {
         fontSize: 14,
         lineHeight: 19,
-        fontWeight: '900',
+        ...font('900'),
     },
     calendarFooter: {
         flexDirection: 'row',
@@ -481,7 +156,7 @@ export const styles = StyleSheet.create({
     calendarClearButtonText: {
         fontSize: 13,
         lineHeight: 18,
-        fontWeight: '900',
+        ...font('900'),
     },
     calendarTodayButton: {
         minHeight: 40,
@@ -494,6 +169,93 @@ export const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 13,
         lineHeight: 18,
-        fontWeight: '900',
+        ...font('900'),
+    },
+    clubHead: {
+        gap: 12,
+    },
+    clubIdentity: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+    },
+    clubHeadText: {
+        flex: 1,
+        minWidth: 0,
+        gap: 3,
+    },
+    venueLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        alignSelf: 'flex-start',
+        maxWidth: '100%',
+        marginTop: 1,
+    },
+    venueLinkText: {
+        flexShrink: 1,
+    },
+    claimLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+        alignSelf: 'flex-start',
+    },
+    infoIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    contactButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    contactButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sheetBody: {
+        gap: 18,
+    },
+    sheetSection: {
+        gap: 8,
+    },
+    sheetNote: {
+        paddingHorizontal: 4,
+    },
+    rankBlock: {
+        alignItems: 'flex-end',
+        gap: 1,
+    },
+    rankTile: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    playerTrailing: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    periodBody: {
+        gap: 14,
+        paddingBottom: 12,
+    },
+    periodButton: {
+        flex: 1,
+    },
+    dayGroup: {
+        gap: 8,
+    },
+    dayLabel: {
+        paddingHorizontal: 4,
     },
 });

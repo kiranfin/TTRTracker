@@ -20,3 +20,8 @@ export type ClubRouteParams = {
     state?: string;
     externalId?: string;
 };
+
+export type LeagueOption = {
+    name: string;
+    count: number;
+};

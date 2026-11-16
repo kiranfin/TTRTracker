@@ -22,6 +22,37 @@ export type ClubPlayer = {
     matchCount?: string;
 };
 
+// Adresse eines Spiellokals oder die Kontaktadresse des Vereins.
+export type ClubAddress = {
+    label?: string;
+    name?: string;
+    street?: string;
+    zipcode?: string;
+    city?: string;
+    website?: string;
+    note?: string;
+    email?: string;
+    phone?: string;
+};
+
+export type ClubOfficial = {
+    role?: string;
+    name: string;
+    email?: string;
+    phone?: string;
+};
+
+export type ClubInfo = {
+    clubName?: string;
+    logoUrl?: string;
+    region?: string;
+    foundationYear?: number;
+    organizationName?: string;
+    contact?: ClubAddress;
+    venues: ClubAddress[];
+    officials: ClubOfficial[];
+};
+
 export type ClubScheduleMatch = ScheduleMatch & {
     clubTeamName?: string;
     leagueName?: string;

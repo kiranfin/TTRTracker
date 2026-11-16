@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import { useI18n } from '@/src/i18n/I18nProvider';
-import { useTheme } from '@/src/theme/ThemeProvider';
+import { mapScheduleStatus } from '@/src/utils/normalizers';
 import type { TeamPlayer, TeamApiClient, TeamInfo, TeamContext, TeamScheduleMatch, TeamBalance, ScheduleSummary, RoundFilter } from './types';
 
 export function normalizeLineup(
@@ -90,7 +90,7 @@ export function normalizeLineupPlayer(value: unknown, t: ReturnType<typeof useI1
     const lastname = pickString(row, ['lastname', 'last_name', 'player_lastname']);
     const name =
         pickString(row, ['name', 'player_name', 'person_name']) ??
-        joinParts([firstname, lastname]) ??
+        joinName(firstname, lastname) ??
         t('team.unknownPlayer');
 
     return {
@@ -226,13 +226,16 @@ export function normalizeTtrValue(value?: string) {
     return match?.[0] ?? cleaned;
 }
 
-export function normalizeTeamInfo(response: unknown): TeamInfo | null {
+// Die Infos-Antwort enthält keine head_infos (Region, Spielsystem, Verein), die liefert nur der Spielplan.
+export function normalizeTeamInfo(response: unknown, scheduleResponse?: unknown): TeamInfo | null {
     if (!response) return null;
 
     const data = unwrapData(response);
     const row = asRecord(data);
 
     if (!row) return null;
+
+    const headInfos = asRecord(row.head_infos) ?? asRecord(asRecord(unwrapData(scheduleResponse))?.head_infos);
 
     const meetingsExcerpt = asRecord(row.meetings_excerpt);
     const normalizedVenues = normalizeVenueList(row.venues);
@@ -243,7 +246,7 @@ export function normalizeTeamInfo(response: unknown): TeamInfo | null {
         normalizeStringRecord(asRecord(row.venue ?? row.location)) ?? fallbackVenues[0];
 
     return {
-        headInfos: normalizeStringRecord(asRecord(row.head_infos)),
+        headInfos: normalizeStringRecord(headInfos),
         contact: normalizeStringRecord(asRecord(row.team_contact ?? row.contact)),
         clubContact: normalizeStringRecord(asRecord(row.club_contact)),
         venue: primaryVenue,
@@ -355,6 +358,8 @@ export function normalizeScheduleRow(
         awayTeam,
         homeTeamId,
         awayTeamId,
+        homeClubId: pickString(row, ['team_home_club_id', 'homeClubId']),
+        awayClubId: pickString(row, ['team_away_club_id', 'awayClubId']),
         homeScore,
         awayScore,
         ownScore,
@@ -413,7 +418,7 @@ export function normalizeBalanceRow(value: unknown, t: ReturnType<typeof useI18n
     const lastname = pickString(row, ['player_lastname', 'lastname', 'last_name']);
     const name =
         pickString(row, ['player_name', 'name', 'person_name']) ??
-        joinParts([firstname, lastname]) ??
+        joinName(firstname, lastname) ??
         t('team.unknownPlayer');
 
     const pointsWon = pickString(row, ['points_won', 'won', 'matches_won']);
@@ -548,26 +553,10 @@ export function normalizeMatchStatus(
     homeTeam?: string,
     awayTeam?: string,
 ): TeamScheduleMatch['status'] {
-    const value = normalizeKey(rawStatus);
+    // Geplante Spiele kommen mit 0:0, deshalb entscheidet der Status und nicht das Ergebnis.
+    const status = mapScheduleStatus(rawStatus, undefined, homeTeam, awayTeam, homeScore, awayScore);
 
-    if (normalizeTeamKey(homeTeam).includes('spielfrei') || normalizeTeamKey(awayTeam).includes('spielfrei')) {
-        return 'free';
-    }
-
-    if (
-        value.includes('completed') ||
-        value.includes('finished') ||
-        value.includes('done') ||
-        value.includes('played') ||
-        value.includes('geschlossen') ||
-        value.includes('beendet') ||
-        value.includes('gespielt') ||
-        (homeScore !== undefined && awayScore !== undefined)
-    ) {
-        return 'completed';
-    }
-
-    return 'scheduled';
+    return status === 'completed' || status === 'free' ? status : 'scheduled';
 }
 
 export function teamMatchStatusLabel(status: TeamScheduleMatch['status'], t: ReturnType<typeof useI18n>['t']) {
@@ -763,6 +752,12 @@ export function joinParts(parts: (string | undefined)[]) {
     return joined || undefined;
 }
 
+// "Marco Stefanidis", nicht "Marco, Stefanidis"
+export function joinName(firstname?: string, lastname?: string) {
+    const joined = [firstname, lastname].map(cleanValue).filter(Boolean).join(' ');
+    return joined || undefined;
+}
+
 export function toNumber(value: unknown) {
     const numberValue = Number(String(value ?? '').replace(',', '.'));
     return Number.isFinite(numberValue) ? numberValue : undefined;
@@ -871,67 +866,6 @@ export function formatPercent(value?: number) {
     if (value === undefined || Number.isNaN(value)) return '-';
     return `${Math.round(value * 100)}%`;
 }
-
-export function getTileColors(tone: 'primary' | 'green' | 'orange' | 'purple', colors: ReturnType<typeof useTheme>['colors']) {
-    const dark = getRelativeLuminance(colors.background) < 0.45;
-
-    switch (tone) {
-        case 'green':
-            return dark
-                ? {
-                    background: 'rgba(34, 197, 94, 0.14)',
-                    border: 'rgba(74, 222, 128, 0.35)',
-                    label: '#86EFAC',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(34, 197, 94, 0.12)',
-                    border: 'rgba(22, 163, 74, 0.3)',
-                    label: '#16A34A',
-                    value: '#15803D',
-                };
-
-        case 'orange':
-            return dark
-                ? {
-                    background: 'rgba(249, 115, 22, 0.14)',
-                    border: 'rgba(251, 146, 60, 0.38)',
-                    label: '#FDBA74',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(249, 115, 22, 0.12)',
-                    border: 'rgba(234, 88, 12, 0.3)',
-                    label: '#EA580C',
-                    value: '#C2410C',
-                };
-
-        case 'purple':
-            return dark
-                ? {
-                    background: 'rgba(168, 85, 247, 0.16)',
-                    border: 'rgba(192, 132, 252, 0.38)',
-                    label: '#D8B4FE',
-                    value: '#FFFFFF',
-                }
-                : {
-                    background: 'rgba(168, 85, 247, 0.12)',
-                    border: 'rgba(147, 51, 234, 0.3)',
-                    label: '#9333EA',
-                    value: '#7E22CE',
-                };
-
-        case 'primary':
-        default:
-            return {
-                background: colors.primarySoft,
-                border: colors.primarySoftBorder,
-                label: colors.primary,
-                value: colors.primary,
-            };
-    }
-}
-
 export function getRelativeLuminance(color: string) {
     const hex = color.trim();
 

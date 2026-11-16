@@ -1,106 +1,37 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 112,
     gap: 16,
   },
-  titleBlock: {
-    gap: 4,
-  },
-  title: {
-    fontSize: 25,
-    lineHeight: 32,
-    fontWeight: '800',
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  searchBlock: {
-    gap: 10,
-  },
-  searchButton: {
-    minHeight: 48,
-    borderRadius: 16,
-  },
-  loader: {
-    paddingVertical: 16,
-  },
-  error: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  hint: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  stack: {
-    gap: 12,
-  },
-  resultCard: {
-    padding: 16,
-    gap: 10,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  cardText: {
-    flex: 1,
-    gap: 2,
-  },
-  resultTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-  },
-  resultSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  badgeRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  section: {
     gap: 8,
   },
-  sheetStack: {
-    gap: 12,
-    paddingBottom: 8,
-  },
-  detailRow: {
-    minHeight: 45,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  trailing: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 6,
   },
-  detailLabel: {
-    fontSize: 14,
-    lineHeight: 20,
+  ttrBlock: {
+    alignItems: 'flex-end',
   },
-  detailValue: {
-    flex: 1,
-    textAlign: 'right',
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
+  ttrCaption: {
+    fontSize: 11,
+    lineHeight: 14,
+    ...font('600'),
   },
-  monospace: {
-    fontVariant: ['tabular-nums'],
-  },
-  sheetMuted: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  sheetStatRow: {
+  showAllRow: {
+    minHeight: 44,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  showAllText: {
+    fontSize: 14,
   },
 });

@@ -28,6 +28,12 @@ export type AppColors = {
   secondary: string;
   secondaryText: string;
   destructive: string;
+  positive: string;
+  negative: string;
+  warning: string;
+  soft: string;
+  // Zweite Kontrastfarbe (Relegation, rechter Spieler im Vergleich)
+  orange: string;
   shadow: string;
 };
 
@@ -141,39 +147,49 @@ function createColors(isDark: boolean, accent: AccentColor): AppColors {
 
   if (isDark) {
     return {
-      background: '#171717',
-      text: '#fafafa',
-      card: '#262626',
-      border: '#404040',
-      muted: '#333333',
-      mutedText: '#a3a3a3',
-      input: '#2f2f2f',
+      background: '#0B0F17',
+      text: '#F2F4F7',
+      card: '#151B26',
+      border: '#232B38',
+      muted: '#1C2330',
+      mutedText: '#98A2B3',
+      input: '#1C2330',
       primary,
       primaryForeground,
       primarySoft: withAlpha(primary, 0.18),
       primarySoftBorder: withAlpha(primary, 0.38),
-      secondary: '#333333',
-      secondaryText: '#fafafa',
+      secondary: '#1C2330',
+      secondaryText: '#F2F4F7',
       destructive: '#ef4444',
+      positive: '#4ADE80',
+      negative: '#F87171',
+      warning: '#FBBF24',
+      soft: '#1C2330',
+      orange: '#FB923C',
       shadow: '#000000',
     };
   }
 
   return {
-    background: '#f9fafb',
-    text: '#030213',
+    background: '#F4F5F7',
+    text: '#0B1220',
     card: '#ffffff',
-    border: 'rgba(0,0,0,0.10)',
-    muted: '#ececf0',
-    mutedText: '#717182',
-    input: '#f3f3f5',
+    border: '#E4E7EC',
+    muted: '#EEF1F5',
+    mutedText: '#5B6474',
+    input: '#F1F3F6',
     primary,
     primaryForeground,
     primarySoft: withAlpha(primary, 0.11),
     primarySoftBorder: withAlpha(primary, 0.28),
-    secondary: '#f1f5f9',
-    secondaryText: '#030213',
+    secondary: '#EEF0F3',
+    secondaryText: '#0B1220',
     destructive: '#d4183d',
+    positive: '#15803D',
+    negative: '#C81E1E',
+    warning: '#D97706',
+    soft: '#EEF1F5',
+    orange: '#C2410C',
     shadow: '#000000',
   };
 }

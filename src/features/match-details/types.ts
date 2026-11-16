@@ -42,6 +42,12 @@ export type RawMeetingMatch = {
   guest_wo?: boolean | null;
 };
 
+export type MeetingClub = {
+  organization?: string;
+  clubNumber?: string;
+  logoUrl?: string;
+};
+
 export type MeetingDetails = {
   live?: boolean | null;
   is_completed?: boolean | null;
@@ -50,6 +56,15 @@ export type MeetingDetails = {
 
   team_home?: string | null;
   team_guest?: string | null;
+
+  // Verein hinter der Mannschaft: Logo ID, Vereinsnummer und URI mit Verband (".../federations/TTBW/clubs/2055064")
+  home_image_url?: string | null;
+  guest_image_url?: string | null;
+  team_home_club_nr?: string | null;
+  team_guest_club_nr?: string | null;
+  team_home_club_uri?: string | null;
+  team_guest_club_uri?: string | null;
+  fed_nickname?: string | null;
 
   matches_home?: number | string | null;
   matches_guest?: number | string | null;
@@ -85,4 +100,22 @@ export type MatchRow = {
   sets: string[];
   games: string | null;
   winner: 'home' | 'guest' | null;
+};
+
+// Zeile mit dem Spielstand der Begegnung nach diesem Spiel (Doppel zuerst, dann Einzel)
+export type MatchRowWithScore = MatchRow & {
+  runningScore: string;
+};
+
+// Optionaler Kontext aus der Route, mit dem die Mannschaften verlinkt werden können
+export type TeamLinkContext = {
+  teamId: string;
+  teamName: string;
+  leagueTitle?: string;
+  association: string;
+  groupId: string;
+  season?: string;
+  leagueSlug?: string;
+  // Verein der Mannschaft, für das Logo auf der Mannschaftsseite
+  club?: MeetingClub;
 };

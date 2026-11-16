@@ -1,8 +1,10 @@
-import { ttApi } from '@/src/api/tttracker';
-import type { TranslationKey } from '@/src/i18n';
-import type { NormalizedTtrHistoryEvent, ScheduleMatch } from '@/src/types/tttracker';
-import { normalizeSchedule } from '@/src/utils/normalizers';
-import type { ClubReference, RichObject, HomeClubMatch } from './types';
+import type { NormalizedTtrHistoryEvent } from '@/src/types/tttracker';
+import { splitLocalDateTime } from '@/src/utils/dates';
+import { mapScheduleStatus, normalizeSchedule } from '@/src/utils/normalizers';
+import { getEventWinLoss } from '../player-details/utils';
+import type { RichObject, HomeClubMatch } from './types';
+
+export { getTtrDeltaSince } from '../player-details/utils';
 
 export const TEAM_HOME_KEYS = [
   'team_home',
@@ -49,14 +51,6 @@ export const MEETING_DATE_KEYS = [
   'start_time',
   'startTime',
 ];
-
-export const statusLabelKeys = {
-  completed: 'status.completed',
-  live: 'status.live',
-  free: 'status.free',
-  postponed: 'status.postponed',
-  scheduled: 'status.scheduled',
-} as const satisfies Record<ScheduleMatch['status'], TranslationKey>;
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -111,6 +105,39 @@ export function getEventTtr(event: NormalizedTtrHistoryEvent) {
   return event.ttrAfter ?? event.ttr;
 }
 
+// Verlauf als Zahlenreihe (älteste zuerst) für die Sparkline
+export function getTtrSeries(events: NormalizedTtrHistoryEvent[]) {
+  return events
+      .map((event) => getEventTtr(event))
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+}
+
+export function getWinRatePercent(events: NormalizedTtrHistoryEvent[]) {
+  let won = 0;
+  let lost = 0;
+
+  for (const event of events) {
+    const result = getEventWinLoss(event);
+    won += result.won;
+    lost += result.lost;
+  }
+
+  return won + lost > 0 ? Math.round((won / (won + lost)) * 100) : undefined;
+}
+
+export function isUpcomingClubMatch(match: HomeClubMatch) {
+  if (match.status !== 'scheduled' && match.status !== 'live') return false;
+
+  const date = parseMatchDate(match.date);
+  if (!date) return true;
+
+  return date.getTime() >= startOfDay(new Date()).getTime();
+}
+
+export function compareMatchesOldestFirst(left: HomeClubMatch, right: HomeClubMatch) {
+  return compareMatchesNewestFirst(right, left);
+}
+
 export function formatPersonName(value?: string | null) {
   const trimmed = value?.trim();
 
@@ -136,133 +163,6 @@ export function getFirstName(value?: string | null) {
 
   return formatted.split(/\s+/)[0] ?? '';
 }
-
-export async function findClubReferencesByName(clubName: string) {
-  const results = await ttApi.searchClubs(clubName);
-  return resolveClubReferences(results as unknown[], clubName);
-}
-
-export function resolveClubReferences(results: unknown[], clubName: string): ClubReference[] {
-  const candidates = results
-      .map((result) => normalizeClubSearchResult(result))
-      .filter((result): result is ClubReference => Boolean(result));
-
-  const targetName = normalizeComparableText(clubName);
-
-  return [...candidates].sort((left, right) => {
-    const leftScore = getClubNameScore(left.title, targetName);
-    const rightScore = getClubNameScore(right.title, targetName);
-
-    if (leftScore !== rightScore) {
-      return leftScore - rightScore;
-    }
-
-    return `${left.organization}-${left.clubNumber}`.localeCompare(
-        `${right.organization}-${right.clubNumber}`,
-    );
-  });
-}
-
-export function normalizeClubSearchResult(value: unknown): ClubReference | null {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
-
-  const raw = value as RichObject;
-
-  const title = pickString(raw, [
-    'title',
-    'name',
-    'clubName',
-    'club_name',
-    'displayName',
-    'display_name',
-    'label',
-  ]);
-
-  const directOrganization = pickString(raw, [
-    'organization',
-    'association',
-    'fedNickname',
-    'fed_nickname',
-    'federation',
-    'verband',
-  ]);
-
-  const directClubNumber = pickString(raw, [
-    'clubNumber',
-    'club_number',
-    'clubnr',
-    'clubNr',
-    'clubNo',
-    'club_no',
-    'number',
-    'clubId',
-    'club_id',
-  ]);
-
-  const compositeValues = [
-    pickString(raw, ['id', 'key', 'clubKey', 'value']),
-    pickString(raw, ['url', 'href', 'link']),
-  ].filter(Boolean) as string[];
-
-  const composite = compositeValues
-      .map(extractOrganizationAndClubNumber)
-      .find((entry) => entry?.organization && entry.clubNumber);
-
-  const organization = directOrganization ?? composite?.organization;
-  const clubNumber = extractClubNumber(directClubNumber) ?? composite?.clubNumber;
-
-  if (!organization || !clubNumber) {
-    return null;
-  }
-
-  return {
-    organization,
-    clubNumber,
-    title,
-    state: pickString(raw, ['state', 'bundesland', 'region']),
-    clubSlug: pickString(raw, ['clubSlug', 'club_slug', 'slug']),
-  };
-}
-
-export function getClubNameScore(value: string | undefined, targetName: string) {
-  const normalized = normalizeComparableText(value);
-
-  if (!normalized) return 10;
-  if (normalized === targetName) return 0;
-  if (normalized.includes(targetName)) return 1;
-  if (targetName.includes(normalized)) return 2;
-
-  return 5;
-}
-
-export function extractOrganizationAndClubNumber(value?: string) {
-  const raw = String(value ?? '');
-  const match = raw.match(/\b([A-ZÄÖÜ]{2,8})[:/_-](\d{4,})\b/i);
-
-  if (!match) {
-    return null;
-  }
-
-  return {
-    organization: match[1].toUpperCase(),
-    clubNumber: match[2],
-  };
-}
-
-export function extractClubNumber(value?: string) {
-  const raw = String(value ?? '').trim();
-
-  if (!raw) return undefined;
-
-  const exact = raw.match(/^\d{4,}$/);
-  if (exact) return raw;
-
-  const match = raw.match(/\b\d{4,}\b/);
-  return match?.[0];
-}
-
 export function normalizeHomeClubSchedule(response: unknown) {
   const customMatches = normalizeClubScheduleResponse(response);
   const fallbackMatches = (normalizeSchedule(response) as HomeClubMatch[]).map((match) => ({
@@ -354,10 +254,13 @@ export function normalizeClubScheduleMeeting(value: unknown, index: number): Hom
   const homeTeam = pickDeepString(raw, TEAM_HOME_KEYS) ?? 'Heim';
   const awayTeam = pickDeepString(raw, TEAM_AWAY_KEYS) ?? 'Gast';
   const id = pickDeepString(raw, MEETING_ID_KEYS);
-  const date = pickDeepString(raw, MEETING_DATE_KEYS) ?? undefined;
+  // UTC-Zeitstempel in lokales Datum und lokale Uhrzeit umrechnen
+  const start = splitLocalDateTime(pickDeepString(raw, MEETING_DATE_KEYS));
+  const date = start.date;
 
   const time =
-      pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel', 'start_time', 'startTime']) ??
+      pickDeepString(raw, ['time', 'start_time_label', 'startTimeLabel']) ??
+      start.time ??
       extractTimeFromDateValue(date);
 
   const homeScore = pickDeepString(raw, [
@@ -409,7 +312,7 @@ export function normalizeClubScheduleMeeting(value: unknown, index: number): Hom
   ]);
 
   const rawStatus = pickDeepString(raw, ['state', 'status', 'meeting_state', 'meetingState']);
-  const status = normalizeClubMeetingStatus(rawStatus, homeScore, awayScore);
+  const status = mapScheduleStatus(rawStatus, raw.live, homeTeam, awayTeam, homeScore, awayScore);
 
   return {
     id: id ?? `${date ?? 'no-date'}-${homeTeam}-${awayTeam}-${index}`,
@@ -423,38 +326,15 @@ export function normalizeClubScheduleMeeting(value: unknown, index: number): Hom
     leagueName,
     roundName,
     meetingNumber,
+    homeClubId: pickDeepString(raw, ['team_home_club_id', 'homeClubId']),
+    awayClubId: pickDeepString(raw, ['team_away_club_id', 'awayClubId']),
+    association: pickDeepString(raw, ['league_org_short_name', 'association']),
   } as HomeClubMatch;
 }
 
-export function normalizeClubMeetingStatus(
-    rawStatus?: string,
-    homeScore?: string,
-    awayScore?: string,
-): ScheduleMatch['status'] {
-  const normalized = String(rawStatus ?? '').trim().toLowerCase();
-
-  if (normalized.includes('spielfrei') || normalized.includes('frei')) {
-    return 'free';
-  }
-
-  if (
-      normalized.includes('beendet') ||
-      normalized.includes('gespielt') ||
-      normalized.includes('completed') ||
-      normalized.includes('done') ||
-      (homeScore !== undefined && awayScore !== undefined)
-  ) {
-    return 'completed';
-  }
-
-  return 'scheduled';
-}
-
+// Nur der Status zählt: geplante Spiele haben ebenfalls ein Ergebnis (0:0).
 export function isCompletedClubMatch(match: HomeClubMatch) {
-  if (match.status === 'completed') return true;
-  if (match.status === 'free') return false;
-
-  return match.homeScore !== undefined && match.awayScore !== undefined;
+  return match.status === 'completed';
 }
 
 export function dedupeSchedule(matches: HomeClubMatch[]) {
@@ -630,12 +510,4 @@ export function getTimeValue(value?: string) {
 
 export function normalizeTeamKey(teamName?: string) {
   return (teamName ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-export function normalizeComparableText(value?: string) {
-  return String(value ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ')
-      .replace(/\s+/g, ' ');
 }

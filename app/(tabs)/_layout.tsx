@@ -14,9 +14,10 @@ export default function TabsLayout() {
             <Tabs.Screen name="search" />
             <Tabs.Screen name="leagues" />
             <Tabs.Screen name="favorites" />
-            <Tabs.Screen name="settings" />
+            <Tabs.Screen name="settings" options={{ href: null }} />
 
             <Tabs.Screen name="player/[nuid]" options={{ href: null }} />
+            <Tabs.Screen name="player/ttr-calculator" options={{ href: null }} />
             <Tabs.Screen name="club/[clubKey]" options={{ href: null }} />
             <Tabs.Screen name="league/[leagueKey]" options={{ href: null }} />
             <Tabs.Screen name="region/[region]" options={{ href: null }} />

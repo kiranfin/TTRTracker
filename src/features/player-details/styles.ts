@@ -1,289 +1,114 @@
 import { StyleSheet } from 'react-native';
+import { font } from '@/src/theme/typography';
 
 export const styles = StyleSheet.create({
     content: {
-        padding: 16,
-        paddingTop: 20,
+        paddingHorizontal: 16,
+        paddingTop: 4,
         paddingBottom: 112,
-        gap: 16,
-    },
-    headerRow: {
-        minHeight: 42,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 10,
-    },
-    backButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        borderWidth: StyleSheet.hairlineWidth,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    profileTitleBlock: {
-        marginTop: -6,
-        gap: 2,
-    },
-    headerText: {
-        flex: 1,
-    },
-    title: {
-        fontSize: 25,
-        lineHeight: 32,
-        fontWeight: '900',
-    },
-    subtitle: {
-        marginTop: 2,
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    loader: {
-        paddingVertical: 24,
+        gap: 18,
     },
     error: {
+        ...font('500'),
         fontSize: 14,
         lineHeight: 20,
     },
-    overviewCard: {
-        padding: 16,
-        gap: 16,
+
+    profileHead: {
+        gap: 18,
     },
-    overviewHeader: {
+    profileIdentity: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 13,
-    },
-    overviewIcon: {
-        width: 54,
-        height: 54,
-        borderRadius: 19,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    overviewHeaderText: {
-        flex: 1,
-    },
-    overviewLabel: {
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '800',
-    },
-    overviewTitle: {
-        marginTop: 1,
-        fontSize: 34,
-        lineHeight: 40,
-        fontWeight: '900',
-    },
-    overviewSubtitle: {
-        marginTop: 2,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
-    },
-    overviewFacts: {
-        flexDirection: 'row',
-        gap: 10,
-    },
-    overviewFact: {
-        flex: 1,
-        borderWidth: 1,
-        borderRadius: 16,
-        padding: 11,
-        gap: 3,
-    },
-    overviewFactLabel: {
-        fontSize: 11,
-        lineHeight: 15,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: 0.2,
-    },
-    overviewFactValue: {
-        fontSize: 20,
-        lineHeight: 26,
-        fontWeight: '900',
-    },
-    overviewFactHelper: {
-        fontSize: 11,
-        lineHeight: 15,
-        fontWeight: '700',
-    },
-    statsCard: {
-        padding: 16,
         gap: 14,
     },
-    statGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    statTile: {
-        width: '48%',
-        minWidth: 145,
-        flexGrow: 1,
-        borderWidth: 1,
-        borderRadius: 18,
-        padding: 12,
-        gap: 7,
-    },
-    statTileHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-    },
-    statIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 11,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    statLabel: {
+    profileIdentityText: {
         flex: 1,
-        fontSize: 12,
-        lineHeight: 16,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: 0.2,
+        minWidth: 0,
+        gap: 4,
     },
-    statValue: {
-        fontSize: 22,
-        lineHeight: 28,
-        fontWeight: '900',
+    clubLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        alignSelf: 'flex-start',
     },
-    statHelper: {
-        fontSize: 12,
-        lineHeight: 16,
-        fontWeight: '700',
+    clubLinkText: {
+        fontSize: 14,
+        flexShrink: 1,
     },
+    ttrRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    ttrValueBlock: {
+        gap: 2,
+    },
+    ttrDelta: {
+        paddingBottom: 8,
+    },
+    claimLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+        alignSelf: 'flex-start',
+    },
+
     chartCard: {
         padding: 16,
         gap: 14,
     },
-    chartTitleRow: {
+    chartHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexWrap: 'wrap',
         gap: 12,
     },
-    rangeControl: {
-        flexDirection: 'row',
-        borderWidth: 1,
-        borderRadius: 999,
-        padding: 3,
-        gap: 2,
-    },
-    rangeButton: {
-        minWidth: 46,
-        minHeight: 30,
-        borderRadius: 999,
+    chartEmpty: {
+        minHeight: 96,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 10,
-    },
-    rangeButtonText: {
-        fontSize: 12,
-        lineHeight: 16,
-        fontWeight: '900',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        lineHeight: 24,
-        fontWeight: '900',
-    },
-    sectionSubtitle: {
-        marginTop: 2,
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    mutedText: {
-        fontSize: 14,
-        lineHeight: 20,
     },
     lineChartWrap: {
-        gap: 8,
+        gap: 2,
     },
-    historyControlsCard: {
-        padding: 16,
-        gap: 14,
-    },
-    historyControlsTopRow: {
+    axisRow: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 12,
     },
-    clearFiltersText: {
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '900',
+    axisLabel: {
+        fontSize: 11,
+        lineHeight: 14,
+        ...font('600'),
     },
-    filterStack: {
+
+    historySection: {
         gap: 10,
     },
-    leagueFilterWrap: {
-        width: '100%',
-    },
-    leagueSelect: {
-        minHeight: 44,
-        borderWidth: 1,
-        borderRadius: 16,
-        paddingHorizontal: 12,
+    historyHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 4,
     },
-    leagueSelectText: {
+    historyHeaderText: {
         flex: 1,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '800',
+        gap: 2,
     },
-    compactPaginationRow: {
-        alignSelf: 'center',
-        flexDirection: 'row',
+    historyIconButton: {
+        minWidth: 44,
+        minHeight: 44,
+        marginRight: -10,
         alignItems: 'center',
         justifyContent: 'center',
-        flexWrap: 'nowrap',
-        gap: 7,
-        marginTop: 2,
-    },
-    paginationIconButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 15,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    paginationChevronWrap: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    paginationSecondChevron: {
-        marginLeft: -10,
     },
     searchInputWrap: {
         width: '100%',
         minHeight: 44,
         borderWidth: 1,
-        borderRadius: 16,
+        borderRadius: 14,
         paddingHorizontal: 12,
         flexDirection: 'row',
         alignItems: 'center',
@@ -293,162 +118,85 @@ export const styles = StyleSheet.create({
         flex: 1,
         minWidth: 0,
         paddingVertical: 0,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
-    },
-    dropdownMenu: {
-        marginTop: 8,
-        borderWidth: 1,
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    dropdownScroll: {
-        maxHeight: 230,
-    },
-    leagueOption: {
-        minHeight: 44,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    leagueOptionText: {
-        flex: 1,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '800',
-    },
-    pageInfo: {
-        alignItems: 'center',
-        minWidth: 58,
-    },
-    pageText: {
-        fontSize: 14,
-        lineHeight: 19,
-        fontWeight: '900',
-    },
-    pageSubtext: {
-        marginTop: 1,
-        fontSize: 11,
-        lineHeight: 15,
-        fontWeight: '700',
-    },
-    stack: {
-        gap: 12,
-    },
-    eventCard: {
-        padding: 14,
-        gap: 12,
-    },
-    eventTopRow: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    eventMain: {
-        flex: 1,
-        gap: 7,
-    },
-    leagueTag: {
-        alignSelf: 'flex-start',
-        maxWidth: '100%',
-        borderWidth: 1,
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    leagueTagText: {
-        fontSize: 12,
-        lineHeight: 16,
-        fontWeight: '900',
-    },
-    meetingText: {
         fontSize: 15,
-        lineHeight: 21,
-        fontWeight: '900',
+        ...font('500'),
     },
-    eventMetaRow: {
+    leagueFilterButton: {
+        height: 36,
+        maxWidth: '100%',
+        borderRadius: 999,
+        borderWidth: 1,
+        paddingHorizontal: 14,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
+        alignSelf: 'flex-start',
+        gap: 6,
     },
-    eventDate: {
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '600',
+    leagueFilterLabel: {
+        fontSize: 14,
+        flexShrink: 1,
     },
-    eventScore: {
-        alignItems: 'flex-end',
-        minWidth: 54,
-        gap: 2,
+    leagueSheetBody: {
+        gap: 12,
     },
-    eventTtr: {
-        fontSize: 22,
-        lineHeight: 28,
-        fontWeight: '900',
-    },
-    eventDelta: {
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '900',
-    },
-    eventBottomRow: {
+    leagueOptionTrailing: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
+        alignItems: 'center',
         gap: 8,
     },
-    expandedArea: {
-        borderTopWidth: StyleSheet.hairlineWidth,
-        paddingTop: 12,
-        gap: 10,
+    leagueOptionCount: {
+        fontVariant: ['tabular-nums'],
+    },
+    monthGroup: {
+        gap: 8,
+        marginTop: 4,
+    },
+    monthLabel: {
+        paddingHorizontal: 4,
+    },
+    historyRow: {
+        minHeight: 64,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    historyRowMain: {
+        flex: 1,
+        minWidth: 0,
+        gap: 2,
+    },
+    historyRowScore: {
+        minWidth: 44,
+        alignItems: 'flex-end',
+        gap: 1,
+    },
+    historyExpanded: {
+        paddingLeft: 64,
+        paddingRight: 16,
+        paddingBottom: 14,
+        gap: 8,
     },
     matchDetailCard: {
-        borderWidth: 1,
-        borderRadius: 16,
-        padding: 12,
-        gap: 10,
-    },
-    matchDetailTopRow: {
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
     },
-    matchPlayers: {
+    matchDetailMain: {
         flex: 1,
+        minWidth: 0,
+        gap: 2,
     },
-    matchPlayerName: {
+    matchDetailName: {
         fontSize: 14,
         lineHeight: 19,
-        fontWeight: '900',
     },
-    matchOpponentName: {
-        marginTop: 2,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '700',
-    },
-    matchResultBox: {
-        minWidth: 54,
-        minHeight: 34,
-        borderRadius: 13,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 8,
-    },
-    matchResultText: {
-        fontSize: 17,
-        lineHeight: 22,
-        fontWeight: '900',
-    },
-    headerActionButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        borderWidth: StyleSheet.hairlineWidth,
-        alignItems: 'center',
-        justifyContent: 'center',
+    reportLink: {
+        alignSelf: 'flex-start',
+        paddingVertical: 4,
     },
 });

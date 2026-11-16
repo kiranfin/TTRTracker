@@ -1,3 +1,5 @@
+import type { ResponseMeta } from '../utils/staleness';
+
 export type FavoriteType = 'player' | 'club' | 'league';
 
 export type FavoriteItem = {
@@ -6,6 +8,8 @@ export type FavoriteItem = {
   title: string;
   subtitle?: string;
   createdAt: string;
+  // TTR zum Zeitpunkt des Hinzufügens (nur Spieler)
+  ttr?: number;
   params?: Record<string, string>;
 };
 
@@ -87,9 +91,68 @@ export type PlayerTtrResponse = {
     ttr: number | null;
     error?: unknown | null;
   };
-  meta?: {
-    source?: string;
+  meta?: ResponseMeta;
+  // Die rohe myTischtennis Antwort, nur direkt nach dem Abruf auf dem Gerät (für den Snapshot Upload).
+  // Wird nie gespeichert.
+  raw?: unknown;
+};
+
+export type PlayerRatingSource = 'public' | 'estimated' | 'official';
+
+export type PlayerRating = {
+  value: number;
+  source: PlayerRatingSource;
+  asOf: string;
+};
+
+export type PlayerRatingResponse = {
+  data: {
+    nuid: string;
+    available: boolean;
+    rating: PlayerRating | null;
+    club?: { organization: string; clubNumber: string; clubName: string } | null;
   };
+  meta?: ResponseMeta;
+};
+
+export type EstimatedTtrEvent = {
+  meetingId: string;
+  date: string | null;
+  teamHome: string | null;
+  teamGuest: string | null;
+  won: boolean;
+  setsOwn: number;
+  setsOther: number;
+  opponentName: string;
+  opponentTtr: number;
+  ttrBefore: number;
+  ttrAfter: number;
+  delta: number;
+};
+
+export type PlayerTtrEstimate = {
+  nuid: string;
+  available: boolean;
+  publicRating: PlayerRating | null;
+  rating: PlayerRating | null;
+  // Ältestes Einzel zuerst.
+  events: EstimatedTtrEvent[];
+  coverage: {
+    meetingsTotal: number;
+    meetingsScanned: number;
+    singlesFound: number;
+    singlesRated: number;
+    singlesUnrated: number;
+    truncated: boolean;
+    // Berichte oder Einzel, die das Backend noch nicht ausgewertet hat. Der nächste Aufruf rechnet weiter.
+    pending?: number;
+  };
+  assumptions: { k: number; lagDays: number };
+};
+
+export type PlayerTtrEstimateResponse = {
+  data: PlayerTtrEstimate;
+  meta?: ResponseMeta;
 };
 
 export type PlayerTtrHistoryResponse = {
@@ -98,6 +161,7 @@ export type PlayerTtrHistoryResponse = {
     available: boolean;
     ttr: number | null;
     qttr: number | null;
+    qttrDate?: string | null;
     maxTtr: number | null;
     ttrDate: string | null;
     maxTtrDate: string | null;
@@ -106,9 +170,22 @@ export type PlayerTtrHistoryResponse = {
     events: unknown[];
     error?: unknown | null;
   };
-  meta?: {
-    source?: string;
+  meta?: ResponseMeta;
+  // Die rohe myTischtennis Antwort, nur direkt nach dem Abruf auf dem Gerät (für den Snapshot Upload).
+  // Wird nie gespeichert.
+  raw?: unknown;
+};
+
+// Was jemand mit dir teilt: Snapshot des Besitzers, je nach Freigabe mit aktuellem TTR und/oder Verlauf.
+export type SharedPlayerResponse = {
+  data: {
+    nuid: string;
+    owner: { username: string | null };
+    scopes: string[];
+    ttr?: PlayerTtrResponse['data'] & { fetchedAt: string };
+    history?: PlayerTtrHistoryResponse['data'] & { fetchedAt: string };
   };
+  meta?: ResponseMeta;
 };
 
 export type NormalizedTtrHistoryMatch = {
@@ -160,9 +237,6 @@ export type NormalizedPlayerTtrHistory = {
   personName?: string;
   events: NormalizedTtrHistoryEvent[];
 };
-
-export type SearchCategory = 'players' | 'clubs';
-
 export type NormalizedPlayer = {
   id: string;
   fullName: string;
@@ -253,7 +327,7 @@ export type LeagueReference = {
   leagueSlug?: string;
 };
 
-export type PromotionState = 'promotion' | 'relegation' | 'none';
+export type PromotionState = 'promotion' | 'promotionPlayoff' | 'relegation' | 'relegationPlayoff' | 'none';
 
 export type TableRow = {
   id: string;

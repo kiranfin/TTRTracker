@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '@/src/theme/typography';
 
 type BadgeTone = 'secondary' | 'outline' | 'green' | 'blue' | 'orange' | 'red';
 
@@ -69,6 +70,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '900',
+    ...font('900'),
   },
 });

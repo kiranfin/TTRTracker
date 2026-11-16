@@ -1,3 +1,2 @@
-export { PlayerCard } from './PlayerCard';
-export { ClubCard } from './ClubCard';
-export { DetailRow } from './DetailRow';
+export { PlayerRow } from './PlayerRow';
+export { ClubRow } from './ClubRow';

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { font } from '@/src/theme/typography';
 
 type EmptyStateProps = {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -13,7 +14,7 @@ export function EmptyState({ icon = 'information-circle-outline', title, subtitl
 
   return (
       <View style={[styles.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoftBorder }]}>
+        <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft, borderColor: 'transparent' }]}>
           <Ionicons name={icon} size={24} color={colors.primary} />
         </View>
 
@@ -29,7 +30,7 @@ export function EmptyState({ icon = 'information-circle-outline', title, subtitl
 const styles = StyleSheet.create({
   wrap: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: 20,
     padding: 22,
     alignItems: 'center',
     gap: 8,
@@ -46,10 +47,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     lineHeight: 22,
-    fontWeight: '900',
+    ...font('700'),
     textAlign: 'center',
   },
-  subtitle: {
+  subtitle: { ...font('400'),
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { eventsApi } from '../../../api/events';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { EventSummary } from '../../../types/events';
+import { describeApiError } from '@/src/utils/apiErrors';
 
 export function useEvents() {
   const { t } = useI18n();
@@ -19,7 +20,7 @@ export function useEvents() {
       setData(result);
     } catch (loadError) {
       setData([]);
-      setError(loadError instanceof Error ? loadError.message : t('events.loadError'));
+      setError(describeApiError(loadError, t, 'events.loadError'));
     } finally {
       setLoading(false);
     }

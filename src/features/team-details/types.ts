@@ -72,6 +72,8 @@ export type TeamScheduleMatch = {
     awayTeam: string;
     homeTeamId?: string;
     awayTeamId?: string;
+    homeClubId?: string;
+    awayClubId?: string;
     homeScore?: string;
     awayScore?: string;
     ownScore?: string;

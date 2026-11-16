@@ -1,65 +1,78 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { Badge } from '@/src/components/Badge';
-import { Card } from '@/src/components/Card';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { ListGroup } from '@/src/components/ListGroup';
+import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import type { MatchRow } from '../types';
+import { font, numeric, typography } from '@/src/theme/typography';
+import type { MatchRowWithScore } from '../types';
 import { styles } from '../styles';
 
-export function MatchSection({ title, rows }: { title: string; rows: MatchRow[] }) {
+// Eine Partie: Heim links, Sätze in der Mitte, Gast rechts; darunter Satzergebnisse und Zwischenstand.
+function MatchLine({ row }: { row: MatchRowWithScore }) {
   const { colors } = useTheme();
-  const { t } = useI18n();
+
+  const nameStyle = (won: boolean) => [typography.body, styles.playerName, { color: colors.text, ...font(won ? '700' : '500') }];
 
   return (
-      <Card style={styles.sectionCard}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
-
-        <View style={styles.rows}>
-          {rows.map((row, index) => {
-            const isLast = index === rows.length - 1;
-            const homeColor = row.winner === 'home' ? colors.primary : colors.text;
-            const awayColor = row.winner === 'guest' ? colors.primary : colors.text;
-            const playerLines = row.type === 'double' ? 3 : 2;
-
-            return (
-                <View
-                    key={row.id}
-                    style={[
-                      styles.matchLine,
-                      {
-                        borderBottomColor: colors.border,
-                        borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-                      },
-                    ]}
-                >
-                  <View style={styles.matchMetaRow}>
-                    <Text style={[styles.matchName, { color: colors.mutedText }]}>{row.name}</Text>
-                    <Text style={[styles.matchType, { color: colors.mutedText }]}>
-                      {row.type === 'double' ? t('match.doubles') : t('match.singles')}
-                    </Text>
-                  </View>
-
-                  <View style={styles.playersRow}>
-                    <Text style={[styles.playerName, { color: homeColor }]} numberOfLines={playerLines}>
-                      {row.homePlayer}
-                    </Text>
-
-                    <Badge tone="secondary">{row.result}</Badge>
-
-                    <Text style={[styles.playerName, styles.awayPlayer, { color: awayColor }]} numberOfLines={playerLines}>
-                      {row.awayPlayer}
-                    </Text>
-                  </View>
-
-                  {row.sets.length > 0 || row.games ? (
-                      <Text style={[styles.sets, { color: colors.mutedText }]}>
-                        {[row.sets.length > 0 ? row.sets.join(' · ') : null, row.games].filter(Boolean).join('   ·   ')}
-                      </Text>
-                  ) : null}
-                </View>
-            );
-          })}
+      <View style={styles.matchLine}>
+        <View style={styles.playerRow}>
+          <Text style={nameStyle(row.winner === 'home')} numberOfLines={2}>
+            {row.homePlayer}
+          </Text>
+          <View style={[styles.resultBox, { backgroundColor: colors.soft }]}>
+            <Text style={[numeric.row, { color: colors.text }]}>{row.result || '-'}</Text>
+          </View>
+          <Text style={[nameStyle(row.winner === 'guest'), styles.awayName]} numberOfLines={2}>
+            {row.awayPlayer}
+          </Text>
         </View>
-      </Card>
+
+        <View style={styles.matchMetaRow}>
+          <Text style={[typography.label, styles.setsText, { color: colors.mutedText }]} numberOfLines={1}>
+            {row.sets.length > 0 ? row.sets.join(' · ') : row.name}
+          </Text>
+          <Text style={[typography.label, { color: colors.mutedText }]}>{row.runningScore}</Text>
+        </View>
+      </View>
+  );
+}
+
+type MatchSectionProps = {
+  title: string;
+  rows: MatchRowWithScore[];
+  // Ab so vielen Partien wird der Rest hinter "weitere anzeigen" versteckt
+  collapseAfter?: number;
+};
+
+export function MatchSection({ title, rows, collapseAfter }: MatchSectionProps) {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+
+  const limit = collapseAfter && !expanded ? collapseAfter : rows.length;
+  const hidden = rows.length - limit;
+
+  return (
+      <View style={styles.section}>
+        <SectionHeader variant="label" title={title} />
+
+        <ListGroup>
+          {rows.slice(0, limit).map((row) => (
+              <MatchLine key={row.id} row={row} />
+          ))}
+          {hidden > 0 ? (
+              <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setExpanded(true)}
+                  style={({ pressed }) => [styles.moreRow, { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Text style={[typography.metaStrong, styles.moreText, { color: colors.primary }]}>
+                  {t('match.showMore', { count: hidden })}
+                </Text>
+              </Pressable>
+          ) : null}
+        </ListGroup>
+      </View>
   );
 }

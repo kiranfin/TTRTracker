@@ -26,4 +26,23 @@ export async function setMePlayerNuid(nuid: string) {
 
 export async function clearMePlayerNuid() {
     await AsyncStorage.removeItem(ME_PLAYER_NUID_KEY);
+    await AsyncStorage.removeItem('tttracker.mePlayerName');
+}
+
+const ME_PLAYER_NAME_KEY = 'tttracker.mePlayerName';
+
+// Anzeigename zum gespeicherten Profil, damit Einstellungen und Start ohne Request den Namen zeigen.
+export async function getMePlayerName() {
+    const stored = await AsyncStorage.getItem(ME_PLAYER_NAME_KEY);
+    return stored && stored.trim() ? stored.trim() : null;
+}
+
+export async function setMePlayerName(name?: string | null) {
+    const trimmed = name?.trim();
+
+    if (trimmed) {
+        await AsyncStorage.setItem(ME_PLAYER_NAME_KEY, trimmed);
+    } else {
+        await AsyncStorage.removeItem(ME_PLAYER_NAME_KEY);
+    }
 }

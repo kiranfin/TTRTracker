@@ -45,17 +45,20 @@ Before running or building the app, ensure that the backend is configured, deplo
 
 ## Why a Backend Is Required
 
-The app does not communicate directly with myTischtennis from the frontend. Instead, it utilizes a custom backend as a defensive proxy layer. This is crucial because the myTischtennis interface used by the project is unofficial and should not be accessed directly, aggressively, or systematically from the mobile client.
+Public data (search, clubs, leagues, tables, schedules, match reports) never comes straight from myTischtennis. The app asks the backend, which acts as a defensive proxy: it caches, spreads requests over time and keeps to a fixed request budget. The myTischtennis interface used by the project is unofficial and must not be hit directly, aggressively or systematically from many phones.
+
+Personal data that needs a myTischtennis login (your own TTR and history) is different. It is fetched by the phone itself with the login stored on the device, and the login never goes to the backend. If you share your rating with another app user, the phone uploads the last data it got (a snapshot, at most once an hour, with your consent) and the backend hands it to the people you shared it with.
 
 The backend is responsible for:
 
 - Providing stable API endpoints for the mobile app
-- Forwarding selected requests to the underlying data source
-- Adding short-lived caching
-- Applying rate-limit protection
-- Handling errors consistently
-- Keeping authentication/session-related logic outside of the mobile app
+- Caching public data and refreshing it by match schedule, in the background
+- Staying within a fixed budget of requests to myTischtennis
+- Handling errors consistently, so the app can show the last known data with its age
+- Storing shared snapshots for the people you shared them with
 - Avoiding systematic crawling or permanent mirroring of external data
+
+The app also keeps its own copy of every answer. It shows the stored data at once ("As of 5 minutes ago") and refreshes it in the background.
 
 ## Requirements
 
@@ -95,11 +98,24 @@ EXPO_PUBLIC_API_BASE_URL=https://your-backend-domain.com
 
 ## Local Development Setup
 
-Create a `.env` file in the root of the project when your backend is running on your computer (example):
+Create a `.env` file in the root of the project that points to your deployed backend:
 
 ```env
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+EXPO_PUBLIC_API_BASE_URL=https://your-backend-domain.com
 ```
+
+In a development build (JS served by Metro) the settings screen (System tab) shows a switch between **Server** and **Local (PC)**. Local uses the IP of the machine running Metro and port `4001`, so the phone reaches the backend on your PC over Wi-Fi. Preview and production builds never show the switch and always use `EXPO_PUBLIC_API_BASE_URL`.
+
+Optional overrides for the local backend:
+
+```env
+# Port of the local backend (default 4001)
+EXPO_PUBLIC_LOCAL_API_PORT=4001
+# Full URL, e.g. when using a tunnel or an emulator setup that cannot be detected
+EXPO_PUBLIC_LOCAL_API_BASE_URL=http://192.168.178.20:4001
+```
+
+The local backend must listen on all interfaces (`HOST=0.0.0.0` in the backend `.env`). Login tokens are stored per backend, because the local backend has its own users.
 
 ## Running the App
 
