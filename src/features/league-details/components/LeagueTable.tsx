@@ -7,6 +7,7 @@ import type { MeClub } from '@/src/storage/meClub';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { font, numeric, typography } from '@/src/theme/typography';
 import type { TableRow } from '@/src/types/tttracker';
+import { clubForList } from '@/src/storage/clubLogos';
 import type { LeagueInfo, TeamScheduleStats } from '../types';
 import {
     formatTablePoints,
@@ -57,8 +58,6 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
     }
 
     const headerStyle = [typography.caption, styles.headerLabel, { color: colors.mutedText }];
-    // Logos hängen am Verband des Vereins. In DTTB Ligen spielen Vereine aus allen Verbänden, da findet click-tt sie nicht.
-    const showLogos = Boolean(league.association) && league.association!.toUpperCase() !== 'DTTB';
 
     return (
         <View style={{ gap: 10 }}>
@@ -75,6 +74,7 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                     const stats = getTableStats(row, index, scheduleStatsByTeam.get(normalizeTeamKey(row.teamName)), t);
                     const promotion = getPromotionState(row);
                     const own = isOwnTeam(row, stats.teamName, meClub);
+                    const clubOrg = clubForList(league.association, row.clubId).organization;
                     const diff = getDiff(stats.ratio);
                     const barColor =
                         promotion === 'promotion'
@@ -101,7 +101,7 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                                         association: league.association ?? '',
                                         groupId: league.groupId ?? '',
                                         leagueSlug: league.leagueSlug,
-                                        clubOrganization: league.association ?? '',
+                                        clubOrganization: clubForList(league.association, row.clubId).organization ?? '',
                                         clubNumber: row.clubId ?? '',
                                     },
                                 })
@@ -120,8 +120,8 @@ export function LeagueTable({ rows, league, scheduleStatsByTeam, meClub }: Leagu
                             </Text>
 
                             <View style={[styles.colTeam, styles.teamCell]}>
-                                {showLogos ? (
-                                    <ClubLogo organization={league.association} clubNumber={row.clubId} size={22} fallback="blank" />
+                                {clubOrg ? (
+                                    <ClubLogo organization={clubOrg} clubNumber={row.clubId} size={22} fallback="blank" />
                                 ) : null}
                                 <Text
                                     style={[typography.body, styles.teamName, { color: colors.text, ...font(own ? '800' : '600') }]}

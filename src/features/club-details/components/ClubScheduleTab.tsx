@@ -1,12 +1,13 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
+import { openMatch } from '@/src/features/match-details/navigation';
 import { Chip, ChipRow } from '@/src/components/Chip';
 import { DataFreshness } from '@/src/components/DataFreshness';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
 import { MatchRow } from '@/src/components/MatchRow';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { clubForList } from '@/src/storage/clubLogos';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import type { ClubDetailsController } from '../hooks/useClubDetails';
@@ -33,7 +34,10 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
         setDateEndDraft,
         applyCustomPeriod,
         resetSchedulePeriod,
+        organization,
+        clubNumber,
     } = club;
+    const ownClub = { organization, clubNumber };
 
     return (
         <View style={styles.stack}>
@@ -66,19 +70,15 @@ export function ClubScheduleTab({ club }: { club: ClubDetailsController }) {
                                 awayTeam={match.awayTeam}
                                 homeScore={match.homeScore}
                                 awayScore={match.awayScore}
-                                homeClub={{ organization: match.association ?? club.organization, clubNumber: match.homeClubId }}
-                                awayClub={{ organization: match.association ?? club.organization, clubNumber: match.awayClubId }}
+                                homeClub={clubForList(match.association, match.homeClubId, ownClub)}
+                                awayClub={clubForList(match.association, match.awayClubId, ownClub)}
                                 status={match.status}
                                 time={match.time}
                                 meta={match.leagueName || undefined}
                                 highlightTeam={match.clubTeamName}
                                 onPress={
                                     match.id && match.status !== 'free'
-                                        ? () =>
-                                            router.push({
-                                                pathname: '/match/[meetingId]',
-                                                params: { meetingId: match.id!, homeTeam: match.homeTeam, awayTeam: match.awayTeam },
-                                            })
+                                        ? () => openMatch(match)
                                         : undefined
                                 }
                             />

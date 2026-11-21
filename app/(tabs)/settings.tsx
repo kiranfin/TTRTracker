@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 
+import { useDebugStats } from '@/src/api/debugStats';
 import { Avatar } from '@/src/components/Avatar';
 import { ClubLogo } from '@/src/components/ClubLogo';
 import { BottomSheet } from '@/src/components/BottomSheet';
@@ -21,6 +22,7 @@ import {
   AccountSheet,
   BackendSheet,
   BackgroundSheet,
+  DebugSheet,
   GrantsSheet,
   MeClubSheet,
   MyttConnectSheet,
@@ -29,7 +31,7 @@ import { useSettings } from '../../src/features/settings/hooks/useSettings';
 import { styles } from '../../src/features/settings/styles';
 import { getClubDisplayName } from '../../src/features/settings/utils';
 
-type SheetId = 'mePlayer' | 'meClub' | 'account' | 'mytt' | 'grants' | 'accent' | 'background' | 'backend' | 'language';
+type SheetId = 'mePlayer' | 'meClub' | 'account' | 'mytt' | 'grants' | 'accent' | 'background' | 'backend' | 'debug' | 'language';
 
 // Gleiche Vorschläge wie im Design; eigene Farben gibt es weiter im Akzent-Sheet.
 const ACCENT_PRESETS = [
@@ -75,6 +77,7 @@ export default function SettingsScreen() {
   const settings = useSettings();
   const { accent, setAccent } = useTheme();
   const [sheet, setSheet] = useState<SheetId | null>(null);
+  const { quota } = useDebugStats();
 
   const {
     colors,
@@ -319,6 +322,22 @@ export default function SettingsScreen() {
             </ListGroup>
           </View>
 
+          <View style={styles.group}>
+            <SectionHeader variant="label" title={t('settings.groupDebug')} />
+            <ListGroup>
+              <ListRow
+                  leading={<IconTile icon="speedometer-outline" />}
+                  title={t('settings.debugRemaining')}
+                  trailing={<RowValue>{quota ? String(quota.remaining) : t('settings.debugUnknown')}</RowValue>}
+              />
+              <ListRow
+                  leading={<IconTile icon="bug-outline" />}
+                  title={t('settings.debugInfo')}
+                  onPress={() => setSheet('debug')}
+              />
+            </ListGroup>
+          </View>
+
           {isAuthenticated ? (
               <Pressable
                   accessibilityRole="button"
@@ -369,6 +388,7 @@ export default function SettingsScreen() {
         <AccentSheet settings={settings} visible={sheet === 'accent'} onClose={closeSheet} />
         <BackgroundSheet settings={settings} visible={sheet === 'background'} onClose={closeSheet} />
         <BackendSheet settings={settings} visible={sheet === 'backend'} onClose={closeSheet} />
+        <DebugSheet settings={settings} visible={sheet === 'debug'} onClose={closeSheet} />
       </Screen>
   );
 }

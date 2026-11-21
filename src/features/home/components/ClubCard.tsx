@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { openMatch } from '@/src/features/match-details/navigation';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Button } from '@/src/components/Button';
 import { Card } from '@/src/components/Card';
@@ -7,6 +7,7 @@ import { ListGroup } from '@/src/components/ListGroup';
 import { MatchRow } from '@/src/components/MatchRow';
 import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { clubForList } from '@/src/storage/clubLogos';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import { formatShortWeekdayDate } from '@/src/utils/dates';
@@ -16,15 +17,7 @@ import { styles } from '../styles';
 function getOpenMatchHandler(match: HomeClubMatch) {
   if (!match.id || match.status === 'free') return undefined;
 
-  return () =>
-      router.push({
-        pathname: '/match/[meetingId]',
-        params: {
-          meetingId: match.id!,
-          homeTeam: match.homeTeam,
-          awayTeam: match.awayTeam,
-        },
-      });
+  return () => openMatch(match);
 }
 
 function normalizeName(value?: string | null) {
@@ -56,11 +49,13 @@ type ClubCardProps = {
   onOpenSearch: () => void;
 };
 
-function ClubMatchList({ title, matches, emptyText, clubName, onOpenClub }: {
+function ClubMatchList({ title, matches, emptyText, clubName, organization, clubNumber, onOpenClub }: {
   title: string;
   matches: HomeClubMatch[];
   emptyText: string;
   clubName?: string | null;
+  organization?: string;
+  clubNumber?: string;
   onOpenClub: () => void;
 }) {
   const { colors } = useTheme();
@@ -86,8 +81,8 @@ function ClubMatchList({ title, matches, emptyText, clubName, onOpenClub }: {
                         awayTeam={match.awayTeam}
                         homeScore={match.homeScore}
                         awayScore={match.awayScore}
-                        homeClub={{ organization: match.association, clubNumber: match.homeClubId }}
-                        awayClub={{ organization: match.association, clubNumber: match.awayClubId }}
+                        homeClub={clubForList(match.association, match.homeClubId, { organization, clubNumber })}
+                        awayClub={clubForList(match.association, match.awayClubId, { organization, clubNumber })}
                         status={match.status}
                         time={match.time}
                         meta={[formatShortWeekdayDate(match.date, language), match.leagueName].filter(Boolean).join(' · ')}
@@ -161,6 +156,8 @@ export function ClubCard({
                   matches={results}
                   emptyText={t('home.noRecentResults')}
                   clubName={clubName}
+                  organization={organization}
+                  clubNumber={clubNumber}
                   onOpenClub={onOpenClub}
               />
               <ClubMatchList
@@ -168,6 +165,8 @@ export function ClubCard({
                   matches={upcoming}
                   emptyText={t('home.noUpcomingMatch')}
                   clubName={clubName}
+                  organization={organization}
+                  clubNumber={clubNumber}
                   onOpenClub={onOpenClub}
               />
             </>

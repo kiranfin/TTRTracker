@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { openMatch } from '@/src/features/match-details/navigation';
 import { MatchHighlightCard } from '@/src/components/MatchHighlightCard';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { formatShortWeekdayDate } from '@/src/utils/dates';
@@ -22,11 +22,7 @@ export function NextMatchCard({ match }: { match: ClubScheduleMatch | null }) {
           footer={match.leagueName || undefined}
           onPress={
             canOpen
-                ? () =>
-                    router.push({
-                      pathname: '/match/[meetingId]',
-                      params: { meetingId: match.id!, homeTeam: match.homeTeam, awayTeam: match.awayTeam },
-                    })
+                ? () => openMatch(match)
                 : undefined
           }
       />

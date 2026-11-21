@@ -56,6 +56,11 @@ export type MeetingDetails = {
 
   team_home?: string | null;
   team_guest?: string | null;
+  // Mannschaften und Liga der Begegnung, damit die Mannschaftsseiten auch ohne Liga Kontext der Route verlinkbar sind
+  team_home_id?: string | number | null;
+  team_guest_id?: string | number | null;
+  group_id?: string | number | null;
+  season_nickname?: string | null;
 
   // Verein hinter der Mannschaft: Logo ID, Vereinsnummer und URI mit Verband (".../federations/TTBW/clubs/2055064")
   home_image_url?: string | null;
@@ -65,6 +70,9 @@ export type MeetingDetails = {
   team_home_club_uri?: string | null;
   team_guest_club_uri?: string | null;
   fed_nickname?: string | null;
+  // Verband des Vereins (nicht der Liga), vorhanden in der Webseiten Variante des Spielberichts
+  team_home_club_fed_nickname?: string | null;
+  team_guest_club_fed_nickname?: string | null;
 
   matches_home?: number | string | null;
   matches_guest?: number | string | null;
@@ -94,8 +102,9 @@ export type MatchRow = {
   id: string;
   name: string;
   type: 'single' | 'double' | 'other';
-  homePlayer: string;
-  awayPlayer: string;
+  // Spieler je Seite: Einzel ein voller Name, Doppel zwei gekürzte Namen ("M. Mustermann")
+  homePlayers: string[];
+  awayPlayers: string[];
   result: string;
   sets: string[];
   games: string | null;
@@ -106,6 +115,11 @@ export type MatchRow = {
 export type MatchRowWithScore = MatchRow & {
   runningScore: string;
 };
+
+// Ziel eines Tippers auf eine Seite der Begegnung: die Mannschaftsseite, sonst (ohne Team-ID) die Vereinsseite
+export type MatchSideLink =
+  | ({ kind: 'team' } & TeamLinkContext)
+  | { kind: 'club'; organization: string; clubNumber: string; title: string };
 
 // Optionaler Kontext aus der Route, mit dem die Mannschaften verlinkt werden können
 export type TeamLinkContext = {

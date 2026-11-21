@@ -119,8 +119,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  playerName: {
+  playerNames: {
     flex: 1,
+    minWidth: 0,
+  },
+  playerName: {
     minWidth: 0,
     fontSize: 14,
     lineHeight: 19,

@@ -17,15 +17,23 @@ function MatchLine({ row }: { row: MatchRowWithScore }) {
   return (
       <View style={styles.matchLine}>
         <View style={styles.playerRow}>
-          <Text style={nameStyle(row.winner === 'home')} numberOfLines={2}>
-            {row.homePlayer}
-          </Text>
+          <View style={styles.playerNames}>
+            {row.homePlayers.map((name, index) => (
+                <Text key={`${name}-${index}`} style={nameStyle(row.winner === 'home')} numberOfLines={1} ellipsizeMode="tail">
+                  {name}
+                </Text>
+            ))}
+          </View>
           <View style={[styles.resultBox, { backgroundColor: colors.soft }]}>
             <Text style={[numeric.row, { color: colors.text }]}>{row.result || '-'}</Text>
           </View>
-          <Text style={[nameStyle(row.winner === 'guest'), styles.awayName]} numberOfLines={2}>
-            {row.awayPlayer}
-          </Text>
+          <View style={styles.playerNames}>
+            {row.awayPlayers.map((name, index) => (
+                <Text key={`${name}-${index}`} style={[nameStyle(row.winner === 'guest'), styles.awayName]} numberOfLines={1} ellipsizeMode="tail">
+                  {name}
+                </Text>
+            ))}
+          </View>
         </View>
 
         <View style={styles.matchMetaRow}>

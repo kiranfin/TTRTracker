@@ -175,6 +175,19 @@ export const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 12,
   },
+  debugLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  debugLabel: {
+    flexShrink: 1,
+  },
+  debugValue: {
+    flex: 1,
+    textAlign: 'right',
+  },
   group: {
     gap: 8,
   },

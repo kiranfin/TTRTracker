@@ -49,6 +49,7 @@ async function requestMytt(params: { method: 'GET' | 'POST'; path: string; cooki
     const url = `${MYTT_API_URL}${params.path}`;
 
     const { response, text } = await runOnDevice(async () => {
+        const startedAt = Date.now();
         const result = await fetch(url, {
             method: params.method,
             credentials: 'omit',
@@ -60,7 +61,7 @@ async function requestMytt(params: { method: 'GET' | 'POST'; path: string; cooki
             body: params.body?.toString(),
         });
 
-        noteQuota(result.headers.get('ratelimit'), { method: params.method, url });
+        noteQuota(result.headers.get('ratelimit'), { method: params.method, url, status: result.status, durationMs: Date.now() - startedAt });
 
         return { response: result, text: await result.text() };
     });

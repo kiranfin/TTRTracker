@@ -5,7 +5,8 @@ import { ttApi } from '../api/tttracker';
 // alle angefragten Vereine eines Render-Durchgangs und holt sie gebündelt über /api/clubs/logos.
 // null heißt "Verein hat kein Logo" und wird genauso gemerkt, damit nicht ständig neu gefragt wird.
 
-const STORAGE_KEY = 'tttracker.clubLogos';
+// v2: ältere Einträge konnten durch falsche Verbände vergiftet sein, sie fallen einmalig weg
+const STORAGE_KEY = 'tttracker.clubLogos.v2';
 const LOGO_BASE_URL = 'https://ttde-portal.liga.nu/rs/2014/images/';
 const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const RETRY_AFTER_MS = 5 * 60 * 1000;
@@ -38,6 +39,28 @@ export function clubLogoRef(organization?: string, clubNumber?: string) {
   const number = clubNumber?.trim();
 
   return org && number && /^\d+$/.test(number) ? `${org}:${number}` : undefined;
+}
+
+// Verbände, in deren Ligen Vereine aus allen Landesverbänden spielen. Die Liga gehört dort nicht dem Verein,
+// click-tt würde das Logo unter dem falschen Verband suchen.
+const MULTI_FEDERATION_ORGS = new Set(['DTTB']);
+
+type ClubOwn = { organization?: string; clubNumber?: string };
+
+// Verein für Listen, in denen nur der Verband der Liga bekannt ist. Ohne sicheren Verband gibt es keine Referenz,
+// dann zeigt die Zeile lieber kein Logo als das eines fremden Vereins. Der eigene Verein behält seinen Verband.
+export function clubForList(leagueOrganization?: string, clubNumber?: string, own?: ClubOwn): ClubOwn {
+  const number = clubNumber?.trim();
+  if (!number) return {};
+
+  if (own?.organization && own.clubNumber && own.clubNumber.trim() === number) {
+    return { organization: own.organization, clubNumber: number };
+  }
+
+  const org = leagueOrganization?.trim();
+  if (!org || MULTI_FEDERATION_ORGS.has(org.toUpperCase())) return {};
+
+  return { organization: org, clubNumber: number };
 }
 
 function notify() {

@@ -334,7 +334,7 @@ export function useHome() {
   }, [meClub, clubRefreshTick]);
 
   // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
-  const liveClubMatches = useLiveMatches(clubMatches);
+  const liveClubMatches = useLiveMatches(clubMatches, { label: 'home' });
 
   const clubCompletedMatches = useMemo(
       () => liveClubMatches.filter(isCompletedClubMatch).sort(compareMatchesNewestFirst).slice(0, 2),

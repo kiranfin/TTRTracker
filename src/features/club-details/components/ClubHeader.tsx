@@ -42,7 +42,7 @@ export function ClubHeader({
   return (
       <View style={styles.clubHead}>
         <View style={styles.clubIdentity}>
-          <ClubLogo organization={organization} clubNumber={clubNumber} uri={logoUrl} size={64} />
+          <ClubLogo organization={organization} clubNumber={clubNumber} uri={logoUrl} trustUri size={64} />
 
           <View style={styles.clubHeadText}>
             <Text style={[typography.heading, { color: colors.text }]} numberOfLines={2}>

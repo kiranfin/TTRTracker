@@ -4,7 +4,7 @@ import { Card } from '@/src/components/Card';
 import { ClubLogo } from '@/src/components/ClubLogo';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { font, typography } from '@/src/theme/typography';
-import type { MeetingClub, TeamLinkContext } from '../types';
+import type { MatchSideLink, MeetingClub } from '../types';
 import { styles } from '../styles';
 
 type TeamSideProps = {
@@ -12,8 +12,8 @@ type TeamSideProps = {
   won: boolean;
   home: boolean;
   club?: MeetingClub;
-  link: TeamLinkContext | null;
-  onOpenTeam: (link: TeamLinkContext) => void;
+  link: MatchSideLink | null;
+  onOpenTeam: (link: MatchSideLink) => void;
 };
 
 // Mannschaft mit Vereinslogo, ohne Logo mit Kürzel-Kachel (Heim akzentfarben, Gast neutral).
@@ -69,11 +69,11 @@ type MatchHeroProps = {
   status: string;
   homeWon: boolean;
   awayWon: boolean;
-  homeLink: TeamLinkContext | null;
-  awayLink: TeamLinkContext | null;
+  homeLink: MatchSideLink | null;
+  awayLink: MatchSideLink | null;
   homeClub?: MeetingClub;
   awayClub?: MeetingClub;
-  onOpenTeam: (link: TeamLinkContext) => void;
+  onOpenTeam: (link: MatchSideLink) => void;
   // Datum, Uhrzeit und Liga in einer Zeile über den Mannschaften
   meta?: string;
   // Sätze und Bälle als kurze Pills unter dem Ergebnis

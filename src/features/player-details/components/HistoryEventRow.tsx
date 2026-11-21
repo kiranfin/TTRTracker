@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { openMatch } from '@/src/features/match-details/navigation';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { DateBlock } from '@/src/components/DateBlock';
 import { DeltaText } from '@/src/components/Delta';
@@ -71,12 +71,7 @@ export function HistoryEventRow({ event, expanded, onPress }: HistoryEventRowPro
               {meetingId ? (
                   <Pressable
                       accessibilityRole="link"
-                      onPress={() =>
-                          router.push({
-                            pathname: '/match/[meetingId]',
-                            params: { meetingId, homeTeam: '', awayTeam: '' },
-                          })
-                      }
+                      onPress={() => openMatch({ id: meetingId })}
                       hitSlop={{ top: 10, bottom: 10 }}
                       style={styles.reportLink}
                   >

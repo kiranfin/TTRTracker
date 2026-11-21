@@ -1,4 +1,5 @@
 import { getAccessToken } from '../storage/authToken';
+import { recordBackendRequest } from './debugStats';
 import { ensureApiTargetLoaded, getApiBaseUrlForTarget, getApiTarget } from './apiTarget';
 import { relayGet } from './relay';
 import { cachedGet, peekCachedGet } from './responseCache';
@@ -124,11 +125,22 @@ export async function apiRequest<T>(
     }
   }
 
-  const response = await fetch(buildUrl(path, options.params), {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  const method = options.method ?? 'GET';
+  const startedAt = Date.now();
+  let response: Response;
+
+  try {
+    response = await fetch(buildUrl(path, options.params), {
+      method,
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (networkError) {
+    recordBackendRequest({ method, path, status: 'ERR', durationMs: Date.now() - startedAt });
+    throw networkError;
+  }
+
+  recordBackendRequest({ method, path, status: response.status, durationMs: Date.now() - startedAt });
 
   const data = await parseResponse(response);
 

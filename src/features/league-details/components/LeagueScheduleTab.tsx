@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { openMatch } from '@/src/features/match-details/navigation';
 import { Text, View } from 'react-native';
 import { Chip, ChipRow } from '@/src/components/Chip';
 import { EmptyState } from '@/src/components/EmptyState';
@@ -6,6 +6,7 @@ import { ListGroup } from '@/src/components/ListGroup';
 import { MatchRow } from '@/src/components/MatchRow';
 import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { clubForList } from '@/src/storage/clubLogos';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { typography } from '@/src/theme/typography';
 import type { ScheduleMatch } from '@/src/types/tttracker';
@@ -18,22 +19,7 @@ import { styles } from '../styles';
 export function openLeagueMatch(match: ScheduleMatch, league?: LeagueInfo) {
     if (!match.id || match.status === 'free') return undefined;
 
-    return () =>
-        router.push({
-            pathname: '/match/[meetingId]',
-            params: {
-                meetingId: match.id!,
-                homeTeam: match.homeTeam,
-                awayTeam: match.awayTeam,
-                homeTeamId: match.homeTeamId ?? '',
-                awayTeamId: match.awayTeamId ?? '',
-                leagueTitle: league?.title ?? '',
-                association: league?.association ?? '',
-                groupId: league?.groupId ?? '',
-                season: league?.season ?? '',
-                leagueSlug: league?.leagueSlug ?? '',
-            },
-        });
+    return () => openMatch(match, league);
 }
 
 export function LeagueMatchGroup({
@@ -56,8 +42,8 @@ export function LeagueMatchGroup({
                     awayTeam={match.awayTeam}
                     homeScore={match.homeScore}
                     awayScore={match.awayScore}
-                    homeClub={{ organization: league.association ?? match.association, clubNumber: match.homeClubId }}
-                    awayClub={{ organization: league.association ?? match.association, clubNumber: match.awayClubId }}
+                    homeClub={clubForList(league.association ?? match.association, match.homeClubId)}
+                    awayClub={clubForList(league.association ?? match.association, match.awayClubId)}
                     status={match.status}
                     time={match.time}
                     meta={[formatDateLabel(match.date, language), match.roundName].filter(Boolean).join(' · ')}

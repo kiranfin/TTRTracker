@@ -347,7 +347,7 @@ export function normalizeClubScheduleMeeting(
     // In der Teamliste heißt die Mannschaft nur "Erwachsene II", im Spielplan "TTV Pleidelsheim II".
     // Die eigene Seite finden wir deshalb zuerst über die Team-ID.
     const homeTeamId = pickDeepString(raw, ['team_home_id', 'homeTeamId']);
-    const awayTeamId = pickDeepString(raw, ['team_away_id', 'awayTeamId']);
+    const awayTeamId = pickDeepString(raw, ['team_away_id', 'team_guest_id', 'awayTeamId']);
     const ownTeamById =
         homeTeamId && teamIds.includes(homeTeamId)
             ? homeTeam
@@ -370,6 +370,8 @@ export function normalizeClubScheduleMeeting(
         leagueName,
         roundName,
         meetingNumber,
+        homeTeamId,
+        awayTeamId,
         homeClubId: pickDeepString(raw, ['team_home_club_id', 'homeClubId']),
         awayClubId: pickDeepString(raw, ['team_away_club_id', 'awayClubId']),
         association: pickDeepString(raw, ['league_org_short_name', 'association']),

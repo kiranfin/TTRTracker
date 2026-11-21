@@ -13,6 +13,11 @@ export function pauseDevice(ms: number) {
   }
 }
 
+/** Ende der Pause, 0 ohne Pause. */
+export function getDevicePausedUntil() {
+  return pausedUntil;
+}
+
 export function isDevicePaused() {
   return Date.now() < pausedUntil;
 }

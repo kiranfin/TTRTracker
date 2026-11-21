@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { isValidElement, useState, type ReactElement } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useClubLogo } from '../hooks/useClubLogo';
+import { clubLogoRef } from '../storage/clubLogos';
 import { useTheme } from '../theme/ThemeProvider';
 import { Avatar } from './Avatar';
 
@@ -10,6 +11,8 @@ type ClubLogoProps = {
   clubNumber?: string;
   // Schon bekannte URL (Vereinsinfos), spart den Abruf
   uri?: string;
+  // uri stammt sicher aus den Infos genau dieses Vereins (Vereinsseite) und darf gemerkt werden
+  trustUri?: boolean;
   size?: number;
   // icon: Gebäude-Icon wie bisher (Listen, Kopf), blank: leere Kachel, damit Tabellenzeilen bündig bleiben,
   // none: gar nichts (Logo neben einem Textlink), oder ein eigenes Element (Kürzel-Kachel im Spielbericht)
@@ -18,10 +21,18 @@ type ClubLogoProps = {
 
 // Vereinslogo von click-tt auf weißer Kachel (die Logos sind meist JPGs mit weißem Rand).
 // Ohne Logo oder bei Ladefehler der Fallback.
-export function ClubLogo({ organization, clubNumber, uri, size = 40, fallback = 'icon' }: ClubLogoProps) {
+export function ClubLogo(props: ClubLogoProps) {
+  // Der Schlüssel setzt den Zustand zurück, sobald die Zeile einen anderen Verein zeigt (recycelte Listenzeilen)
+  const key = clubLogoRef(props.organization, props.clubNumber) ?? props.uri ?? 'none';
+
+  return <ClubLogoInner key={key} {...props} />;
+}
+
+function ClubLogoInner({ organization, clubNumber, uri, trustUri, size = 40, fallback = 'icon' }: ClubLogoProps) {
   const { colors } = useTheme();
-  const url = useClubLogo(organization, clubNumber, uri);
+  const url = useClubLogo(organization, clubNumber, uri, trustUri);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const imageKey = clubLogoRef(organization, clubNumber) ?? url;
 
   const borderRadius = Math.round(size * 0.3);
 
@@ -51,6 +62,7 @@ export function ClubLogo({ organization, clubNumber, uri, size = 40, fallback = 
       >
         <Image
             source={{ uri: url }}
+            recyclingKey={imageKey}
             style={styles.image}
             contentFit="contain"
             cachePolicy="memory-disk"

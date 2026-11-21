@@ -84,7 +84,7 @@ export function useClubDetails() {
   const [isFavoriteClub, setIsFavoriteClub] = useState(false);
 
   // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
-  const scheduleMatches = useLiveMatches(loadedScheduleMatches);
+  const scheduleMatches = useLiveMatches(loadedScheduleMatches, { label: 'club' });
 
   const parsedClubKey = useMemo(() => parseClubKey(params.clubKey), [params.clubKey]);
 

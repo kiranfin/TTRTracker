@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ttApi } from '@/src/api/tttracker';
 import { ActionButton } from '@/src/components/ActionButton';
 import { Avatar } from '@/src/components/Avatar';
@@ -15,6 +15,7 @@ import { SegmentedTabs } from '@/src/components/SegmentedTabs';
 import { StatStrip } from '@/src/components/StatStrip';
 import { typography } from '@/src/theme/typography';
 import { formatSeasonLong, getCurrentSeason } from '@/src/utils/dates';
+import { openClub } from '@/src/features/club-details/navigation';
 import { useApiUpdates } from '@/src/hooks/useApiUpdates';
 import { useLiveMatches } from '@/src/hooks/useLiveMatches';
 import { useI18n } from '@/src/i18n/I18nProvider';
@@ -38,7 +39,12 @@ export default function TeamDetailsScreen() {
     const [lineup, setLineup] = useState<TeamPlayer[]>([]);
     const [loadedSchedule, setSchedule] = useState<TeamScheduleMatch[]>([]);
     // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
-    const schedule = useLiveMatches(loadedSchedule);
+    // Nur Spiele genau dieser Mannschaft werden live abgefragt.
+    const isThisTeamMatch = useCallback(
+        (match: TeamScheduleMatch) => Boolean(params.teamId) && (match.homeTeamId === params.teamId || match.awayTeamId === params.teamId),
+        [params.teamId],
+    );
+    const schedule = useLiveMatches(loadedSchedule, { isRelevant: isThisTeamMatch, label: 'team' });
     const [balancesByRound, setBalancesByRound] = useState<Record<RoundFilter, TeamBalance[]>>({
         gesamt: [],
         vr: [],
@@ -430,15 +436,31 @@ export default function TeamDetailsScreen() {
         [currentBalances],
     );
 
+    // Verein der Mannschaft. Der Verband kommt nur von dort, wo er sicher zum Verein gehört (nicht der der Liga),
+    // sonst gäbe es kein Logo und keinen Link statt eines falschen.
+    const clubOrganization = params.clubOrganization || undefined;
+    const clubNumber = params.clubNumber || undefined;
+    const canOpenClub = Boolean(clubOrganization && clubNumber);
+
+    function openOwnClub() {
+        openClub({ organization: clubOrganization, clubNumber, title: params.teamName });
+    }
+
     return (
         <Screen>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <ScreenHeader />
 
-                <View style={styles.teamHead}>
+                <Pressable
+                    accessibilityRole={canOpenClub ? 'link' : undefined}
+                    accessibilityLabel={canOpenClub ? t('team.openClub') : undefined}
+                    disabled={!canOpenClub}
+                    onPress={openOwnClub}
+                    style={({ pressed }) => [styles.teamHead, { opacity: canOpenClub && pressed ? 0.7 : 1 }]}
+                >
                     <ClubLogo
-                        organization={params.clubOrganization || team.association}
-                        clubNumber={params.clubNumber}
+                        organization={clubOrganization}
+                        clubNumber={clubNumber}
                         uri={params.clubLogoUrl || undefined}
                         size={60}
                         fallback={<Avatar icon="people-outline" shape="square" size={60} tone="accent" />}
@@ -458,7 +480,7 @@ export default function TeamDetailsScreen() {
                                 .join(' · ')}
                         </Text>
                     </View>
-                </View>
+                </Pressable>
 
                 <View style={styles.actionRow}>
                     <ActionButton
@@ -480,6 +502,10 @@ export default function TeamDetailsScreen() {
                             })
                         }
                     />
+
+                    {canOpenClub ? (
+                        <ActionButton layout="inline" icon="business-outline" label={t('team.openClub')} onPress={openOwnClub} />
+                    ) : null}
                 </View>
 
                 <StatStrip

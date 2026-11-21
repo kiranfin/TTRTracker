@@ -121,6 +121,7 @@ function send(url: string, method: 'GET' | 'POST', headers: Record<string, strin
   return runOnDevice(async (): Promise<Fetched> => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const startedAt = Date.now();
 
     try {
       const response = await fetch(url, {
@@ -133,7 +134,7 @@ function send(url: string, method: 'GET' | 'POST', headers: Record<string, strin
       });
 
       // Die Antwort ist noch gut, danach schont das Gerät bei knappem Kontingent die Anfragen bis zum Reset.
-      noteQuota(response.headers.get('ratelimit'), { method, url });
+      noteQuota(response.headers.get('ratelimit'), { method, url, status: response.status, durationMs: Date.now() - startedAt });
 
       return {
         status: response.status,

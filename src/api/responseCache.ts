@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { recordCacheEvent } from './debugStats';
 
 // Zwischenspeicher für GET Antworten des Backends, mit stale-while-revalidate:
 // - frischer Eintrag: sofort zurück, keine Anfrage
@@ -429,11 +430,15 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
 
     // 1. Frischer Eintrag: sofort zurück.
     if (entry && isFresh) {
+      recordCacheEvent('fresh');
+
       return entry.data as T;
     }
 
     // Das Backend hat uns gerade ein 429 gemeldet: bis zum Ende der Pause nicht erneut fragen.
     if (fallback && now() < pausedUntil) {
+      recordCacheEvent('stale');
+
       return toStaleResponse(fallback) as T;
     }
 
@@ -444,10 +449,14 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
         refreshInBackground(key, request);
       }
 
+      recordCacheEvent('stale');
+
       return fallback.data as T;
     }
 
     // 2. Laden und speichern (hängt sich an eine laufende Anfrage), 3. bei vorübergehendem Fehler den alten Stand liefern.
+    recordCacheEvent('load');
+
     return startLoad(key, request, fallback);
   }
 
@@ -518,7 +527,25 @@ export function createResponseCache(deps: { storage: ResponseCacheStorage; now?:
     await flush();
   }
 
-  return { cachedGet, peek, invalidate, clear, flush, subscribe };
+  /** Anzahl der Einträge und Alter des ältesten, für den Debug Bereich. */
+  async function stats() {
+    await loadIndex();
+
+    let oldestSavedAt: number | null = null;
+
+    for (const item of index.values()) {
+      if (oldestSavedAt === null || item.savedAt < oldestSavedAt) oldestSavedAt = item.savedAt;
+    }
+
+    return { entries: index.size, oldestSavedAt };
+  }
+
+  /** Bis wann das Backend um Ruhe gebeten hat (0 ohne Pause). */
+  function getPausedUntil() {
+    return pausedUntil;
+  }
+
+  return { cachedGet, peek, invalidate, clear, flush, subscribe, getPausedUntil, stats };
 }
 
 const defaultCache = createResponseCache({ storage: AsyncStorage });
@@ -539,6 +566,16 @@ export function peekCachedGet<T>(
 /** Meldet, wenn ein Eintrag im Hintergrund aktualisiert wurde. Liefert die Funktion zum Abmelden. */
 export function subscribeApiUpdates(listener: ApiUpdateListener) {
   return defaultCache.subscribe(listener);
+}
+
+/** Statistik des Zwischenspeichers (Einträge, ältester Eintrag), für den Debug Bereich. */
+export function getApiCacheStats() {
+  return defaultCache.stats();
+}
+
+/** Ende der laufenden Pause nach einem 429 vom Backend, 0 ohne Pause. */
+export function getApiPausedUntil() {
+  return defaultCache.getPausedUntil();
 }
 
 export function invalidateApiCache(prefix?: string) {

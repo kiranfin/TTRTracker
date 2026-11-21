@@ -26,6 +26,21 @@ import {
 } from '../utils';
 import { getCurrentSeason } from '@/src/utils/dates';
 
+function normalizeName(value?: string | null) {
+  return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// Spielt der gespeicherte Verein mit? Vereinsnummer, sonst der Vereinsname im Mannschaftsnamen (wie in der Tabelle).
+function isMeClubMatch(match: EnrichedScheduleMatch, meClub: MeClub | null) {
+  if (!meClub) return false;
+
+  if (match.homeClubId === meClub.clubNumber || match.awayClubId === meClub.clubNumber) return true;
+
+  const clubName = normalizeName(meClub.clubName ?? meClub.title);
+
+  return clubName.length > 2 && (normalizeName(match.homeTeam).includes(clubName) || normalizeName(match.awayTeam).includes(clubName));
+}
+
 export function useLeagueDetails() {
   const params = useLocalSearchParams<Record<string, string>>();
   const { t } = useI18n();
@@ -33,8 +48,11 @@ export function useLeagueDetails() {
   const [activeTab, setActiveTab] = useState<DetailTab>('table');
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
   const [loadedMatches, setMatches] = useState<EnrichedScheduleMatch[]>([]);
-  // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
-  const matches = useLiveMatches(loadedMatches);
+  const [meClub, setMeClub] = useState<MeClub | null>(null);
+  // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht. Live abgefragt werden nur
+  // Spiele des eigenen Vereins (jede Begegnung ist eine eigene Abfrage), ohne eigenen Verein gar keine.
+  const isOwnClubMatch = useCallback((match: EnrichedScheduleMatch) => isMeClubMatch(match, meClub), [meClub]);
+  const matches = useLiveMatches(loadedMatches, { isRelevant: isOwnClubMatch, label: 'league' });
   const [periodFilter, setPeriodFilter] = useState<SchedulePeriodFilter>('all');
   const [roundFilter, setRoundFilter] = useState<RoundFilter>('all');
   const [tableFreshness, setTableFreshness] = useState<Freshness | null>(null);
@@ -43,8 +61,6 @@ export function useLeagueDetails() {
   const [error, setError] = useState<string | null>(null);
   const [isFavoriteLeague, setIsFavoriteLeague] = useState(false);
   const [favoriteLeagueIds, setFavoriteLeagueIds] = useState<string[]>([]);
-  const [meClub, setMeClub] = useState<MeClub | null>(null);
-
   const league = useMemo<LeagueInfo>(() => {
     const groupId = params.groupId ?? params.leagueKey;
 

@@ -24,6 +24,9 @@ const HOUR_MS = 60 * MINUTE_MS;
 // Ein Mannschaftskampf dauert selten länger als 5 Stunden, der Rest ist Puffer für späte Eingaben.
 const BEFORE_START_MS = 15 * MINUTE_MS;
 const AFTER_START_MS = 8 * HOUR_MS;
+// Hat eine Begegnung nach dem Beginn noch keinen Stand (Spielplan sagt "geplant", der Bericht ist leer), wird nur
+// kurz weiter nachgesehen. Sie ist dann vermutlich verschoben oder fällt aus.
+export const NO_SCORE_AFTER_START_MS = 90 * MINUTE_MS;
 // Ohne Uhrzeit gilt der ganze Tag.
 const DAY_MS = 24 * HOUR_MS;
 
@@ -44,15 +47,25 @@ export function getMatchStartMs(match: Pick<LiveMatchLike, 'date' | 'time'>): nu
   ).getTime();
 }
 
+/** Ende des Zeitraums, in dem nach dem Beginn noch nachgefragt wird: mit Stand lange, ohne Stand nur kurz. */
+export function getPollWindowEnd(startMs: number, hasStarted: boolean) {
+  return startMs + (hasStarted ? AFTER_START_MS : NO_SCORE_AFTER_START_MS);
+}
+
+/** Hat die Begegnung schon einen Stand (läuft laut Spielplan oder Spielbericht)? */
+function hasScore(match: LiveMatchLike) {
+  return match.status === 'live';
+}
+
 /** Zeitraum, in dem sich nachfragen lohnt: kurz vor Beginn bis einige Stunden danach. */
 function isInLiveWindow(match: LiveMatchLike, now: number) {
   const start = getMatchStartMs(match);
 
   if (start === null) return false;
 
-  const length = match.time ? AFTER_START_MS : DAY_MS;
+  const end = match.time ? getPollWindowEnd(start, hasScore(match)) : start + DAY_MS;
 
-  return now >= start - BEFORE_START_MS && now <= start + length;
+  return now >= start - BEFORE_START_MS && now <= end;
 }
 
 /** Kann diese Begegnung gerade laufen? Dann lohnt sich ein Blick in den Spielbericht. */
@@ -64,8 +77,9 @@ export function isLiveCandidate(match: LiveMatchLike, now: number) {
 }
 
 /**
- * Ob in dieser Liste überhaupt etwas anstehen könnte (heute, gestern Nacht, morgen früh). Grob geprüft, damit
- * Screens mit lauter vergangenen oder weit entfernten Spielen nie zu pollen anfangen.
+ * Ob in dieser Liste überhaupt etwas anstehen könnte (innerhalb des nächsten Tages bis zum Ende des Zeitraums nach
+ * dem Beginn). Grob geprüft, damit Screens mit lauter vergangenen oder weit entfernten Spielen nie zu pollen anfangen.
+ * Die Liste sollte den Live Stand schon enthalten (applyOverlay), weil er das Fenster verlängert.
  */
 export function mayHaveLiveMatches(matches: LiveMatchLike[], now: number) {
   return matches.some((match) => {
@@ -73,7 +87,9 @@ export function mayHaveLiveMatches(matches: LiveMatchLike[], now: number) {
 
     const start = getMatchStartMs(match);
 
-    return start !== null && Math.abs(start - now) <= DAY_MS + AFTER_START_MS;
+    if (start === null || start - now > DAY_MS) return false;
+
+    return now <= (match.time ? getPollWindowEnd(start, hasScore(match)) : start + DAY_MS);
   });
 }
 

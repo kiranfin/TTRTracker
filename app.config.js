@@ -4,7 +4,7 @@ export default {
     expo: {
         name: IS_DEV ? "MyTTR Tracker Dev" : "MyTTR Tracker",
         slug: "tttracker",
-        version: "0.4.2",
+        version: "0.4.3",
         orientation: "portrait",
         icon: "./assets/images/icon.png",
         scheme: IS_DEV ? "tttracker-dev" : "tttracker",

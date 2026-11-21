@@ -1,3 +1,4 @@
+import { recordDeviceRequest, recordQuota } from './debugStats';
 import { DEFAULT_PAUSE_MS, pauseDevice } from './devicePause';
 
 // Gemeinsame Warteschlange für alle Abrufe, die das Gerät selbst bei myTischtennis macht (Login Daten in
@@ -61,8 +62,14 @@ function parseQuota(header: string | null) {
  * schont das Gerät das Kontingent bis zum Reset. Im Entwicklungsmodus steht pro Abruf eine Zeile im Log
  * (ohne Query und ohne Cookies), damit sich die Requests pro Screen zählen lassen.
  */
-export function noteQuota(header: string | null, request?: { method: string; url: string }) {
+export function noteQuota(
+    header: string | null,
+    request?: { method: string; url: string; status?: number; durationMs?: number },
+) {
   const quota = parseQuota(header);
+
+  if (quota && header) recordQuota(header, quota.remaining, quota.resetMs > 0 ? Math.round(quota.resetMs / 1000) : undefined);
+  if (request) recordDeviceRequest(request);
 
   if (__DEV__ && request) {
     let pathname = request.url;

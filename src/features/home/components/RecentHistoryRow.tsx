@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { openMatch } from '@/src/features/match-details/navigation';
 import { DateBlock } from '@/src/components/DateBlock';
 import { DeltaText } from '@/src/components/Delta';
 import { ListRow } from '@/src/components/ListRow';
@@ -35,11 +35,7 @@ export function RecentHistoryRow({
           chevron={false}
           onPress={
             meetingId
-                ? () =>
-                    router.push({
-                      pathname: '/match/[meetingId]',
-                      params: { meetingId, homeTeam: '', awayTeam: '' },
-                    })
+                ? () => openMatch({ id: meetingId })
                 : onOpenProfile
           }
           trailing={<DeltaText value={event.delta} />}

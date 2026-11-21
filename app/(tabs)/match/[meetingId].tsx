@@ -28,6 +28,7 @@ export default function MatchDetailsScreen() {
     homeTeam,
     awayTeam,
     mainScore,
+    showLineup,
     homeWon,
     awayWon,
     homeTeamLink,
@@ -76,12 +77,16 @@ export default function MatchDetailsScreen() {
 
           {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
-          {!loading && !error && lines.length === 0 ? (
+          {!loading && !error && !showLineup ? (
+              <EmptyState icon="people-outline" title={t('match.lineupPending')} />
+          ) : null}
+
+          {!loading && !error && showLineup && lines.length === 0 ? (
               <EmptyState icon="analytics-outline" title={t('match.noLines')} subtitle={t('match.noLinesSubtitle')} />
           ) : null}
 
-          {!loading && !error && doubles.length > 0 ? <MatchSection title={t('match.doublesMatches')} rows={doubles} /> : null}
-          {!loading && !error && singles.length > 0 ? <MatchSection title={t('match.singlesMatches')} rows={singles} collapseAfter={6} /> : null}
+          {!loading && !error && showLineup && doubles.length > 0 ? <MatchSection title={t('match.doublesMatches')} rows={doubles} /> : null}
+          {!loading && !error && showLineup && singles.length > 0 ? <MatchSection title={t('match.singlesMatches')} rows={singles} collapseAfter={6} /> : null}
         </ScrollView>
       </Screen>
   );

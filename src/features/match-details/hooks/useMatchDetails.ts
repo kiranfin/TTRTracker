@@ -2,23 +2,28 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { invalidateApiCache } from '@/src/api/client';
+import { setLiveActivity } from '@/src/api/debugStats';
+import { getPauseUntilFromError, isLivePaused } from '@/src/api/livePause';
 import { ttApi } from '@/src/api/tttracker';
 import { useLivePolling } from '@/src/hooks/useLivePolling';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { describeApiError } from '@/src/utils/apiErrors';
+import { normalizeTeams } from '@/src/utils/normalizers';
 import { getResponseFreshness, type Freshness } from '@/src/utils/staleness';
-import type { MeetingDetails, TeamLinkContext } from '../types';
+import { openClub } from '../../club-details/navigation';
+import type { MatchSideLink, MeetingDetails, TeamLinkContext } from '../types';
 import { useMatchPreview } from './useMatchPreview';
-import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getMeetingClub, getParam, normalizeMeetingRows, toNumber, unwrapMeetingResponse } from '../utils';
+import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getMeetingClub, getMeetingLeague, getParam, normalizeMeetingRows, toIdString, toNumber, unwrapMeetingResponse } from '../utils';
 import { getCurrentSeason } from '@/src/utils/dates';
+import { getPollWindowEnd } from '@/src/utils/liveMeetings';
 
 // Alle 30 Sekunden nachsehen, solange die Begegnung läuft oder gleich beginnt (das Backend hält laufende Spiele eine
 // Minute). Der Stand auf dem Gerät darf dabei höchstens 25 Sekunden alt sein, sonst käme nur der Zwischenspeicher zurück.
 const POLL_MS = 30 * 1000;
 const POLL_MAX_AGE_MS = 25 * 1000;
-// Ab wann vor dem Beginn und wie lange danach (ohne gemeldetes Ende) nachgesehen wird.
+// Ab wann vor dem Beginn nachgesehen wird. Wie lange danach (ohne gemeldetes Ende), bestimmt getPollWindowEnd:
+// mit Stand lange, ohne Stand nur etwa 90 Minuten.
 const POLL_BEFORE_START_MS = 15 * 60 * 1000;
-const POLL_AFTER_START_MS = 8 * 60 * 60 * 1000;
 
 export function useMatchDetails() {
   const { t } = useI18n();
@@ -32,6 +37,8 @@ export function useMatchDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
+  // Nach einem 429 bis dahin nicht mehr still nachfragen
+  const pausedUntilRef = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
@@ -72,6 +79,10 @@ export function useMatchDetails() {
             setError(null);
           }
         } catch (loadError) {
+          const pauseUntil = getPauseUntilFromError(loadError);
+
+          if (pauseUntil) pausedUntilRef.current = Math.max(pausedUntilRef.current, pauseUntil);
+
           if (mounted.current && !silent) {
             setMeeting(null);
             setError(describeApiError(loadError, t, 'match.liveLoadError'));
@@ -110,21 +121,6 @@ export function useMatchDetails() {
   const parsedStart = startRaw ? Date.parse(startRaw) : Number.NaN;
   const startMs = Number.isFinite(parsedStart) ? parsedStart : null;
 
-  // Ein beendeter Spielbericht ändert sich nicht mehr. Sonst läuft das Polling, solange der Beginn nicht lange her ist.
-  // Wann es wirklich nachfragt, entscheidet pollMeeting (erst kurz vor dem Beginn), damit nicht jede Minute neu
-  // gerendert werden muss, um den Beginn zu bemerken.
-  const shouldPoll = Boolean(meeting) && !isCompleted && (startMs === null || Date.now() <= startMs + POLL_AFTER_START_MS);
-
-  const pollMeeting = () => {
-    const live = Boolean(meeting?.live);
-
-    if (!live && startMs !== null && Date.now() < startMs - POLL_BEFORE_START_MS) return;
-
-    loadMeeting({ silent: true, maxAgeMs: POLL_MAX_AGE_MS }).catch(() => undefined);
-  };
-
-  useLivePolling(pollMeeting, { enabled: shouldPoll, intervalMs: POLL_MS });
-
   const lines = useMemo(() => normalizeMeetingRows(meeting, t), [meeting, t]);
 
   // Doppel werden zuerst gespielt, der laufende Spielstand zählt deshalb über beide Gruppen
@@ -150,6 +146,27 @@ export function useMatchDetails() {
       Boolean(meeting?.live || meeting?.is_completed || meeting?.is_meeting_complete) ||
       (homeMatches ?? 0) + (guestMatches ?? 0) > 0;
 
+  // Ein beendeter Spielbericht ändert sich nicht mehr. Sonst läuft das Polling, solange der Beginn nicht lange her ist
+  // (ohne Stand nur 90 Minuten, Pull to Refresh geht weiter). Wann es wirklich nachfragt, entscheidet pollMeeting
+  // (erst kurz vor dem Beginn), damit nicht jede Minute neu gerendert werden muss, um den Beginn zu bemerken.
+  const shouldPoll = Boolean(meeting) && !isCompleted && (startMs === null || Date.now() <= getPollWindowEnd(startMs, hasStarted));
+
+  const pollMeeting = () => {
+    // Bei einer Pause würde nur der alte Stand aus dem Zwischenspeicher zurückkommen.
+    if (isLivePaused(pausedUntilRef.current)) return;
+
+    const live = Boolean(meeting?.live);
+
+    if (!live && startMs !== null && Date.now() < startMs - POLL_BEFORE_START_MS) return;
+
+    setLiveActivity('match', 1);
+    loadMeeting({ silent: true, maxAgeMs: POLL_MAX_AGE_MS }).catch(() => undefined);
+  };
+
+  useEffect(() => () => setLiveActivity('match', 0), []);
+
+  useLivePolling(pollMeeting, { enabled: shouldPoll, intervalMs: POLL_MS });
+
   const mainScore =
       hasStarted && homeMatches !== undefined && guestMatches !== undefined
           ? `${homeMatches}:${guestMatches}`
@@ -166,38 +183,130 @@ export function useMatchDetails() {
   const homeClub = getMeetingClub(meeting, 'home');
   const awayClub = getMeetingClub(meeting, 'away');
 
-  // Die Mannschaftsseite ist nur verlinkbar, wenn die Route Team-ID und Liga-Kontext mitgegeben hat.
-  function getTeamLink(side: 'home' | 'away'): TeamLinkContext | null {
-    const teamId = getParam(side === 'home' ? params.homeTeamId : params.awayTeamId);
-    const association = getParam(params.association);
-    const groupId = getParam(params.groupId);
+  const league = getMeetingLeague(meeting);
 
-    if (!teamId || !association || !groupId) return null;
+  function getTeamId(side: 'home' | 'away') {
+    return (
+        getParam(side === 'home' ? params.homeTeamId : params.awayTeamId) ||
+        toIdString(side === 'home' ? meeting?.team_home_id : meeting?.team_guest_id)
+    );
+  }
 
-    return {
-      teamId,
-      teamName: side === 'home' ? homeTeam : awayTeam,
-      leagueTitle: getParam(params.leagueTitle),
-      association,
-      groupId,
-      season: getParam(params.season),
-      leagueSlug: getParam(params.leagueSlug),
-      club: side === 'home' ? homeClub : awayClub,
-    };
+  // Liga für die Mannschaftsseiten: zuerst aus der Route (Liga und Mannschaftsseite geben sie mit), sonst aus dem
+  // Spielbericht. Verband und Gruppe kommen immer aus derselben Quelle, damit nichts vermischt wird.
+  function getLeagueContext() {
+    const routeAssociation = getParam(params.association);
+    const routeGroupId = getParam(params.groupId);
+
+    if (routeAssociation && routeGroupId) {
+      return {
+        association: routeAssociation,
+        groupId: routeGroupId,
+        season: getParam(params.season) || league.season,
+        leagueSlug: getParam(params.leagueSlug) || league.leagueSlug,
+        leagueTitle: getParam(params.leagueTitle) || league.leagueTitle,
+      };
+    }
+
+    if (league.association && league.groupId) {
+      return {
+        association: league.association,
+        groupId: league.groupId,
+        season: league.season,
+        leagueSlug: league.leagueSlug,
+        leagueTitle: league.leagueTitle,
+      };
+    }
+
+    return null;
+  }
+
+  const leagueContext = getLeagueContext();
+  // Mannschaften, die über die Teamliste ihres Vereins aufgelöst wurden (Schlüssel Team-ID)
+  const [resolvedTeams, setResolvedTeams] = useState<Record<string, TeamLinkContext>>({});
+  const lookedUp = useRef<Set<string>>(new Set());
+
+  const homeTeamId = getTeamId('home');
+  const awayTeamId = getTeamId('away');
+  const hasLeagueContext = Boolean(leagueContext);
+
+  // Fehlt die Liga in Route und Spielbericht, steht sie in der Teamliste des Vereins (auf dem Gerät gecacht).
+  useEffect(() => {
+    if (!meeting || hasLeagueContext) return;
+
+    for (const [teamId, club, teamName] of [
+      [homeTeamId, homeClub, homeTeam],
+      [awayTeamId, awayClub, awayTeam],
+    ] as const) {
+      if (!teamId || !club.organization || !club.clubNumber || lookedUp.current.has(teamId)) continue;
+
+      lookedUp.current.add(teamId);
+
+      ttApi
+          .getClubTeams(club.organization, club.clubNumber)
+          .then((response) => {
+            const found = normalizeTeams(response).find((team) => String(team.id) === teamId || team.teamId === teamId);
+
+            if (!found?.association || !found.groupId || !mounted.current) return;
+
+            setResolvedTeams((previous) => ({
+              ...previous,
+              [teamId]: {
+                teamId,
+                teamName,
+                leagueTitle: found.leagueName || undefined,
+                association: found.association!,
+                groupId: found.groupId!,
+                season: found.season,
+                leagueSlug: found.leagueSlug,
+                club,
+              },
+            }));
+          })
+          .catch(() => lookedUp.current.delete(teamId));
+    }
+    // homeClub und awayClub ergeben sich aus meeting
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meeting, hasLeagueContext, homeTeamId, awayTeamId]);
+
+  // Mannschaftsseite, wenn Team-ID und Liga bekannt sind, sonst die Vereinsseite. Nur ohne beides ist die Seite nicht tippbar.
+  function getSideLink(side: 'home' | 'away'): MatchSideLink | null {
+    const teamId = side === 'home' ? homeTeamId : awayTeamId;
+    const club = side === 'home' ? homeClub : awayClub;
+    const teamName = side === 'home' ? homeTeam : awayTeam;
+
+    if (teamId && leagueContext) {
+      return { kind: 'team', teamId, teamName, ...leagueContext, club };
+    }
+
+    const resolved = teamId ? resolvedTeams[teamId] : undefined;
+
+    if (resolved) return { kind: 'team', ...resolved, teamName, club };
+
+    if (club.organization && club.clubNumber) {
+      return { kind: 'club', organization: club.organization, clubNumber: club.clubNumber, title: teamName };
+    }
+
+    return null;
   }
 
   const preview = useMatchPreview({
     enabled: Boolean(meeting) && !hasStarted,
-    homeTeamId: getParam(params.homeTeamId),
-    awayTeamId: getParam(params.awayTeamId),
+    homeTeamId,
+    awayTeamId,
     homeTeam,
     awayTeam,
   });
 
-  const homeTeamLink = getTeamLink('home');
-  const awayTeamLink = getTeamLink('away');
+  const homeTeamLink = getSideLink('home');
+  const awayTeamLink = getSideLink('away');
 
-  function openTeam(link: TeamLinkContext) {
+  function openTeam(link: MatchSideLink) {
+    if (link.kind === 'club') {
+      openClub(link);
+      return;
+    }
+
     router.push({
       pathname: '/team/[teamId]',
       params: {
@@ -234,6 +343,7 @@ export function useMatchDetails() {
     homeTeam,
     awayTeam,
     mainScore,
+    showLineup: hasStarted,
     homeWon,
     awayWon,
     homeTeamLink,

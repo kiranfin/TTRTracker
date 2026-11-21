@@ -1,10 +1,11 @@
-import { router } from 'expo-router';
+import { openMatch } from '@/src/features/match-details/navigation';
 import { View } from 'react-native';
 import { EmptyState } from '@/src/components/EmptyState';
 import { ListGroup } from '@/src/components/ListGroup';
 import { MatchRow } from '@/src/components/MatchRow';
 import { SectionHeader } from '@/src/components/SectionHeader';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { clubForList } from '@/src/storage/clubLogos';
 import type { TeamContext, ScheduleSummary, TeamScheduleMatch } from '../types';
 import { formatDateLabel } from '../utils';
 import { styles } from '../styles';
@@ -28,19 +29,15 @@ function MatchList({ matches, team }: { matches: TeamScheduleMatch[]; team: Team
                   awayTeam={match.awayTeam}
                   homeScore={match.homeScore}
                   awayScore={match.awayScore}
-                  homeClub={{ organization: team.association, clubNumber: match.homeClubId }}
-                  awayClub={{ organization: team.association, clubNumber: match.awayClubId }}
+                  homeClub={clubForList(team.association, match.homeClubId)}
+                  awayClub={clubForList(team.association, match.awayClubId)}
                   status={match.status}
                   time={match.time}
                   meta={[formatDateLabel(match.date, language), match.roundName].filter(Boolean).join(' · ')}
                   highlightTeam={ownName}
                   onPress={
                     canOpen
-                        ? () =>
-                            router.push({
-                              pathname: '/match/[meetingId]',
-                              params: { meetingId: match.id!, homeTeam: match.homeTeam, awayTeam: match.awayTeam },
-                            })
+                        ? () => openMatch(match, team)
                         : undefined
                   }
               />

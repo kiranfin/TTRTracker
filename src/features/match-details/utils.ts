@@ -1,9 +1,10 @@
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { buildClubLogoUrl } from '@/src/storage/clubLogos';
+import { slugifyMyttPathSegment } from '../team-details/utils';
 import type { MeetingClub, MeetingDetails, MatchRow, MatchRowWithScore, RawMeetingMatch, RawPlayer } from './types';
 
-// Verein einer Seite für das Logo. Der Verband kommt aus der Club URI, weil in DTTB Ligen fed_nickname
-// der Liga gehört und nicht dem Verein.
+// Verein einer Seite für das Logo. Der Verband kommt nur aus der Club URI, weil fed_nickname der Liga gehört
+// und nicht dem Verein. Ohne URI gibt es lieber kein Logo als ein falsches.
 export function getMeetingClub(meeting: MeetingDetails | null, side: 'home' | 'away'): MeetingClub {
   if (!meeting) return {};
 
@@ -12,9 +13,34 @@ export function getMeetingClub(meeting: MeetingDetails | null, side: 'home' | 'a
   const fromUri = uri.match(/federations\/([^/]+)\/clubs\/(\d+)/);
 
   return {
-    organization: fromUri?.[1] ?? meeting.fed_nickname ?? undefined,
+    organization: (home ? meeting.team_home_club_fed_nickname : meeting.team_guest_club_fed_nickname) || fromUri?.[1],
     clubNumber: fromUri?.[2] ?? (home ? meeting.team_home_club_nr : meeting.team_guest_club_nr) ?? undefined,
     logoUrl: buildClubLogoUrl(home ? meeting.home_image_url : meeting.guest_image_url),
+  };
+}
+
+export function toIdString(value: unknown): string | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'string' && value.trim()) return value.trim();
+
+  return undefined;
+}
+
+// Liga der Begegnung aus dem Spielbericht. fed_nickname ist der Verband der Liga, season_nickname die Saison
+// ("26/27"), den Slug der Liga leiten wir wie überall aus ihrem Namen ab.
+export function getMeetingLeague(meeting: MeetingDetails | null) {
+  const association = meeting?.fed_nickname?.trim() || undefined;
+  const groupId = toIdString(meeting?.group_id);
+  const seasonRaw = meeting?.season_nickname?.trim().replace(/--/g, '/');
+  const season = seasonRaw && /^\d{2}\/\d{2}$/.test(seasonRaw) ? seasonRaw : undefined;
+  const title = meeting?.group_name?.trim() || undefined;
+
+  return {
+    association,
+    groupId,
+    season,
+    leagueTitle: title,
+    leagueSlug: title ? slugifyMyttPathSegment(title) : undefined,
   };
 }
 
@@ -53,8 +79,8 @@ export function normalizeMeetingRows(meeting: MeetingDetails | null, t: ReturnTy
       id: match.match_uuid ?? `${match.match_name ?? 'match'}-${index}`,
       name: match.match_name ?? t('match.matchNumber', { number: index + 1 }),
       type,
-      homePlayer: formatSide([match.mm_player11, match.mm_player12], match.home_wo ? t('match.walkover') : t('match.home')),
-      awayPlayer: formatSide([match.mm_player21, match.mm_player22], match.guest_wo ? t('match.walkover') : t('match.away')),
+      homePlayers: formatSide([match.mm_player11, match.mm_player12], match.home_wo ? t('match.walkover') : t('match.home'), type === 'double'),
+      awayPlayers: formatSide([match.mm_player21, match.mm_player22], match.guest_wo ? t('match.walkover') : t('match.away'), type === 'double'),
       result: hasResult ? `${setsHome}:${setsGuest}` : '-',
       sets: setScores,
       games,
@@ -79,14 +105,25 @@ export function buildSetScores(match: RawMeetingMatch): string[] {
   return scores;
 }
 
-export function formatSide(players: (RawPlayer | null | undefined)[], fallback: string): string {
-  const names = players.map(formatPlayer).filter(Boolean);
+// Namen einer Seite als Liste. short (Doppel): Initiale plus Nachname, damit lange Namen nicht den Partner verdrängen.
+export function formatSide(players: (RawPlayer | null | undefined)[], fallback: string, short = false): string[] {
+  const names = players
+      .map((player) => (short ? formatShortPlayer(player) : formatPlayer(player)))
+      .filter((name): name is string => Boolean(name));
 
-  if (names.length === 0) {
-    return fallback;
-  }
+  return names.length === 0 ? [fallback] : names;
+}
 
-  return names.join('\n');
+// "Hans-Peter Mustermann" wird zu "H. Mustermann"
+export function formatShortPlayer(player: RawPlayer | null | undefined): string | null {
+  if (!player) return null;
+
+  const first = typeof player.firstname === 'string' ? player.firstname.trim() : '';
+  const last = typeof player.lastname === 'string' ? player.lastname.trim() : '';
+
+  if (!first || !last) return formatPlayer(player);
+
+  return `${Array.from(first)[0].toUpperCase()}. ${last}`;
 }
 
 export function formatPlayer(player: RawPlayer | null | undefined): string | null {
