@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
 import { useApiUpdates } from '@/src/hooks/useApiUpdates';
+import { useLiveMatches } from '@/src/hooks/useLiveMatches';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, favoriteKey, getFavorites, removeFavorite } from '@/src/storage/favorites';
 import { getMeClub } from '@/src/storage/meClub';
@@ -31,7 +32,9 @@ export function useLeagueDetails() {
 
   const [activeTab, setActiveTab] = useState<DetailTab>('table');
   const [tableRows, setTableRows] = useState<TableRow[]>([]);
-  const [matches, setMatches] = useState<EnrichedScheduleMatch[]>([]);
+  const [loadedMatches, setMatches] = useState<EnrichedScheduleMatch[]>([]);
+  // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
+  const matches = useLiveMatches(loadedMatches);
   const [periodFilter, setPeriodFilter] = useState<SchedulePeriodFilter>('all');
   const [roundFilter, setRoundFilter] = useState<RoundFilter>('all');
   const [tableFreshness, setTableFreshness] = useState<Freshness | null>(null);

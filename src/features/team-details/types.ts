@@ -67,7 +67,7 @@ export type TeamScheduleMatch = {
     id?: string;
     date?: string;
     time?: string;
-    status: 'scheduled' | 'completed' | 'free';
+    status: 'scheduled' | 'completed' | 'free' | 'live';
     homeTeam: string;
     awayTeam: string;
     homeTeamId?: string;

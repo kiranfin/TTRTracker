@@ -8,6 +8,7 @@ import { useOnMyttConnected } from '@/src/features/mytt';
 import { getMyttUnavailableReason, type MyttUnavailableReason } from '@/src/features/mytt/utils/errors';
 import { getUpcomingEvents } from '@/src/features/events/utils';
 import { useApiUpdates } from '@/src/hooks/useApiUpdates';
+import { useLiveMatches } from '@/src/hooks/useLiveMatches';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { publicRatingToHistory } from '../../player-details/estimate';
 import { getEventsWidgetEnabled } from '@/src/storage/eventsWidget';
@@ -40,8 +41,9 @@ export function useHome() {
   const handledReloadKey = useRef(reloadKey);
 
   const [meClub, setMeClub] = useState<MeClub | null>(null);
-  const [clubCompletedMatches, setClubCompletedMatches] = useState<HomeClubMatch[]>([]);
-  const [clubUpcomingMatches, setClubUpcomingMatches] = useState<HomeClubMatch[]>([]);
+  // Alle Begegnungen der Saison. Die zwei letzten Ergebnisse und die zwei nächsten Spiele werden erst nach dem
+  // Live Stand ausgewählt, damit ein laufendes oder gerade beendetes Spiel an der richtigen Stelle steht.
+  const [clubMatches, setClubMatches] = useState<HomeClubMatch[]>([]);
   const [clubLoading, setClubLoading] = useState(false);
   const [clubError, setClubError] = useState<string | null>(null);
   // Wird erhöht, wenn die App den Vereinsspielplan im Hintergrund aktualisiert hat. Dann wird still neu gelesen.
@@ -280,8 +282,7 @@ export function useHome() {
 
     async function loadClubMatches() {
       if (!meClub?.organization || !meClub.clubNumber) {
-        setClubCompletedMatches([]);
-        setClubUpcomingMatches([]);
+        setClubMatches([]);
         setClubError(null);
         setClubLoading(false);
         return;
@@ -293,8 +294,7 @@ export function useHome() {
       if (!silent) {
         setClubLoading(true);
         setClubError(null);
-        setClubCompletedMatches([]);
-        setClubUpcomingMatches([]);
+        setClubMatches([]);
       }
 
       try {
@@ -313,25 +313,11 @@ export function useHome() {
 
         if (!active) return;
 
-        const allMatches = normalizeHomeClubSchedule(response);
-
-        const matches = allMatches
-            .filter(isCompletedClubMatch)
-            .sort(compareMatchesNewestFirst)
-            .slice(0, 2);
-
-        const upcoming = allMatches
-            .filter(isUpcomingClubMatch)
-            .sort(compareMatchesOldestFirst)
-            .slice(0, 2);
-
-        setClubCompletedMatches(matches);
-        setClubUpcomingMatches(upcoming);
+        setClubMatches(normalizeHomeClubSchedule(response));
       } catch (error) {
         if (!active) return;
 
-        setClubCompletedMatches([]);
-        setClubUpcomingMatches([]);
+        setClubMatches([]);
         setClubError(describeApiError(error, t, 'home.clubMatchesError'));
       } finally {
         if (active) {
@@ -346,6 +332,19 @@ export function useHome() {
       active = false;
     };
   }, [meClub, clubRefreshTick]);
+
+  // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
+  const liveClubMatches = useLiveMatches(clubMatches);
+
+  const clubCompletedMatches = useMemo(
+      () => liveClubMatches.filter(isCompletedClubMatch).sort(compareMatchesNewestFirst).slice(0, 2),
+      [liveClubMatches],
+  );
+
+  const clubUpcomingMatches = useMemo(
+      () => liveClubMatches.filter(isUpcomingClubMatch).sort(compareMatchesOldestFirst).slice(0, 2),
+      [liveClubMatches],
+  );
 
   useApiUpdates(
       meClub?.organization && meClub.clubNumber

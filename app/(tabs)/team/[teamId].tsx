@@ -16,6 +16,7 @@ import { StatStrip } from '@/src/components/StatStrip';
 import { typography } from '@/src/theme/typography';
 import { formatSeasonLong, getCurrentSeason } from '@/src/utils/dates';
 import { useApiUpdates } from '@/src/hooks/useApiUpdates';
+import { useLiveMatches } from '@/src/hooks/useLiveMatches';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { describeApiError } from '@/src/utils/apiErrors';
 import { getResponseFreshness, type Freshness } from '@/src/utils/staleness';
@@ -35,7 +36,9 @@ export default function TeamDetailsScreen() {
     const [roundFilter, setRoundFilter] = useState<RoundFilter>('gesamt');
     const [teamInfo, setTeamInfo] = useState<TeamInfo | null>(null);
     const [lineup, setLineup] = useState<TeamPlayer[]>([]);
-    const [schedule, setSchedule] = useState<TeamScheduleMatch[]>([]);
+    const [loadedSchedule, setSchedule] = useState<TeamScheduleMatch[]>([]);
+    // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
+    const schedule = useLiveMatches(loadedSchedule);
     const [balancesByRound, setBalancesByRound] = useState<Record<RoundFilter, TeamBalance[]>>({
         gesamt: [],
         vr: [],

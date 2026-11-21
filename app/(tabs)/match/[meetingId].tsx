@@ -1,4 +1,4 @@
-import { ScrollView, Text } from 'react-native';
+import { RefreshControl, ScrollView, Text } from 'react-native';
 import { DataFreshness } from '@/src/components/DataFreshness';
 import { EmptyState } from '@/src/components/EmptyState';
 import { Screen } from '@/src/components/Screen';
@@ -19,6 +19,8 @@ export default function MatchDetailsScreen() {
     freshness,
     preview,
     loading,
+    refreshing,
+    refresh,
     error,
     lines,
     singles,
@@ -41,7 +43,11 @@ export default function MatchDetailsScreen() {
 
   return (
       <Screen>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        >
           <ScreenHeader title={t('match.detailsTitle')} />
 
           <MatchHero

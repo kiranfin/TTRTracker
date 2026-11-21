@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { ttApi } from '@/src/api/tttracker';
 import { useApiUpdates } from '@/src/hooks/useApiUpdates';
+import { useLiveMatches } from '@/src/hooks/useLiveMatches';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { addFavorite, isFavorite, removeFavorite } from '@/src/storage/favorites';
 import { clearMeClub, getMeClub, setMeClub } from '@/src/storage/meClub';
@@ -59,7 +60,7 @@ export function useClubDetails() {
   const [activeTab, setActiveTab] = useState<ClubTab>('teams');
   const [teams, setTeams] = useState<ClubTeam[]>([]);
   const [players, setPlayers] = useState<ClubPlayer[]>([]);
-  const [scheduleMatches, setScheduleMatches] = useState<ClubScheduleMatch[]>([]);
+  const [loadedScheduleMatches, setScheduleMatches] = useState<ClubScheduleMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [teamsLoaded, setTeamsLoaded] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
@@ -81,6 +82,9 @@ export function useClubDetails() {
   const [meClubLoading, setMeClubLoading] = useState(false);
   const [favoriteClubLoading, setFavoriteClubLoading] = useState(false);
   const [isFavoriteClub, setIsFavoriteClub] = useState(false);
+
+  // Laufende Begegnungen mit dem Stand aus dem Spielbericht, der Spielplan kennt ihn nicht.
+  const scheduleMatches = useLiveMatches(loadedScheduleMatches);
 
   const parsedClubKey = useMemo(() => parseClubKey(params.clubKey), [params.clubKey]);
 

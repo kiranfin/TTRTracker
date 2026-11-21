@@ -367,8 +367,9 @@ export const ttApi = {
     );
   },
 
-  getMeetingLive(meetingId: string) {
-    return apiGet<unknown>(`/api/meetings/${segment(meetingId)}/live`);
+  // maxAgeMs: Höchstalter des Standes. Beim regelmäßigen Nachladen laufender Spiele kürzer als die Frische im Cache.
+  getMeetingLive(meetingId: string, options?: { maxAgeMs?: number }) {
+    return apiGet<unknown>(`/api/meetings/${segment(meetingId)}/live`, undefined, options);
   },
 
   async getLeagueAssociations() {

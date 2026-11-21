@@ -1,7 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { invalidateApiCache } from '@/src/api/client';
 import { ttApi } from '@/src/api/tttracker';
+import { useLivePolling } from '@/src/hooks/useLivePolling';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { describeApiError } from '@/src/utils/apiErrors';
 import { getResponseFreshness, type Freshness } from '@/src/utils/staleness';
@@ -9,6 +11,14 @@ import type { MeetingDetails, TeamLinkContext } from '../types';
 import { useMatchPreview } from './useMatchPreview';
 import { addRunningScore, formatDateTime, formatLabeledPair, formatLocation, formatStatus, getMeetingClub, getParam, normalizeMeetingRows, toNumber, unwrapMeetingResponse } from '../utils';
 import { getCurrentSeason } from '@/src/utils/dates';
+
+// Alle 30 Sekunden nachsehen, solange die Begegnung läuft oder gleich beginnt (das Backend hält laufende Spiele eine
+// Minute). Der Stand auf dem Gerät darf dabei höchstens 25 Sekunden alt sein, sonst käme nur der Zwischenspeicher zurück.
+const POLL_MS = 30 * 1000;
+const POLL_MAX_AGE_MS = 25 * 1000;
+// Ab wann vor dem Beginn und wie lange danach (ohne gemeldetes Ende) nachgesehen wird.
+const POLL_BEFORE_START_MS = 15 * 60 * 1000;
+const POLL_AFTER_START_MS = 8 * 60 * 60 * 1000;
 
 export function useMatchDetails() {
   const { t } = useI18n();
@@ -19,51 +29,101 @@ export function useMatchDetails() {
   const [meeting, setMeeting] = useState<MeetingDetails | null>(null);
   const [freshness, setFreshness] = useState<Freshness | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    let active = true;
+    mounted.current = true;
 
-    async function loadMeeting() {
-      if (!meetingId) {
-        setLoading(false);
-        setError(t('match.meetingIdMissing'));
-        return;
-      }
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
-      setLoading(true);
-      setError(null);
+  // silent: Der bisherige Stand bleibt stehen, es gibt weder Ladeanzeige noch Fehlermeldung (Polling, Pull to Refresh).
+  // Schlägt das still fehl, zeigt die Seite einfach weiter den letzten Stand.
+  const loadMeeting = useCallback(
+      async (options: { silent?: boolean; maxAgeMs?: number } = {}) => {
+        const { silent = false, maxAgeMs } = options;
 
-      try {
-        const response = await ttApi.getMeetingLive(meetingId);
-        const nextMeeting = unwrapMeetingResponse(response);
-
-        if (!nextMeeting) {
-          throw new Error(t('match.unexpectedFormat'));
-        }
-
-        if (active) {
-          setMeeting(nextMeeting);
-          setFreshness(getResponseFreshness(response));
-        }
-      } catch (loadError) {
-        if (active) {
-          setMeeting(null);
-          setError(describeApiError(loadError, t, 'match.liveLoadError'));
-        }
-      } finally {
-        if (active) {
+        if (!meetingId) {
           setLoading(false);
+          setError(t('match.meetingIdMissing'));
+          return;
         }
+
+        if (!silent) {
+          setLoading(true);
+          setError(null);
+        }
+
+        try {
+          const response = await ttApi.getMeetingLive(meetingId, maxAgeMs ? { maxAgeMs } : undefined);
+          const nextMeeting = unwrapMeetingResponse(response);
+
+          if (!nextMeeting) {
+            throw new Error(t('match.unexpectedFormat'));
+          }
+
+          if (mounted.current) {
+            setMeeting(nextMeeting);
+            setFreshness(getResponseFreshness(response));
+            setError(null);
+          }
+        } catch (loadError) {
+          if (mounted.current && !silent) {
+            setMeeting(null);
+            setError(describeApiError(loadError, t, 'match.liveLoadError'));
+          }
+        } finally {
+          if (mounted.current && !silent) {
+            setLoading(false);
+          }
+        }
+      },
+      [meetingId, t],
+  );
+
+  useEffect(() => {
+    loadMeeting().catch(() => undefined);
+  }, [loadMeeting]);
+
+  // Ziehen zum Aktualisieren: nicht aus dem Zwischenspeicher, sondern wirklich neu (das Backend hält laufende Spiele
+  // höchstens eine Minute).
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      await invalidateApiCache('/api/meetings');
+      await loadMeeting({ silent: true });
+    } finally {
+      if (mounted.current) {
+        setRefreshing(false);
       }
     }
+  }, [loadMeeting]);
 
-    loadMeeting().catch(() => undefined);
+  const isCompleted = Boolean(meeting?.is_completed || meeting?.is_meeting_complete);
+  // start_date und scheduled sind UTC Zeitstempel, Date.parse versteht sie direkt.
+  const startRaw = meeting?.start_date ?? meeting?.scheduled;
+  const parsedStart = startRaw ? Date.parse(startRaw) : Number.NaN;
+  const startMs = Number.isFinite(parsedStart) ? parsedStart : null;
 
-  return () => {
-      active = false;
-    };
-  }, [meetingId, t]);
+  // Ein beendeter Spielbericht ändert sich nicht mehr. Sonst läuft das Polling, solange der Beginn nicht lange her ist.
+  // Wann es wirklich nachfragt, entscheidet pollMeeting (erst kurz vor dem Beginn), damit nicht jede Minute neu
+  // gerendert werden muss, um den Beginn zu bemerken.
+  const shouldPoll = Boolean(meeting) && !isCompleted && (startMs === null || Date.now() <= startMs + POLL_AFTER_START_MS);
+
+  const pollMeeting = () => {
+    const live = Boolean(meeting?.live);
+
+    if (!live && startMs !== null && Date.now() < startMs - POLL_BEFORE_START_MS) return;
+
+    loadMeeting({ silent: true, maxAgeMs: POLL_MAX_AGE_MS }).catch(() => undefined);
+  };
+
+  useLivePolling(pollMeeting, { enabled: shouldPoll, intervalMs: POLL_MS });
 
   const lines = useMemo(() => normalizeMeetingRows(meeting, t), [meeting, t]);
 
@@ -163,6 +223,8 @@ export function useMatchDetails() {
     meeting,
     freshness,
     loading,
+    refreshing,
+    refresh,
     error,
     meetingId,
     preview,
